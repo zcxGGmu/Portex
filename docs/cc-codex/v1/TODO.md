@@ -182,7 +182,7 @@ def map_sdk_event(sdk_event) -> PortexEvent:
 
 ### M0.5: 预研总结与定稿 [Day 5]
 
-- [ ] **M0.5.1** 整理 PoC 结果与发现
+- [x] **M0.5.1** 整理 PoC 结果与发现
 
 - [ ] **M0.5.2** 更新项目规划文档
 
