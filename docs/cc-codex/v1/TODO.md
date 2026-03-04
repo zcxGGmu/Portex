@@ -40,7 +40,7 @@ portex/
 └── scripts/
 ```
 
-- [ ] **M0.1.2** 初始化 Python 项目 (pyproject.toml)
+- [x] **M0.1.2** 初始化 Python 项目 (pyproject.toml)
 
 ```toml
 [project]
