@@ -105,7 +105,7 @@ async for event in result.stream_events():
     print(event)
 ```
 
-- [ ] **M0.2.3** 测试并记录事件类型
+- [x] **M0.2.3** 测试并记录事件类型
 
 - [ ] **M0.2.4** 编写事件映射示例 `event_mapper.py`
 
