@@ -89,7 +89,7 @@ pocs/
     └── requirements.txt
 ```
 
-- [ ] **M0.2.2** 实现基础 Agent 流式输出
+- [x] **M0.2.2** 实现基础 Agent 流式输出
 
 ```python
 # pocs/streaming/main.py
