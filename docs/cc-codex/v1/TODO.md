@@ -113,7 +113,7 @@ async for event in result.stream_events():
 
 ### M0.3: PoC 2 - Codex/工具调用 [Day 3-4]
 
-- [ ] **M0.3.1** 创建 PoC 目录 `pocs/tools/`
+- [x] **M0.3.1** 创建 PoC 目录 `pocs/tools/`
 
 ```
 pocs/
