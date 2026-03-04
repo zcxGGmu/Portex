@@ -107,7 +107,7 @@ async for event in result.stream_events():
 
 - [x] **M0.2.3** 测试并记录事件类型
 
-- [ ] **M0.2.4** 编写事件映射示例 `event_mapper.py`
+- [x] **M0.2.4** 编写事件映射示例 `event_mapper.py`
 
 **交付**: `pocs/streaming/` 目录，事件类型清单
 
