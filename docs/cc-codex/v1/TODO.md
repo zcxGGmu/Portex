@@ -61,7 +61,7 @@ dependencies = [
 ]
 ```
 
-- [ ] **M0.1.3** 验证 OpenAI Agents SDK 安装
+- [x] **M0.1.3** 验证 OpenAI Agents SDK 安装
 
 ```bash
 pip install openai-agents
