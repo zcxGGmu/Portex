@@ -167,7 +167,7 @@ class PortexEvent(BaseModel):
     timestamp: str
 ```
 
-- [ ] **M0.4.2** 实现 SDK 事件 → Portex 事件映射器
+- [x] **M0.4.2** 实现 SDK 事件 → Portex 事件映射器
 
 ```python
 # pocs/events/mapper.py
