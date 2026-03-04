@@ -135,7 +135,7 @@ def read_file(ctx: RunContextWrapper[Any], path: str) -> str:
         return f.read()
 ```
 
-- [ ] **M0.3.3** 验证工具注册与调用
+- [x] **M0.3.3** 验证工具注册与调用
 
 - [ ] **M0.3.4** 记录工具调用流程
 
