@@ -143,7 +143,7 @@ def read_file(ctx: RunContextWrapper[Any], path: str) -> str:
 
 ### M0.4: PoC 3 - 事件映射与契约 [Day 4-5]
 
-- [ ] **M0.4.1** 定义 Portex 事件契约
+- [x] **M0.4.1** 定义 Portex 事件契约
 
 ```python
 # portex/contracts/events.py
