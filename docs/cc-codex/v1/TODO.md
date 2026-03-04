@@ -122,7 +122,7 @@ pocs/
     └── requirements.txt
 ```
 
-- [ ] **M0.3.2** 定义自定义工具（模拟文件操作）
+- [x] **M0.3.2** 定义自定义工具（模拟文件操作）
 
 ```python
 from agents import function_tool, RunContextWrapper
