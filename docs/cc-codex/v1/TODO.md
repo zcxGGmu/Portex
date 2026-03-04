@@ -68,7 +68,7 @@ pip install openai-agents
 python -c "from agents import Agent, Runner; print('OK')"
 ```
 
-- [ ] **M0.1.4** 创建虚拟环境并安装依赖
+- [x] **M0.1.4** 创建虚拟环境并安装依赖
 
 ```bash
 python -m venv .venv
