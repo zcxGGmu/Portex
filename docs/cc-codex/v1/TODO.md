@@ -176,7 +176,7 @@ def map_sdk_event(sdk_event) -> PortexEvent:
     pass
 ```
 
-- [ ] **M0.4.3** 编写契约测试用例
+- [x] **M0.4.3** 编写契约测试用例
 
 **交付**: `portex/contracts/` 模块，事件契约文档
 
