@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenAI Agents SDK"
+  short_description: "Use when building or refactoring systems with OpenAI Agents SDK"
+  default_prompt: "Design and implement with OpenAI Agents SDK using Agent, Runner, Tools, Handoffs, Guardrails, and Tracing best practices."
