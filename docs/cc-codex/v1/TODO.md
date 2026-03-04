@@ -80,7 +80,7 @@ pip install -e ".[dev]"
 
 ### M0.2: PoC 1 - SDK 流式输出 [Day 2-3]
 
-- [ ] **M0.2.1** 创建 PoC 目录 `pocs/streaming/`
+- [x] **M0.2.1** 创建 PoC 目录 `pocs/streaming/`
 
 ```
 pocs/
