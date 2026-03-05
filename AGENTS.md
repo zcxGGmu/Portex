@@ -3,11 +3,17 @@
 ## Mandatory Development Principles
 - On every Codex restart, read `docs/TODO.md` and `docs/progress.md` before any planning or code changes.
 - This project is a Python + OpenAI Agents SDK refactor of `https://github.com/riba2534/happyclaw.git`.
+- Local reference implementation path: `/home/zcxggmu/workspace/hello-projs/agents/happyclaw`.
 - Implement work strictly according to `docs/TODO.md`.
 - Record progress and handoff notes in `docs/progress.md`.
 - After completing each phase task, commit immediately with a detailed commit message.
 - For every completed feature, run feature-level tests and full-flow regression checks to ensure no impact on other features.
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
+
+## Current Baseline Snapshot (2026-03-05)
+- M2.4 is complete (`M2.4.1` ~ `M2.4.4`).
+- Current starting point is `M2.5.1` (cancel and timeout flow).
+- If unsure after restart, treat `docs/progress.md` as source of truth and continue from the "下一起点" entry.
 
 ## Project Structure & Module Organization
 - Backend runtime lives in `app/`, `domain/`, `infra/`, and `services/`.
@@ -28,6 +34,8 @@
 - `.venv/bin/pytest -q`: run all backend tests (preferred, avoid system Python mismatch).
 - `.venv/bin/pytest tests/unit/ -v`: run M1 acceptance unit test command.
 - `.venv/bin/pytest tests/pocs/streaming/test_main.py -q`: run one test module.
+- `.venv/bin/pytest tests/infra/runtime/ -q`: runtime adapter feature tests (M2.2).
+- `.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q`: message pipeline feature tests (M2.3).
 - `.venv/bin/ruff check .`: lint.
 - `python -m pocs.streaming.main --dry-run`: run streaming PoC locally.
 - `python -m pocs.tools.main --dry-run --sample-file README.md`: run tools PoC locally.

@@ -50,12 +50,22 @@
 
 ---
 
-## 4. 下一位 Codex 直接执行
+## 4. 最近提交（便于快速定位）
+
+- `bb44cbd` `feat(web): complete M2.4 streaming event presentation`
+- `8857ec9` `feat(web): complete M2.3.3 chat message display state`
+- `4dd5451` `feat(runtime): implement M2.3.2 agent trigger streaming pipeline`
+- `b206ac9` `feat(messages): implement M2.3.1 message persistence service`
+
+---
+
+## 5. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
 2. 从 `M2.5.1` 开始：
    - 在 runtime 层加入运行任务跟踪与取消入口
-   - 在触发链路中加入超时控制
+   - 在触发链路中加入超时控制（`M2.5.2`）
+   - 前端补取消入口（`M2.5.3`）
 3. 子任务完成后固定流程：
    - 跑特性测试 + 全量回归；
    - 更新 `docs/TODO.md` 与 `docs/progress.md`；
@@ -63,6 +73,6 @@
 
 ---
 
-## 5. 一句话版
+## 6. 一句话版
 
 > 项目已完成 M2.4 流式输出前端展示，下一步进入 M2.5 取消与超时处理。
