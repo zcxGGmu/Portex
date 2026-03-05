@@ -1,15 +1,22 @@
 # Repository Guidelines
 
+## Mandatory Development Principles
+- On every Codex restart, read `docs/TODO.md` and `docs/progress.md` before any planning or code changes.
+- This project is a Python + OpenAI Agents SDK refactor of `https://github.com/riba2534/happyclaw.git`.
+- Implement work strictly according to `docs/TODO.md`.
+- Record progress and handoff notes in `docs/progress.md`.
+- After completing each phase task, commit immediately with a detailed commit message.
+- For every completed feature, run feature-level tests and full-flow regression checks to ensure no impact on other features.
+
 ## Project Structure & Module Organization
-- This repository is a Python + OpenAI Agents SDK refactor of `/home/zq/work-space/repo/ai-projs/agents/happyclaw`.
 - `portex/` holds core library code; the event contract model is in `portex/contracts/events.py`.
 - `pocs/` contains runnable proofs of concept split by concern: `streaming/`, `events/`, and `tools/`.
 - `tests/` mirrors runtime modules (`tests/portex/contracts/`, `tests/pocs/...`).
 - `docs/` stores planning and research material.
 
 ## Agent Startup Context
-- At the start of every Codex session, read `docs/cc-codex/v1/progress.md` before planning or editing code; treat it as the handoff source of truth.
-- Quick check: `sed -n '1,220p' docs/cc-codex/v1/progress.md`, then align with `docs/cc-codex/v1/TODO.md`.
+- At the start of every Codex session, read `docs/progress.md` and `docs/TODO.md` before planning or editing code.
+- Quick check: `sed -n '1,220p' docs/progress.md && sed -n '1,220p' docs/TODO.md`.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
