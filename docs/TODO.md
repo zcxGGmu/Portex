@@ -910,7 +910,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
 ### M2.4: 流式输出完善 [Week 2, Day 1-3]
 
-- [ ] **M2.4.1** 定义前端事件类型
+- [x] **M2.4.1** 定义前端事件类型
 
 ```typescript
 // web/src/types/events.ts
@@ -923,7 +923,7 @@ export type StreamEvent =
   | { type: 'run.failed'; runId: string; error: string }
 ```
 
-- [ ] **M2.4.2** 实现流式消息组件
+- [x] **M2.4.2** 实现流式消息组件
 
 ```tsx
 // web/src/components/chat/MessageList.tsx
@@ -940,7 +940,7 @@ export function MessageList() {
 }
 ```
 
-- [ ] **M2.4.3** 实现思考过程展示
+- [x] **M2.4.3** 实现思考过程展示
 
 ```tsx
 // web/src/components/chat/ThinkingPanel.tsx
@@ -954,7 +954,7 @@ export function ThinkingPanel({ events }: { events: StreamEvent[] }) {
 }
 ```
 
-- [ ] **M2.4.4** 实现工具调用追踪展示
+- [x] **M2.4.4** 实现工具调用追踪展示
 
 ```tsx
 // web/src/components/chat/ToolCallTracker.tsx

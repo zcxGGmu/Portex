@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import type { StreamEvent } from '../types/events'
+
 export type ChatRole = 'user' | 'assistant'
 
 export interface ChatMessage {
@@ -11,8 +13,10 @@ export interface ChatMessage {
 
 interface ChatState {
   messages: ChatMessage[]
+  streamEvents: StreamEvent[]
   draft: string
   addMessage: (message: Omit<ChatMessage, 'id' | 'createdAt'> & Partial<Pick<ChatMessage, 'id' | 'createdAt'>>) => void
+  addStreamEvent: (event: StreamEvent) => void
   setDraft: (nextDraft: string) => void
   sendDraft: () => void
   clearMessages: () => void
@@ -34,6 +38,7 @@ function createMessage(role: ChatRole, content: string): ChatMessage {
 
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
+  streamEvents: [],
   draft: '',
   addMessage(message) {
     const normalized =
@@ -42,6 +47,9 @@ export const useChatStore = create<ChatState>((set) => ({
         : createMessage(message.role, message.content)
 
     set((state) => ({ messages: [...state.messages, normalized] }))
+  },
+  addStreamEvent(event) {
+    set((state) => ({ streamEvents: [...state.streamEvents, event] }))
   },
   setDraft(nextDraft) {
     set({ draft: nextDraft })
@@ -60,6 +68,6 @@ export const useChatStore = create<ChatState>((set) => ({
     })
   },
   clearMessages() {
-    set({ messages: [] })
+    set({ messages: [], streamEvents: [] })
   },
 }))
