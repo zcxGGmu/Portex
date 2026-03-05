@@ -515,7 +515,7 @@ async def send_message(
 
 ### M1.4: 认证与安全基础 [Week 2, Day 2-3]
 
-- [ ] **M1.4.1** 实现密码哈希
+- [x] **M1.4.1** 实现密码哈希
 
 ```python
 # services/auth.py
@@ -528,7 +528,7 @@ def verify_password(password: str, hash: str) -> bool:
     return bcrypt.verify(password, hash)
 ```
 
-- [ ] **M1.4.2** 实现 JWT token 生成与验证
+- [x] **M1.4.2** 实现 JWT token 生成与验证
 
 ```python
 # services/auth.py
@@ -545,7 +545,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 ```
 
-- [ ] **M1.4.3** 实现依赖注入的当前用户获取
+- [x] **M1.4.3** 实现依赖注入的当前用户获取
 
 ```python
 # app/middleware/auth.py
@@ -563,7 +563,7 @@ async def get_current_user(
     # 返回用户对象
 ```
 
-- [ ] **M1.4.4** 配置 CORS 中间件
+- [x] **M1.4.4** 配置 CORS 中间件
 
 ```python
 # app/main.py

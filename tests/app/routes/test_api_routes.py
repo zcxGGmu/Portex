@@ -30,6 +30,21 @@ def test_health_check_endpoint(api_client: TestClient) -> None:
     assert response.json() == {"status": "ok", "version": "0.1.0"}
 
 
+def test_cors_preflight_allows_localhost_5173(api_client: TestClient) -> None:
+    response = api_client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert "POST" in response.headers.get("access-control-allow-methods", "")
+
+
 def test_register_login_and_get_current_user_flow(api_client: TestClient) -> None:
     register_response = api_client.post(
         "/auth/register",

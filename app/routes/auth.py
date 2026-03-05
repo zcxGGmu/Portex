@@ -1,35 +1,24 @@
-"""Authentication routes and auth dependency."""
+"""Authentication routes."""
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import APIRouter, HTTPException, status
 
 from domain.schemas import (
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
     TokenResponse,
-    UserResponse,
 )
 from services.auth import UserAlreadyExistsError, auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-security = HTTPBearer(auto_error=False)
 
 
 def _user_attr(user: Any, field: str) -> Any:
     if isinstance(user, dict):
         return user.get(field)
     return getattr(user, field, None)
-
-
-def _unauthorized_error() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="invalid or missing token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
 
 
 @router.post("/register", response_model=RegisterResponse)
@@ -64,26 +53,4 @@ async def login(request: LoginRequest) -> TokenResponse:
     return TokenResponse(access_token=access_token)
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-) -> UserResponse:
-    if credentials is None:
-        raise _unauthorized_error()
-
-    user_id = auth_service.decode_access_token(credentials.credentials)
-    if user_id is None:
-        raise _unauthorized_error()
-
-    user = auth_service.get_user_by_id(user_id)
-    if user is None:
-        raise _unauthorized_error()
-
-    return UserResponse(
-        id=_user_attr(user, "id"),
-        username=_user_attr(user, "username"),
-        role=_user_attr(user, "role"),
-        status=_user_attr(user, "status"),
-    )
-
-
-__all__ = ["get_current_user", "router"]
+__all__ = ["router"]

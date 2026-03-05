@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends
 
-from app.routes.auth import get_current_user
+from app.middleware.auth import get_current_user
 from domain.schemas import SendMessageRequest, SendMessageResponse, UserResponse
 
 router = APIRouter(prefix="/messages", tags=["messages"])
