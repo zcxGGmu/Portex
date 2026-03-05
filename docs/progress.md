@@ -1,66 +1,58 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-05 (Asia/Shanghai)
-仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
-当前分支: `main`
+最后更新: 2026-03-05 (Asia/Shanghai)  
+仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`  
+当前分支: `main`（本地相对远端 `ahead 8`）
 
 ---
 
-## 1. 当前状态（结论先看）
+## 1. 当前结论（先看这里）
 
-- `M0` 已全部完成（`M0.1` ~ `M0.5` 全勾选）。
-- `M1` 已全部完成（`M1.1` ~ `M1.6` 全勾选）。
-- 当前应从 `M2.1.1` 开始继续开发（WebSocket 管理器）。
-- 最近一次验证结果：
-  - 命令: `.venv/bin/pytest tests/unit/ -v`
-  - 结果: `1 passed`
-  - 命令: `curl http://127.0.0.1:8000/health`（通过 uvicorn 临时启动验证）
-  - 结果: `200` + `{"status":"ok","version":"0.1.0"}`
-  - 命令: `cd web && npm run build`
-  - 结果: `vite build` 通过
-  - 命令: `.venv/bin/pytest -q`
-  - 结果: `39 passed`
-  - 命令: `.venv/bin/ruff check .`
-  - 结果: `All checks passed!`
-  - 备注: 测试输出仍有 `passlib` 的 `DeprecationWarning`（`crypt` 在 Python 3.13 移除）。
+- `M0` 已完成。
+- `M1` 已完成（`M1.1` ~ `M1.6` 全勾选）。
+- 当前起点：`M2.1.1`（`app/websocket.py`，ConnectionManager）。
+- 当前可用状态：后端 API、认证中间件、前端骨架均可运行/构建。
 
 ---
 
-## 2. 本轮新增（M1.6）
+## 2. 最近一次可复现验证（通过）
 
-### M1.6.1 运行单元测试
-- 为满足验收命令 `pytest tests/unit/ -v`，补充最小单测：
-  - `tests/unit/test_auth_unit.py`
-  - 覆盖密码 hash/verify 基础行为
+- `.venv/bin/pytest tests/unit/ -v` -> `1 passed`
+- `.venv/bin/pytest -q` -> `39 passed`
+- `.venv/bin/ruff check .` -> `All checks passed!`
+- `curl http://127.0.0.1:8000/health` -> `200` + `{"status":"ok","version":"0.1.0"}`
+- `cd web && npm run lint` -> pass
+- `cd web && npm run build` -> pass（Vite 构建成功）
 
-### M1.6.2 验证 API 端点
-- 临时启动 `uvicorn app.main:app`，通过 `curl` 验证：
-  - `GET /health` 返回 `200` 和 `{"status":"ok","version":"0.1.0"}`
-
-### M1.6.3 验证前端构建
-- 在 `web/` 执行 `npm run build`，`tsc -b && vite build` 通过。
+备注：`passlib` 仍有 `DeprecationWarning: crypt`（Python 3.13 将移除）。
 
 ---
 
-## 3. 关键产物索引（重启后优先读）
+## 3. M1 收尾说明（本轮刚完成）
 
-1. `docs/TODO.md`（主任务清单，真源）
-2. `docs/PORTEX_PLAN.md`（总体架构与阶段规划）
-3. `app/main.py`、`app/middleware/auth.py`（后端 API 与鉴权入口）
-4. `web/src/App.tsx`、`web/src/pages/Login.tsx`（前端入口与登录页）
-5. `tests/unit/test_auth_unit.py`（M1.6 单测验收入口）
+- `M1.6.1`：新增 `tests/unit/test_auth_unit.py` 使 `tests/unit/` 验收命令可执行。
+- `M1.6.2`：健康检查端点验证通过（`/health`）。
+- `M1.6.3`：前端构建验证通过（`web`）。
 
 ---
 
-## 4. 下一步建议（直接执行）
+## 4. 下一位 Codex 直接执行
 
-1. `M2.1.1` 创建 `ConnectionManager`（`app/websocket.py`）
-2. `M2.1.2` 增加 WebSocket 路由（`app/routes/websocket.py`）
-3. `M2.1.3` 前端新增 ws 客户端（`web/src/api/ws.ts`）
-4. 每个子任务完成后继续执行：测试 + 文档回填 + 单任务提交
+1. 先读：
+   - `docs/TODO.md`
+   - `docs/progress.md`（本文件）
+   - `docs/PORTEX_PLAN.md`
+2. 从 `M2.1.1` 开始实现：
+   - `app/websocket.py`（ConnectionManager）
+   - `app/routes/websocket.py`
+   - `web/src/api/ws.ts`
+3. 每个子任务完成后固定流程：
+   - 跑相关测试/验证
+   - 更新 `docs/TODO.md` 与 `docs/progress.md`
+   - 单任务单提交
 
 ---
 
 ## 5. 一句话版
 
-> Portex 已完成 M1 全阶段验收，当前进入 M2.1 WebSocket 基础设施开发，起点是 `M2.1.1`。
+> 项目已完成 M1 全阶段，下一步从 M2.1.1 的 WebSocket 基础设施开发继续。
