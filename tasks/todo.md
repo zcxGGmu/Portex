@@ -1,18 +1,18 @@
-# Session Plan (2026-03-05) - M1.5
+# Session Plan (2026-03-05) - M1.6
 
 ## Goal
-- Continue from latest progress by implementing `M1.5.1` ~ `M1.5.4` (frontend scaffold with Vite + Tailwind + page/store skeleton + login page).
+- Continue from latest progress by completing `M1.6.1` ~ `M1.6.3` acceptance checks.
 
 ## Checklist
 - [x] Re-read `AGENTS.md`, `docs/progress.md`, and `docs/TODO.md`
-- [x] Define M1.5 split and target frontend structure
-- [x] Use multi-agent workers for frontend implementation
-- [x] Verify frontend build (`cd web && npm run build`)
-- [x] Verify backend regression (`.venv/bin/pytest -q`, `.venv/bin/ruff check .`)
+- [x] Run `pytest tests/unit/ -v` and record results
+- [x] Verify API endpoint via `curl http://localhost:8000/health`
+- [x] Verify frontend build via `cd web && npm run build`
 - [x] Update `docs/TODO.md` and `docs/progress.md`
 - [x] Commit changes with a detailed message
 
 ## Review
-- M1.5 已完成：Vite+TS 初始化、Tailwind 接入、页面/状态骨架、登录页实现。
-- 验证结果：`cd web && npm run build` 通过，`cd web && npm run lint` 通过。
-- 回归结果：`.venv/bin/pytest -q` => `38 passed`；`.venv/bin/ruff check .` => `All checks passed!`
+- `M1.6.1` 通过：`.venv/bin/pytest tests/unit/ -v` => `1 passed`（新增 `tests/unit/test_auth_unit.py`）。
+- `M1.6.2` 通过：`GET /health` => `200` + `{\"status\":\"ok\",\"version\":\"0.1.0\"}`。
+- `M1.6.3` 通过：`cd web && npm run build` 成功。
+- 回归：`.venv/bin/pytest -q` => `39 passed`；`.venv/bin/ruff check .` => `All checks passed!`

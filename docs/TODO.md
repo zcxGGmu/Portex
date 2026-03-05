@@ -652,19 +652,19 @@ export function Login() {
 
 ### M1.6: M1 阶段验收 [Week 2, Day 5]
 
-- [ ] **M1.6.1** 运行单元测试
+- [x] **M1.6.1** 运行单元测试
 
 ```bash
 pytest tests/unit/ -v
 ```
 
-- [ ] **M1.6.2** 验证 API 端点
+- [x] **M1.6.2** 验证 API 端点
 
 ```bash
 curl http://localhost:8000/health
 ```
 
-- [ ] **M1.6.3** 验证前端构建
+- [x] **M1.6.3** 验证前端构建
 
 ```bash
 cd web && npm run build
