@@ -1,12 +1,22 @@
-"""Database session management placeholders."""
+"""Async transaction-scoped session helpers."""
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Iterator
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from infra.db.database import AsyncSessionLocal
 
 
-@contextmanager
-def session_scope() -> Iterator[None]:
-    """Yield a placeholder session context."""
-    yield None
+@asynccontextmanager
+async def session_scope() -> AsyncIterator[AsyncSession]:
+    """Provide a transactional async session."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

@@ -1,12 +1,24 @@
-"""Task domain model placeholder."""
+"""SQLAlchemy scheduled task model."""
 
-from dataclasses import dataclass
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from domain.models.base import Base
 
 
-@dataclass(slots=True)
-class Task:
-    """Minimal task model used during initial scaffolding."""
+class ScheduledTask(Base):
+    """Scheduled prompt execution task."""
 
-    id: int | None = None
-    title: str = ""
-    status: str = "pending"
+    __tablename__ = "scheduled_tasks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    group_folder: Mapped[str] = mapped_column(String, nullable=False)
+    chat_jid: Mapped[str] = mapped_column(String, nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    schedule_type: Mapped[str | None] = mapped_column(String)
+    schedule_value: Mapped[str | None] = mapped_column(String)
+    next_run: Mapped[datetime | None] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String, default="active", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

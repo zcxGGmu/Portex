@@ -321,7 +321,7 @@ def setup_logging():
 
 ### M1.2: 数据库层实现 [Week 1, Day 2-4]
 
-- [ ] **M1.2.1** 实现数据库连接 (infra/db/database.py)
+- [x] **M1.2.1** 实现数据库连接 (infra/db/database.py)
 
 ```python
 # infra/db/database.py
@@ -340,7 +340,7 @@ async def get_db():
         yield session
 ```
 
-- [ ] **M1.2.2** 定义用户模型 (domain/models/user.py)
+- [x] **M1.2.2** 定义用户模型 (domain/models/user.py)
 
 ```python
 # domain/models/user.py
@@ -363,7 +363,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
 ```
 
-- [ ] **M1.2.3** 定义消息模型 (domain/models/message.py)
+- [x] **M1.2.3** 定义消息模型 (domain/models/message.py)
 
 ```python
 # domain/models/message.py
@@ -379,7 +379,7 @@ class Message(Base):
     attachments = Column(Text)  # JSON
 ```
 
-- [ ] **M1.2.4** 定义会话模型 (domain/models/session.py)
+- [x] **M1.2.4** 定义会话模型 (domain/models/session.py)
 
 ```python
 # domain/models/session.py
@@ -391,7 +391,7 @@ class Session(Base):
     agent_id = Column(String, default="")
 ```
 
-- [ ] **M1.2.5** 定义群组模型 (domain/models/group.py)
+- [x] **M1.2.5** 定义群组模型 (domain/models/group.py)
 
 ```python
 # domain/models/group.py
@@ -406,7 +406,7 @@ class RegisteredGroup(Base):
     created_by = Column(String)
 ```
 
-- [ ] **M1.2.6** 定义任务模型 (domain/models/task.py)
+- [x] **M1.2.6** 定义任务模型 (domain/models/task.py)
 
 ```python
 # domain/models/task.py
@@ -424,7 +424,7 @@ class ScheduledTask(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 ```
 
-- [ ] **M1.2.7** 创建数据库初始化脚本 (scripts/init_db.py)
+- [x] **M1.2.7** 创建数据库初始化脚本 (scripts/init_db.py)
 
 ```python
 # scripts/init_db.py

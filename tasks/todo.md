@@ -1,18 +1,16 @@
-# Session Plan (2026-03-05)
+# Session Plan (2026-03-05) - M1.2
 
 ## Goal
-- Continue from latest progress by implementing `M1.1.1` (create complete project directory/file structure).
+- Continue from latest progress by implementing `M1.2.1` ~ `M1.2.7` (database connection, SQLAlchemy models, init script).
 
 ## Checklist
-- [x] Read `AGENTS.md`, `docs/progress.md`, and `docs/TODO.md`
-- [x] Compare current repository tree with `M1.1.1` target structure
-- [x] Use multi-agent workers to scaffold missing files/directories in parallel
-- [x] Reconcile worker outputs and fill any remaining gaps
-- [x] Verify no regressions via `pytest -q`
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, and `docs/TODO.md`
+- [x] Define M1.2 implementation split and expected behavior
+- [x] Use multi-agent workers for parallel implementation
+- [x] Add/adjust tests for database layer and model metadata
+- [x] Verify with `pytest -q` and `.venv/bin/ruff check .`
 - [x] Update `docs/TODO.md` and `docs/progress.md`
+- [ ] Commit changes with a detailed message
 
 ## Review
-- Completed M1.1.1, M1.1.2, M1.1.3 with parallel worker agents.
-- Verification evidence:
-  - `pytest -q` => `14 passed`
-  - `.venv/bin/ruff check .` => `All checks passed!`
+- Pending

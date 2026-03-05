@@ -1,11 +1,21 @@
-"""Group domain model placeholder."""
+"""SQLAlchemy registered group model."""
 
-from dataclasses import dataclass
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from domain.models.base import Base
 
 
-@dataclass(slots=True)
-class Group:
-    """Minimal group model used during initial scaffolding."""
+class RegisteredGroup(Base):
+    """Registered chat group metadata."""
 
-    id: int | None = None
-    name: str = ""
+    __tablename__ = "registered_groups"
+
+    jid: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    folder: Mapped[str] = mapped_column(String, nullable=False)
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    container_config: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str | None] = mapped_column(String)
