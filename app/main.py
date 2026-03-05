@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import setup_logging
-from app.routes import auth, groups, health, messages, users
+from app.routes import auth, groups, health, messages, users, websocket
 
 
 setup_logging()
@@ -24,3 +24,4 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)
 app.include_router(messages.router)
+app.include_router(websocket.router)

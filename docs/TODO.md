@@ -686,7 +686,7 @@ cd web && npm run build
 
 ### M2.1: WebSocket 基础 [Week 1, Day 1-2]
 
-- [ ] **M2.1.1** 创建 WebSocket 管理器
+- [x] **M2.1.1** 创建 WebSocket 管理器
 
 ```python
 # app/websocket.py
@@ -712,7 +712,7 @@ class ConnectionManager:
             await connection.send_text(message)
 ```
 
-- [ ] **M2.1.2** 定义 WebSocket 路由
+- [x] **M2.1.2** 定义 WebSocket 路由
 
 ```python
 # app/routes/websocket.py
@@ -732,7 +732,7 @@ async def websocket_endpoint(websocket: WebSocket, group_folder: str):
         manager.disconnect(websocket, group_folder)
 ```
 
-- [ ] **M2.1.3** 前端 WebSocket 客户端
+- [x] **M2.1.3** 前端 WebSocket 客户端
 
 ```typescript
 // web/src/api/ws.ts
