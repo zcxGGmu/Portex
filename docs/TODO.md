@@ -752,7 +752,7 @@ export function createWebSocket(groupFolder: string) {
 
 ### M2.2: Agent Runtime 适配器 [Week 1, Day 2-4]
 
-- [ ] **M2.2.1** 定义运行时抽象接口
+- [x] **M2.2.1** 定义运行时抽象接口
 
 ```python
 # infra/runtime/adapter.py
@@ -789,7 +789,7 @@ class AgentRuntime(Protocol):
         ...
 ```
 
-- [ ] **M2.2.2** 实现 OpenAI Agents Runtime
+- [x] **M2.2.2** 实现 OpenAI Agents Runtime
 
 ```python
 # infra/runtime/openai.py
@@ -815,7 +815,7 @@ class OpenAIAgentsRuntime:
             yield self._map_event(event)
 ```
 
-- [ ] **M2.2.3** 实现事件映射器
+- [x] **M2.2.3** 实现事件映射器
 
 ```python
 # infra/runtime/mapper.py
