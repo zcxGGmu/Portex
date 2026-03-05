@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import setup_logging
+from app.routes import auth, groups, health, messages, users
 
 setup_logging()
 
@@ -15,8 +16,8 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-
-@app.get("/health")
-async def health_check() -> dict[str, str]:
-    """Health endpoint used by probes and local checks."""
-    return {"status": "ok"}
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(groups.router)
+app.include_router(messages.router)

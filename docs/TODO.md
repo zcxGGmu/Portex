@@ -446,7 +446,7 @@ if __name__ == "__main__":
 
 ### M1.3: 基础 API 路由 [Week 1, Day 4-5 + Week 2, Day 1]
 
-- [ ] **M1.3.1** 实现健康检查接口
+- [x] **M1.3.1** 实现健康检查接口
 
 ```python
 # app/routes/health.py
@@ -459,7 +459,7 @@ async def health_check():
     return {"status": "ok", "version": "0.1.0"}
 ```
 
-- [ ] **M1.3.2** 实现用户注册接口
+- [x] **M1.3.2** 实现用户注册接口
 
 ```python
 # app/routes/auth.py
@@ -471,7 +471,7 @@ async def register(request: RegisterRequest):
     return {"user_id": user.id}
 ```
 
-- [ ] **M1.3.3** 实现用户登录接口
+- [x] **M1.3.3** 实现用户登录接口
 
 ```python
 @router.post("/auth/login")
@@ -481,7 +481,7 @@ async def login(request: LoginRequest):
     return {"access_token": token, "token_type": "bearer"}
 ```
 
-- [ ] **M1.3.4** 实现用户信息接口
+- [x] **M1.3.4** 实现用户信息接口
 
 ```python
 @router.get("/users/me")
@@ -489,7 +489,7 @@ async def get_current_user(current_user: User = Depends(get_current_user)):
     return current_user
 ```
 
-- [ ] **M1.3.5** 实现群组列表接口
+- [x] **M1.3.5** 实现群组列表接口
 
 ```python
 @router.get("/groups")
@@ -498,7 +498,7 @@ async def list_groups(current_user: User = Depends(get_current_user)):
     pass
 ```
 
-- [ ] **M1.3.6** 实现消息发送接口
+- [x] **M1.3.6** 实现消息发送接口
 
 ```python
 @router.post("/messages")

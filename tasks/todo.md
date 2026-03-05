@@ -1,20 +1,17 @@
-# Session Plan (2026-03-05) - M1.2
+# Session Plan (2026-03-05) - M1.3
 
 ## Goal
-- Continue from latest progress by implementing `M1.2.1` ~ `M1.2.7` (database connection, SQLAlchemy models, init script).
+- Continue from latest progress by implementing `M1.3.1` ~ `M1.3.6` (health route + auth/users/groups/messages API skeleton).
 
 ## Checklist
 - [x] Re-read `AGENTS.md`, `docs/progress.md`, and `docs/TODO.md`
-- [x] Define M1.2 implementation split and expected behavior
+- [x] Define route/service interface contract for M1.3
 - [x] Use multi-agent workers for parallel implementation
-- [x] Add/adjust tests for database layer and model metadata
-- [x] Verify with `pytest -q` and `.venv/bin/ruff check .`
+- [x] Add/adjust API and service tests (TDD)
+- [x] Verify with `.venv/bin/pytest -q` and `.venv/bin/ruff check .`
 - [x] Update `docs/TODO.md` and `docs/progress.md`
 - [x] Commit changes with a detailed message
 
 ## Review
-- Multi-agent execution completed for M1.2 (models + db/init script + tests).
-- Commit: `f1462b4 feat(m1.2): implement async db layer and models`
-- Verification:
-  - `.venv/bin/pytest -q` => `21 passed`
-  - `.venv/bin/ruff check .` => `All checks passed!`
+- M1.3 路由链路已完成（health/auth/users/groups/messages）。
+- 验证结果：`.venv/bin/pytest -q` => `31 passed`；`.venv/bin/ruff check .` => `All checks passed!`

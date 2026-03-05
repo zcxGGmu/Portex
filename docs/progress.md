@@ -11,47 +11,43 @@
 - `M0` 已全部完成（`M0.1` ~ `M0.5` 全勾选）。
 - `M1.1` 已完成（项目骨架 + FastAPI 入口 + 日志配置）。
 - `M1.2` 已完成（数据库连接层 + SQLAlchemy 模型 + 初始化脚本）。
-- 当前应从 `M1.3.1` 开始继续开发（基础 API 路由）。
+- `M1.3` 已完成（健康检查、认证、用户信息、群组列表、消息发送 API 骨架）。
+- 当前应从 `M1.4.1` 开始继续开发（认证与安全基础：密码哈希）。
 - 最近一次验证结果：
   - 命令: `.venv/bin/pytest -q`
-  - 结果: `21 passed`
+  - 结果: `31 passed`
   - 命令: `.venv/bin/ruff check .`
   - 结果: `All checks passed!`
+  - 备注: 测试输出包含 `passlib` 的 `DeprecationWarning`（`crypt` 将在 Python 3.13 移除）。
 
 ---
 
-## 2. 本轮新增（M1.2）
+## 2. 本轮新增（M1.3）
 
-### M1.2.1 数据库连接
-- `infra/db/database.py`
-  - 新增 `DATABASE_URL`（支持环境变量覆盖，默认 sqlite+aiosqlite）
-  - 新增 `engine`、`AsyncSessionLocal`、`get_db()`
-- `infra/db/session.py`
-  - 新增异步事务会话上下文 `session_scope()`（commit/rollback）
+### M1.3.1 健康检查接口
+- 新增 `app/routes/health.py`，实现 `GET /health`，返回 `{"status": "ok", "version": "0.1.0"}`。
+- `app/main.py` 从内联健康检查改为统一注册路由。
 
-### M1.2.2 ~ M1.2.6 数据模型
-- 新增统一模型基类：`domain/models/base.py` (`DeclarativeBase`)
-- 完成 SQLAlchemy 模型：
-  - `domain/models/user.py` (`users`)
-  - `domain/models/message.py` (`messages`)
-  - `domain/models/session.py` (`sessions`)
-  - `domain/models/group.py` (`registered_groups`)
-  - `domain/models/task.py` (`scheduled_tasks`)
-- 更新导出：`domain/models/__init__.py` 导出 `Base` 和全部模型类
+### M1.3.2 ~ M1.3.4 认证与用户接口
+- `app/routes/auth.py`
+  - `POST /auth/register`（重复用户名返回 409）
+  - `POST /auth/login`（失败返回 401）
+  - 提供 `get_current_user` Bearer 鉴权依赖
+- `app/routes/users.py`
+  - `GET /users/me`（鉴权后返回当前用户）
+- `services/auth.py`
+  - 新增内存认证服务：注册、认证、token 生成/解析、按 id 查询、reset
 
-### M1.2.7 初始化脚本
-- `scripts/init_db.py`
-  - 基于统一 metadata 执行 `create_all`
-  - 支持 `--database-url` 覆盖
-  - 保留 `main()` 可执行入口
+### M1.3.5 ~ M1.3.6 群组与消息接口
+- `app/routes/groups.py`
+  - `GET /groups`（鉴权后返回样例群组）
+- `app/routes/messages.py`
+  - `POST /messages`（鉴权后返回 `message_id` 与 `status`）
 
-### 新增测试
-- `tests/domain/models/test_models.py`
-  - 覆盖表名、关键字段、共享 metadata
-- `tests/infra/db/test_database.py`
-  - 覆盖默认 `DATABASE_URL` 与 `get_db()` 产出 `AsyncSession`
-- `tests/scripts/test_init_db.py`
-  - 覆盖 `main()` 返回码与数据库建表行为
+### Schema 与测试
+- 更新 `domain/schemas.py`：补齐 M1.3 所需请求/响应模型。
+- 新增 `tests/app/routes/test_api_routes.py`：覆盖健康检查、注册/登录/me 全流程、鉴权校验、重复注册与登录失败。
+- 新增 `tests/services/test_auth_service.py`：覆盖认证服务核心行为。
 
 ---
 
@@ -59,21 +55,21 @@
 
 1. `docs/TODO.md`（主任务清单，真源）
 2. `docs/PORTEX_PLAN.md`（总体架构与阶段规划）
-3. `infra/db/database.py`、`infra/db/session.py`（数据库会话主线）
-4. `domain/models/base.py`、`domain/models/__init__.py`（模型 metadata 主线）
-5. `scripts/init_db.py`（初始化建表入口）
+3. `app/main.py`、`app/routes/auth.py`（API 主入口与认证链路）
+4. `services/auth.py`（当前阶段认证服务实现）
+5. `domain/schemas.py`（请求/响应契约）
 
 ---
 
 ## 4. 下一步建议（直接执行）
 
-1. `M1.3.1` 实现独立健康检查路由（`app/routes/health.py`）并接入 `app/main.py`
-2. `M1.3.2` ~ `M1.3.4` 完成认证与用户基本接口（先测试后实现）
-3. `M1.3.5` ~ `M1.3.6` 完成群组列表与消息发送接口骨架
-4. 每完成一项：更新 `docs/TODO.md`、运行 `.venv/bin/pytest -q`、单任务单提交
+1. `M1.4.1` 密码哈希策略与配置化（secret/过期策略）
+2. `M1.4.2` token 机制完善（过期、刷新、异常处理）
+3. `M1.4.3+` 补权限校验与安全中间件
+4. 同步清理当前 `passlib` 警告（依赖版本或算法策略）
 
 ---
 
 ## 5. 一句话版
 
-> Portex 已完成 M1.2 数据库层，当前进入 M1.3 路由与 API 链路建设，起点是 `M1.3.1`。
+> Portex 已完成 M1.3 基础 API 路由链路，当前进入 M1.4 认证与安全强化阶段，起点是 `M1.4.1`。
