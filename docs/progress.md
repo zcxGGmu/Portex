@@ -13,49 +13,47 @@
 - `M1.2` 已完成（数据库连接层 + SQLAlchemy 模型 + 初始化脚本）。
 - `M1.3` 已完成（健康检查、认证、用户信息、群组列表、消息发送 API 骨架）。
 - `M1.4` 已完成（密码哈希、JWT 过期、当前用户依赖注入、CORS 限制）。
-- 当前应从 `M1.5.1` 开始继续开发（前端骨架）。
+- `M1.5` 已完成（前端工程初始化 + Tailwind 接入 + 页面结构 + 登录页）。
+- 当前应从 `M1.6.1` 开始继续开发（M1 阶段验收）。
 - 最近一次验证结果：
   - 命令: `.venv/bin/pytest -q`
   - 结果: `38 passed`
   - 命令: `.venv/bin/ruff check .`
   - 结果: `All checks passed!`
+  - 命令: `cd web && npm run build`
+  - 结果: `vite build` 通过
+  - 命令: `cd web && npm run lint`
+  - 结果: `eslint` 通过
   - 备注: 测试输出仍有 `passlib` 的 `DeprecationWarning`（`crypt` 在 Python 3.13 移除）。
 
 ---
 
-## 2. 本轮新增（M1.4）
+## 2. 本轮新增（M1.5）
 
-### M1.4.1 密码哈希
-- `services/auth.py`
-  - 新增 `hash_password()` 与 `verify_password()`。
-  - 密码上下文优先尝试 `bcrypt`，不可用时自动回退 `pbkdf2_sha256`。
+### M1.5.1 前端项目初始化
+- 在 `web/` 初始化 Vite + React + TypeScript 工程。
+- 安装依赖：
+  - `tailwindcss`, `@tailwindcss/vite`
+  - `zustand`, `@tanstack/react-query`, `react-router-dom`
+  - `@radix-ui/react-dialog`, `@radix-ui/react-dropdown-menu`
 
-### M1.4.2 JWT 生成与验证
-- `services/auth.py`
-  - 新增模块级 `create_access_token(data, expires_delta)` 与 `decode_access_token(token)`。
-  - token payload 包含 `exp`，默认有效期 24 小时。
-  - `AuthService.create_access_token(user_id)` 保持兼容，内部同样写入 `exp`。
+### M1.5.2 Tailwind 配置
+- `web/vite.config.ts` 接入 `@tailwindcss/vite` 插件。
+- `web/src/index.css` 补充 `@import "tailwindcss";`。
 
-### M1.4.3 当前用户依赖注入
-- 新增 `app/middleware/auth.py`
-  - `security = HTTPBearer(auto_error=False)`
-  - `get_current_user(credentials, db=Depends(get_db))`
-  - 统一 401 错误处理
-- 路由依赖从 `app/routes/auth.py` 内部函数迁移到 `app.middleware.auth`。
+### M1.5.3 页面与目录骨架
+- 创建并接入以下目录与模块：
+  - `web/src/api/client.ts`
+  - `web/src/components/ui|layout|chat/*`
+  - `web/src/pages/Login.tsx|Register.tsx|Chat.tsx|Settings.tsx`
+  - `web/src/stores/auth.ts|chat.ts`
+  - `web/src/hooks/useApi.ts`
+- `web/src/App.tsx` / `web/src/main.tsx` 已接入 Router + QueryClient。
 
-### M1.4.4 CORS 中间件
-- `app/main.py`
-  - `allow_origins=["http://localhost:5173"]`
-  - `allow_methods=["*"]`
-  - `allow_headers=["*"]`
-
-### 新增测试
-- `tests/services/test_auth_security.py`
-  - 覆盖 hash/verify、token 过期与解码。
-- `tests/app/middleware/test_auth_middleware.py`
-  - 覆盖当前用户依赖的成功与 401 场景。
-- `tests/app/routes/test_api_routes.py`
-  - 新增 CORS 预检通过测试。
+### M1.5.4 登录页面
+- `web/src/pages/Login.tsx` 实现用户名/密码表单。
+- 登录调用 `useAuthStore().login()`，成功后跳转 `/chat`。
+- 登录失败显示后端错误信息。
 
 ---
 
@@ -63,21 +61,21 @@
 
 1. `docs/TODO.md`（主任务清单，真源）
 2. `docs/PORTEX_PLAN.md`（总体架构与阶段规划）
-3. `services/auth.py`（认证安全主线）
-4. `app/middleware/auth.py`（鉴权依赖主线）
-5. `app/main.py`（路由和 CORS 接入点）
+3. `web/src/App.tsx`、`web/src/main.tsx`（前端入口与路由）
+4. `web/src/stores/auth.ts`、`web/src/api/client.ts`（前端认证调用主线）
+5. `web/src/pages/Login.tsx`（M1.5 登录页面）
 
 ---
 
 ## 4. 下一步建议（直接执行）
 
-1. `M1.5.1` 初始化 `web/` 前端项目（Vite + React + TS）
-2. `M1.5.2` 配置 Tailwind 与基础构建
-3. `M1.5.3` ~ `M1.5.4` 搭建登录/注册/聊天页面骨架
-4. `M1.6` 做阶段验收（后端接口 + 前端 build）
+1. `M1.6.1` 执行阶段单元测试检查（按 TODO 命令）
+2. `M1.6.2` 启动后端并验证 `GET /health`
+3. `M1.6.3` 复核前端 build 产物（可补 smoke check）
+4. M1 验收完成后转入 `M2.1` WebSocket 基础设施
 
 ---
 
 ## 5. 一句话版
 
-> Portex 已完成 M1.4 认证与安全基础，当前进入 M1.5 前端骨架开发，起点是 `M1.5.1`。
+> Portex 已完成 M1.5 前端骨架，当前进入 M1 阶段验收（M1.6），起点是 `M1.6.1`。

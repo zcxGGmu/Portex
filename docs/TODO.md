@@ -580,7 +580,7 @@ app.add_middleware(
 
 ### M1.5: 前端骨架 [Week 2, Day 4-5]
 
-- [ ] **M1.5.1** 初始化前端项目
+- [x] **M1.5.1** 初始化前端项目
 
 ```bash
 cd web
@@ -591,7 +591,7 @@ npm install zustand @tanstack/react-query react-router-dom
 npm install @radix-ui/react-dialog @radix-ui/react-dropdown-menu
 ```
 
-- [ ] **M1.5.2** 配置 Tailwind CSS
+- [x] **M1.5.2** 配置 Tailwind CSS
 
 ```javascript
 // web/vite.config.ts
@@ -602,7 +602,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **M1.5.3** 创建基础页面结构
+- [x] **M1.5.3** 创建基础页面结构
 
 ```
 web/src/
@@ -626,7 +626,7 @@ web/src/
     └── useApi.ts          # API Hook
 ```
 
-- [ ] **M1.5.4** 实现登录页面
+- [x] **M1.5.4** 实现登录页面
 
 ```tsx
 // web/src/pages/Login.tsx
