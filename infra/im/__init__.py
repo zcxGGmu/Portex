@@ -1,0 +1,1 @@
+"""Instant messaging integration package."""

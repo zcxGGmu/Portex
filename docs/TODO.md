@@ -198,7 +198,7 @@ def map_sdk_event(sdk_event) -> PortexEvent:
 
 ### M1.1: 项目骨架搭建 [Week 1, Day 1-2]
 
-- [ ] **M1.1.1** 创建完整目录结构
+- [x] **M1.1.1** 创建完整目录结构
 
 ```
 portex/
@@ -285,7 +285,7 @@ portex/
 └── README.md
 ```
 
-- [ ] **M1.1.2** 配置 FastAPI 应用 (app/main.py)
+- [x] **M1.1.2** 配置 FastAPI 应用 (app/main.py)
 
 ```python
 from fastapi import FastAPI
@@ -304,7 +304,7 @@ async def health_check():
     return {"status": "ok"}
 ```
 
-- [ ] **M1.1.3** 配置日志系统
+- [x] **M1.1.3** 配置日志系统
 
 ```python
 # app/config.py

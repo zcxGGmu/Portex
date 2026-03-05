@@ -1,0 +1,13 @@
+app:
+  name: portex
+  env: development
+
+server:
+  host: 0.0.0.0
+  port: 8000
+
+database:
+  url: sqlite:///./data/portex.db
+
+runtime:
+  provider: openai
