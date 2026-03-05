@@ -12,6 +12,7 @@ export interface ChatMessage {
 interface ChatState {
   messages: ChatMessage[]
   draft: string
+  addMessage: (message: Omit<ChatMessage, 'id' | 'createdAt'> & Partial<Pick<ChatMessage, 'id' | 'createdAt'>>) => void
   setDraft: (nextDraft: string) => void
   sendDraft: () => void
   clearMessages: () => void
@@ -32,13 +33,16 @@ function createMessage(role: ChatRole, content: string): ChatMessage {
 }
 
 export const useChatStore = create<ChatState>((set) => ({
-  messages: [
-    createMessage(
-      'assistant',
-      'Welcome to Portex. This is a placeholder chat stream for M1.5 scaffolding.',
-    ),
-  ],
+  messages: [],
   draft: '',
+  addMessage(message) {
+    const normalized =
+      message.id && message.createdAt
+        ? { ...message, id: message.id, createdAt: message.createdAt }
+        : createMessage(message.role, message.content)
+
+    set((state) => ({ messages: [...state.messages, normalized] }))
+  },
   setDraft(nextDraft) {
     set({ draft: nextDraft })
   },
@@ -51,11 +55,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
       return {
         draft: '',
-        messages: [
-          ...state.messages,
-          createMessage('user', trimmedDraft),
-          createMessage('assistant', `Echo: ${trimmedDraft}`),
-        ],
+        messages: [...state.messages, createMessage('user', trimmedDraft)],
       }
     })
   },

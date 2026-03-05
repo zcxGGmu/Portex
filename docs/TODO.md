@@ -887,7 +887,7 @@ async def trigger_agent_execution(
         )
 ```
 
-- [ ] **M2.3.3** 前端消息展示
+- [x] **M2.3.3** 前端消息展示
 
 ```typescript
 // web/src/stores/chat.ts
