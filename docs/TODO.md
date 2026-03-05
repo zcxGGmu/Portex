@@ -833,7 +833,7 @@ def map_sdk_event(sdk_event) -> RunEvent:
 
 ### M2.3: 消息处理链路 [Week 1, Day 4-5]
 
-- [ ] **M2.3.1** 实现消息存储
+- [x] **M2.3.1** 实现消息存储
 
 ```python
 # services/message_service.py
