@@ -857,7 +857,7 @@ async def store_message(
     return message
 ```
 
-- [ ] **M2.3.2** 实现消息触发 Agent 执行
+- [x] **M2.3.2** 实现消息触发 Agent 执行
 
 ```python
 # services/agent_trigger.py

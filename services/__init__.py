@@ -2,6 +2,7 @@
 
 __all__ = [
     "auth",
+    "agent_trigger",
     "group_queue",
     "scheduler",
     "memory",

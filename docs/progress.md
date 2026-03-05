@@ -13,28 +13,31 @@
 - `M2.1` 已完成（WebSocket 基础设施）。
 - `M2.2` 已完成（Runtime 适配器）。
 - `M2.3.1` 已完成（消息存储）。
-- 下一起点：`M2.3.2`（消息触发 Agent 执行）。
+- `M2.3.2` 已完成（消息触发 Agent 执行）。
+- 下一起点：`M2.3.3`（前端消息展示）。
 
 ---
 
-## 2. 本轮完成内容（M2.3.1）
+## 2. 本轮完成内容（M2.3.1 + M2.3.2）
 
-- 新增消息存储服务：`services/message_service.py`
+- 新增消息存储：`services/message_service.py`
   - `store_message(db, chat_jid, sender, content, is_from_me=False)`
-  - 落库 `domain.models.message.Message`，提交后返回对象
+- 新增执行触发：`services/agent_trigger.py`
+  - 构建 `RunRequest`
+  - 驱动 `runtime.run_streamed()`
+  - 将 `RunEvent` 序列化为 JSON 并通过 websocket 房间广播
 - 服务导出更新：`services/__init__.py`
-- 新增测试：`tests/services/test_message_service.py`
-  - 默认 `is_from_me=False`
-  - 显式 `is_from_me=True`
-  - 字段落库验证
+- 新增测试：
+  - `tests/services/test_message_service.py`
+  - `tests/services/test_agent_trigger.py`
 
 ---
 
 ## 3. 最新验证证据
 
-- 特性测试：`.venv/bin/pytest tests/services/test_message_service.py -q` -> `2 passed`
+- 特性测试：`.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q` -> `4 passed`
 - 单元验收：`.venv/bin/pytest tests/unit/ -v` -> `1 passed`
-- 全量回归：`.venv/bin/pytest -q` -> `55 passed`
+- 全量回归：`.venv/bin/pytest -q` -> `57 passed`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -46,9 +49,9 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-2. 从 `M2.3.2` 开始：
-   - `services/agent_trigger.py`（构建 RunRequest 并驱动 runtime 流式执行）
-   - 与 `app/websocket.py` 协同推送事件
+2. 从 `M2.3.3` 开始：
+   - `web/src/stores/chat.ts` 引入真实消息流状态
+   - 将 websocket 事件接入前端消息展示
 3. 子任务完成后固定流程：
    - 跑特性测试 + 全量回归；
    - 更新 `docs/TODO.md` 与 `docs/progress.md`；
@@ -58,4 +61,4 @@
 
 ## 5. 一句话版
 
-> 项目已完成 M2.3.1 消息存储，下一步进入 M2.3.2 触发执行链路。
+> 项目已完成 M2.3.1/2 消息存储与触发链路，下一步进入 M2.3.3 前端消息展示。
