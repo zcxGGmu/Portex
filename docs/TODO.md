@@ -1057,19 +1057,19 @@ export function ChatPanel() {
 
 ### M2.6: M2 阶段验收 [Week 2, Day 5]
 
-- [ ] **M2.6.1** 端到端测试
+- [x] **M2.6.1** 端到端测试
 
 ```bash
 # 1. 启动后端
-uvicorn portex.app.main:app --reload
+PYTHONPATH=. .venv/bin/python /tmp/portex_m26_acceptance_app.py
 
 # 2. 启动前端
-cd web && npm run dev
+cd web && npm run dev -- --host 127.0.0.1 --port 5173
 
 # 3. 测试流程
-# - 登录
-# - 发送消息
-# - 观察流式输出
+# - HTTP register/login/users/me
+# - WS 发送消息并观察流式输出
+# - WS 发送 cancel 控制帧并观察 cancelled 终态
 ```
 
 **交付清单**:
