@@ -1139,86 +1139,89 @@ async def run_container(
 
 ### M3.2: Agent Runner 容器化 [Week 1, Day 2-4]
 
-- [ ] **M3.2.1** 创建 Agent Runner Dockerfile
+- [x] **M3.2.1** 创建 Agent Runner Dockerfile
 
 ```dockerfile
 # container/agent-runner/Dockerfile
 FROM python:3.11-slim
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     wget \
     ffmpeg \
     imagemagick \
     postgresql-client \
-    mysql-client \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Python 依赖
-WORKDIR /app
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
+COPY pyproject.toml /app/pyproject.toml
+COPY src /app/src
 
-# 创建非 root 用户
-RUN useradd -m -u 1000 portex
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir .
+
+RUN useradd -m -u 1000 portex \
+    && chown -R portex:portex /app
+
 USER portex
 
-# 预装工具
-# - Node.js (如需要)
-# - Chromium (浏览器自动化)
-
-ENTRYPOINT ["python", "-m", "portex.agent_runner"]
+ENTRYPOINT ["python", "-m", "src.runner"]
 ```
 
-- [ ] **M3.2.2** 实现 Runner 主入口
+- [x] **M3.2.2** 实现 Runner 主入口
 
 ```python
 # container/agent-runner/src/runner.py
 import sys
-import json
-import asyncio
 from agents import Agent, Runner
 
-async def main():
-    # 从 stdin 读取配置
-    config = json.loads(sys.stdin.read())
+from .tools import build_default_tools
+from .types import ContainerInput, ContainerOutput
 
-    # 初始化 Agent
+def run_agent(config: ContainerInput) -> ContainerOutput:
     agent = Agent(
-        name=config["agent_name"],
-        instructions=config["instructions"],
-        tools=config["tools"],
+        name=config.agent_name,
+        instructions=config.instructions,
+        tools=build_default_tools(),
     )
+    result = Runner.run_sync(agent, input=config.prompt)
+    return ContainerOutput(status="success", result=str(result.final_output))
 
-    # 运行
-    result = Runner.run_sync(agent, input=config["prompt"])
-
-    # 输出结果
-    print(json.dumps({"status": "success", "result": result.final_output}))
-
-if __name__ == "__main__":
-    asyncio.run(main())
+def main() -> int:
+    request = ContainerInput.model_validate_json(sys.stdin.read())
+    print(run_agent(request).model_dump_json())
+    return 0
 ```
 
-- [ ] **M3.2.3** 定义容器输入输出协议
+- [x] **M3.2.3** 定义容器输入输出协议
 
 ```python
 # container/agent-runner/src/types.py
-from pydantic import BaseModel
-from typing import Optional
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 
 class ContainerInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     prompt: str
-    session_id: Optional[str] = None
     group_folder: str
+    session_id: str | None = None
     agent_name: str = "PortexAgent"
+    instructions: str = "你是一个专业的 AI 助手"
 
 class ContainerOutput(BaseModel):
-    status: str  # success/error/timeout
-    result: Optional[str] = None
-    error: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["success", "error", "timeout"]
+    result: str | None = None
+    error: str | None = None
 ```
 
 **交付**: Agent Runner 容器镜像
