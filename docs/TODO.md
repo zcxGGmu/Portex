@@ -1033,27 +1033,23 @@ async def trigger_agent_execution(..., timeout_ms: int = 300000):
     )
 ```
 
-- [ ] **M2.5.3** 前端取消按钮
+- [x] **M2.5.3** 前端取消按钮
 
 ```tsx
-// web/src/components/chat/ChatInput.tsx
-export function ChatInput() {
-  const [isRunning, setIsRunning] = useState(false)
+// web/src/components/chat/ChatPanel.tsx
+export function ChatPanel() {
+  const isRunning = useChatStore((state) => state.isRunning)
+  const activeRunId = useChatStore((state) => state.activeRunId)
 
-  const handleSend = async () => {
-    setIsRunning(true)
-    try {
-      await sendMessage(text)
-    } finally {
-      setIsRunning(false)
+  function handleCancel() {
+    if (!activeRunId || wsRef.current?.readyState !== WebSocket.OPEN) {
+      return
     }
+
+    wsRef.current.send(JSON.stringify({ type: 'cancel', run_id: activeRunId }))
   }
 
-  return (
-    <button onClick={handleCancel} disabled={!isRunning}>
-      取消
-    </button>
-  )
+  return <button onClick={handleCancel} disabled={!isRunning}>取消</button>
 }
 ```
 

@@ -15,10 +15,13 @@ interface ChatState {
   messages: ChatMessage[]
   streamEvents: StreamEvent[]
   draft: string
+  isRunning: boolean
+  activeRunId: string | null
   addMessage: (message: Omit<ChatMessage, 'id' | 'createdAt'> & Partial<Pick<ChatMessage, 'id' | 'createdAt'>>) => void
   addStreamEvent: (event: StreamEvent) => void
   setDraft: (nextDraft: string) => void
   sendDraft: () => void
+  clearRunState: () => void
   clearMessages: () => void
 }
 
@@ -40,6 +43,8 @@ export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   streamEvents: [],
   draft: '',
+  isRunning: false,
+  activeRunId: null,
   addMessage(message) {
     const normalized =
       message.id && message.createdAt
@@ -49,7 +54,29 @@ export const useChatStore = create<ChatState>((set) => ({
     set((state) => ({ messages: [...state.messages, normalized] }))
   },
   addStreamEvent(event) {
-    set((state) => ({ streamEvents: [...state.streamEvents, event] }))
+    set((state) => {
+      const nextState: Partial<ChatState> = {
+        streamEvents: [...state.streamEvents, event],
+      }
+
+      if (event.event_type === 'run.started') {
+        nextState.isRunning = true
+        nextState.activeRunId = event.run_id
+      }
+
+      if (
+        event.event_type === 'run.completed' ||
+        event.event_type === 'run.failed' ||
+        event.event_type === 'run.timeout'
+      ) {
+        if (state.activeRunId === event.run_id) {
+          nextState.isRunning = false
+          nextState.activeRunId = null
+        }
+      }
+
+      return nextState
+    })
   },
   setDraft(nextDraft) {
     set({ draft: nextDraft })
@@ -67,7 +94,10 @@ export const useChatStore = create<ChatState>((set) => ({
       }
     })
   },
+  clearRunState() {
+    set({ isRunning: false, activeRunId: null })
+  },
   clearMessages() {
-    set({ messages: [], streamEvents: [] })
+    set({ messages: [], streamEvents: [], isRunning: false, activeRunId: null })
   },
 }))

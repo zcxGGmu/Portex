@@ -16,40 +16,41 @@
 - `M2.4` 已完成（`M2.4.1` ~ `M2.4.4` 流式输出前端展示）。
 - `M2.5.1` 已完成（取消功能基线）。
 - `M2.5.2` 已完成（超时控制）。
-- 下一起点：`M2.5.3`（前端取消按钮）。
+- `M2.5.3` 已完成（前端取消按钮 + WS 取消入口）。
+- 下一起点：`M2.6.1`（M2 阶段验收）。
 
 ---
 
-## 2. 本轮完成内容（M2.5.2）
+## 2. 本轮完成内容（M2.5.3）
 
-- `services/agent_trigger.py`
-  - 新增 `timeout_ms: int = 300_000`，沿用 HappyClaw 毫秒语义
-  - 超时控制改为独立消费任务 + `asyncio.wait(...)`，避免把内部 `TimeoutError` 误判为整体超时
-  - 超时后先调用 `runtime.cancel(request.request_id)`，再取消消费任务并广播 `run.timeout`
-  - 外层调用被取消时，会兜底清理后台消费任务，避免 runtime 流泄漏
-- 契约对齐：
-  - `portex/contracts/events.py` 新增 `RUN_TIMEOUT`
-  - `web/src/types/events.ts` 新增 `run.timeout` 联合类型
-- 新增/增强测试：
-  - `tests/services/test_agent_trigger.py`
-    - 超时会返回原 `run_id`
-    - 超时会广播 `run.timeout`
-    - 超时会触发真实 OpenAI runtime active stream 取消
-    - 内部 `TimeoutError` 不会被误判为整体超时
-    - 外层任务取消时后台消费任务会被回收
-  - `tests/portex/contracts/test_events.py`
-    - 新增 `RUN_TIMEOUT` 枚举断言
+- `app/routes/websocket.py`
+  - WebSocket 路由从 echo 改为真实执行入口
+  - 普通文本仍为发送消息；取消走 JSON 控制帧 `{"type":"cancel","run_id":"..."}`
+  - 每个连接维护独立 runtime、`active_run_id`、`active_task`
+  - `run.started` 只直送发起页，避免同房间其他页被错误锁定为 running
+  - 手动取消后等待旧任务真正收尾，再回发 `run.failed(status=cancelled)` 给发起页
+  - 断开连接时会清理 active run 和后台 task
+- `web/src/stores/chat.ts`
+  - 新增 `isRunning`、`activeRunId`、`clearRunState`
+  - 仅对当前 `activeRunId` 的终态事件收口运行态，避免被同房间其他页的终态事件污染
+- `web/src/components/chat/ChatPanel.tsx`
+  - 发送时阻止并发重复提交
+  - 新增取消按钮并通过同一 WebSocket 发送取消控制帧
+  - 新增 `run.timeout` / `cancelled` 的 assistant 可见提示
+  - 运行中禁用 `Send` 与 `Clear`
+- `tests/app/routes/test_websocket_routes.py`
+  - 用真实 send/cancel 路由测试替换旧 echo 测试
 - 新增文档：
-  - `docs/plans/2026-03-06-m2-5-2-timeout-design.md`
-  - `docs/plans/2026-03-06-m2-5-2-timeout-flow.md`
+  - `docs/plans/2026-03-06-m2-5-3-cancel-ui-design.md`
+  - `docs/plans/2026-03-06-m2-5-3-cancel-ui-flow.md`
 
 ---
 
 ## 3. 最新验证证据
 
-- 聚焦测试：`.venv/bin/pytest tests/services/test_agent_trigger.py tests/portex/contracts/test_events.py -q` -> `10 passed`
+- 聚焦测试：`.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q` -> `4 passed`
 - 单元验收：`.venv/bin/pytest tests/unit/ -v` -> `1 passed`
-- 全量回归：`.venv/bin/pytest -q` -> `64 passed`
+- 全量回归：`.venv/bin/pytest -q` -> `65 passed`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -63,14 +64,14 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-2. 从 `M2.5.3` 开始：
-   - 在 `web/src/stores/chat.ts` 中加入运行态和当前 `run_id`
-   - 在 `web/src/components/chat/ChatPanel.tsx` 中接 `run.started` / `run.completed` / `run.failed` / `run.timeout`
-   - 增加取消按钮，并连接到后端取消入口
-3. 注意：当前生产 WebSocket 路由仍是 echo，`M2.5.3` 需要一并补齐服务端入口，否则前端取消按钮只能停留在 UI 状态层。
+2. 从 `M2.6.1` 开始，做 M2 阶段验收：
+   - 启动后端与前端
+   - 走登录、发消息、流式展示、取消、超时路径
+   - 记录端到端结果与遗留问题
+3. 如要继续完善取消体验，优先考虑补一个正式 `run.cancelled` 事件，替代当前临时复用的 `run.failed(status=cancelled)`。
 
 ---
 
 ## 5. 一句话版
 
-> 项目已完成 `M2.5.2` 服务层超时控制与 `run.timeout` 契约，下一步进入 `M2.5.3` 前端取消按钮。
+> 项目已完成 `M2.5.3` 前端取消按钮与 WebSocket 取消入口，下一步进入 `M2.6.1` M2 阶段验收。
