@@ -1087,7 +1087,7 @@ cd web && npm run dev -- --host 127.0.0.1 --port 5173
 
 ### M3.1: Docker SDK 集成 [Week 1, Day 1-2]
 
-- [ ] **M3.1.1** 安装 Docker SDK
+- [x] **M3.1.1** 安装 Docker SDK
 
 ```toml
 # pyproject.toml
@@ -1096,7 +1096,7 @@ dependencies = [
 ]
 ```
 
-- [ ] **M3.1.2** 创建 Docker 客户端
+- [x] **M3.1.2** 创建 Docker 客户端
 
 ```python
 # infra/exec/docker.py
@@ -1114,7 +1114,7 @@ class DockerClient:
         return self.client.containers.get(name)
 ```
 
-- [ ] **M3.1.3** 实现容器操作
+- [x] **M3.1.3** 实现容器操作
 
 ```python
 # infra/exec/docker.py
