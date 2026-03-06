@@ -8,4 +8,5 @@ __all__ = [
     "memory",
     "skills",
     "message_service",
+    "execution_mode",
 ]

@@ -19,15 +19,16 @@
 - `M3.4.3` 已完成（容器健康检查）。
 - `M3.4.4` 已完成（优雅关闭）。
 - `M3.5.1` 已完成（宿主机进程运行器）。
-- 当前起点：`M3.5.2`（模式选择逻辑）。
+- `M3.5.2` 已完成（模式选择逻辑）。
+- 当前起点：`M3.5.3`（宿主机模式安全限制）。
 
 ---
 
 ## 2. 最近完成
 
-- `M3.5.1`：重写 `infra/exec/process.py`，新增 `ProcessExecutor.run_agent()` / `ProcessRunResult`，通过 host subprocess 启动 `python -m src.runner`，向 stdin 写入 JSON，并收集 stdout/stderr/returncode。
-- `M3.5.1`：宿主机运行器会自动创建 `data/groups/{group_folder}` 工作目录，并通过 `PYTHONPATH` 注入 `container/agent-runner`，让 host mode 可以复用现有 runner 包。
-- `M3.5.1`：新增 `tests/infra/exec/test_process.py`，覆盖命令参数、stdin 序列化、PYTHONPATH 合并、非零退出码保留与创建失败透传。
+- `M3.5.2`：新增 `services/execution_mode.py`，实现 `get_execution_mode()`，仅在 `admin + host_mode=true` 时选择 host，其余情况统一回落到 container。
+- `M3.5.2`：扩展 `services/__init__.py` 导出 `execution_mode`，让后续编排层可以直接接入模式判定。
+- `M3.5.2`：新增 `tests/services/test_execution_mode.py`，覆盖 admin/member 与 `host_mode` 开关组合的最小判定矩阵。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -38,13 +39,14 @@
   - `399b99c` `docs(progress): refresh M3.4.3 verification evidence`
   - `9180756` `feat(exec): complete M3.4.4 graceful shutdown`
   - `9ddc7fe` `docs(progress): refresh M3.4.4 verification evidence`
+  - `016efc3` `feat(exec): complete M3.5.1 host process runner`
 
 ---
 
 ## 3. 最新验证证据
 
-- M3.5.1 聚焦：`.venv/bin/pytest tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py tests/infra/exec/test_security.py tests/container/agent_runner` -> `43 passed in 4.84s`
-- 全量后端回归：`.venv/bin/pytest` -> `108 passed, 1 warning in 6.74s`
+- M3.5.2 聚焦：`.venv/bin/pytest tests/services/test_execution_mode.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py tests/infra/exec/test_security.py tests/container/agent_runner` -> `47 passed in 3.67s`
+- 全量后端回归：`.venv/bin/pytest` -> `112 passed, 1 warning in 7.49s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -52,8 +54,8 @@
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
 
 备注：
-- 当前环境没有可用的 Docker CLI / daemon，`M3.5.1` 的 host mode 仍以 fake subprocess / 离线契约验证完成，尚未执行真实宿主机 runner 烟测。
-- `M3.4` 生命周期与 `M3.5.1` 宿主机运行器已就位；后续需要在 `M3.5.2+` 补齐模式选择、host mode 安全限制以及真实请求注入策略。
+- 当前环境没有可用的 Docker CLI / daemon，`M3.5.2` 仍以静态/离线契约验证完成，尚未执行真实容器/宿主机混合模式烟测。
+- `M3.4` 生命周期与 `M3.5.1~M3.5.2` 基础运行切换已就位；后续需要在 `M3.5.3` 补齐 host mode 安全限制以及真实请求注入策略。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -63,9 +65,9 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`infra/exec/container_manager.py`、`infra/exec/docker.py`、`container/agent-runner/src/runner.py`、`container/agent-runner/src/types.py`
-2. 从 `M3.5.2` 开始：
-   - 新增执行模式选择逻辑，明确 `admin + host_mode` 的判定边界及默认回落到 container 的规则
-   - 让 mode selection 与 `ProcessExecutor` / `ContainerManager` 的现有接口对齐，避免后面再改运行器签名
+2. 从 `M3.5.3` 开始：
+   - 为 host mode 增加最小安全限制配置，至少覆盖允许目录、危险命令黑名单、执行时长上限
+   - 明确这些限制如何与 `ProcessExecutor` 结合，是在启动前校验还是在命令层统一拦截
    - 继续明确 detached 容器 / host mode 的真实请求注入方案（stdin attach、IPC 文件监听或 runner 读取文件/环境变量）
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
 
@@ -73,4 +75,4 @@
 
 ## 5. 一句话版
 
-> `M3.5.1` 宿主机进程运行器已完成，下一步从 `M3.5.2` 模式选择逻辑继续。
+> `M3.5.2` 模式选择逻辑已完成，下一步从 `M3.5.3` 宿主机模式安全限制继续。

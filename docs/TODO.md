@@ -1366,7 +1366,7 @@ class ProcessRunner:
         )
 ```
 
-- [ ] **M3.5.2** 实现模式选择逻辑
+- [x] **M3.5.2** 实现模式选择逻辑
 
 ```python
 # services/execution_mode.py
