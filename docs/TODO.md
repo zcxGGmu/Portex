@@ -1376,13 +1376,13 @@ def get_execution_mode(user_role: str, group_config: dict) -> str:
     return "container"
 ```
 
-- [ ] **M3.5.3** 添加安全限制（宿主机模式）
+- [x] **M3.5.3** 添加安全限制（宿主机模式）
 
 ```python
 # 限制宿主机模式的权限
 HOST_MODE_RESTRICTIONS = {
-    "allowed_directories": ["/home/portex/workspace"],
-    "forbidden_commands": ["rm -rf /", "dd if="],
+    "allowed_directories": [DEFAULT_DATA_ROOT / "groups", DEFAULT_RUNNER_ROOT],
+    "forbidden_commands": [("rm", "-rf", "/"), ("dd", "if=")],
     "max_execution_time": 3600,
 }
 ```
