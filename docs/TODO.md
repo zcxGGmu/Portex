@@ -1341,34 +1341,29 @@ class ContainerManager:
 
 ### M3.5: 宿主机模式 [Week 2, Day 4-5]
 
-- [ ] **M3.5.1** 实现宿主机进程运行器
+- [x] **M3.5.1** 实现宿主机进程运行器
 
 ```python
 # infra/exec/process.py
 import asyncio
-import subprocess
 
 class ProcessRunner:
-    async def run_agent(
-        self,
-        group_folder: str,
-        input: ContainerInput
-    ) -> AsyncIterator[str]:
+    async def run_agent(self, group_folder: str, input: ContainerInput) -> ProcessRunResult:
         process = await asyncio.create_subprocess_exec(
-            "python", "-m", "portex.agent_runner",
+            sys.executable, "-m", "src.runner",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=f"{DATA_DIR}/groups/{group_folder}"
+            cwd=f"{DATA_DIR}/groups/{group_folder}",
+            env={"PYTHONPATH": "container/agent-runner"},
         )
 
-        # 发送输入
-        process.stdin.write(json.dumps(input).encode())
-        await process.stdin.drain()
-
-        # 读取输出
-        async for line in process.stdout:
-            yield line.decode()
+        stdout, stderr = await process.communicate(input.model_dump_json().encode())
+        return ProcessRunResult(
+            returncode=process.returncode or 0,
+            stdout=stdout.decode(),
+            stderr=stderr.decode(),
+        )
 ```
 
 - [ ] **M3.5.2** 实现模式选择逻辑

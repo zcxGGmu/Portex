@@ -9,7 +9,12 @@ from .docker import (
     build_volume,
     build_volumes,
 )
-from .process import ProcessExecutor
+from .process import (
+    ProcessExecutionError,
+    ProcessExecutor,
+    ProcessRunResult,
+    ProcessRunner,
+)
 from .security import validate_path
 
 __all__ = [
@@ -17,7 +22,10 @@ __all__ = [
     "DockerClient",
     "DockerExecutionError",
     "DockerExecutor",
+    "ProcessExecutionError",
     "ProcessExecutor",
+    "ProcessRunResult",
+    "ProcessRunner",
     "build_readonly_volume",
     "build_volume",
     "build_volumes",
