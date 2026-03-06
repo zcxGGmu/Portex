@@ -28,15 +28,14 @@
 ## 3. 最新验证证据
 
 - 执行层聚焦：`.venv/bin/pytest tests/infra/exec/test_docker.py -q` -> pass（8 个用例）。
-- 运行时链路回归：`.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q` -> pass（10 个用例）。
-- WebSocket 回归：`.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q` -> `4 passed`。
+- 聚焦回归：`.venv/bin/pytest tests/infra/exec/test_docker.py tests/services/test_agent_trigger.py tests/app/routes/test_websocket_routes.py -q` -> `20 passed`。
 - 全量后端回归：`.venv/bin/pytest -q` -> pass（含新增 Docker 执行层测试）。
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
-- 前端：`cd web && npm run lint` -> pass
-- 前端：`cd web && npm run build` -> pass
+- Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
+- Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
 
 备注：
-- `M3.1` 当前仅做 SDK 封装与离线测试，未要求本地 Docker daemon 在线；测试通过 fake Docker client 覆盖契约边界。
+- 当前环境没有可用的 Docker CLI / daemon，`M3.1` 以 fake Docker client 离线测试完成契约验证。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
