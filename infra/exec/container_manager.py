@@ -133,6 +133,11 @@ class ContainerManager:
         self.client.stop_container(container_id, timeout=timeout)
         self.client.remove_container(container_id, force=False)
 
+    async def is_container_healthy(self, container_id: str) -> bool:
+        """Return whether one runner container is currently running."""
+        container = self.client.get_container(container_id)
+        return container.status == "running"
+
 __all__ = [
     "CONTAINER_COMMAND",
     "CONTAINER_IMAGE",

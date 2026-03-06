@@ -1317,7 +1317,7 @@ class ContainerManager:
         self.client.remove_container(container_id, force=False)
 ```
 
-- [ ] **M3.4.3** 实现健康检查
+- [x] **M3.4.3** 实现健康检查
 
 ```python
     async def is_container_healthy(self, container_id: str) -> bool:

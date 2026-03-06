@@ -14,17 +14,28 @@ if str(RUNNER_ROOT) not in sys.path:
 
 
 class FakeContainer:
-    def __init__(self, container_id: str = "started-container") -> None:
+    def __init__(
+        self,
+        container_id: str = "started-container",
+        *,
+        status: str = "created",
+    ) -> None:
         self.id = container_id
+        self.status = status
 
 
 class FakeDockerClient:
     def __init__(self) -> None:
         self.started_container = FakeContainer()
+        self.containers: dict[str, FakeContainer] = {
+            self.started_container.id: self.started_container
+        }
+        self.get_calls: list[str] = []
         self.run_calls: list[dict[str, object]] = []
         self.stop_calls: list[dict[str, object]] = []
         self.remove_calls: list[dict[str, object]] = []
         self.operation_log: list[str] = []
+        self.get_error: Exception | None = None
         self.run_error: Exception | None = None
         self.stop_error: Exception | None = None
         self.remove_error: Exception | None = None
@@ -56,6 +67,12 @@ class FakeDockerClient:
         if self.run_error is not None:
             raise self.run_error
         return self.started_container
+
+    def get_container(self, name: str) -> FakeContainer:
+        self.get_calls.append(name)
+        if self.get_error is not None:
+            raise self.get_error
+        return self.containers[name]
 
     def stop_container(self, name: str, *, timeout: int | None = None) -> None:
         self.operation_log.append("stop")
@@ -240,3 +257,52 @@ async def test_stop_container_propagates_remove_failures_after_stop() -> None:
     assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
     assert fake_client.remove_calls == [{"name": "container-123", "force": False}]
     assert fake_client.operation_log == ["stop", "remove"]
+
+
+@pytest.mark.asyncio
+async def test_is_container_healthy_returns_true_for_running_container() -> None:
+    from infra.exec.container_manager import ContainerManager
+
+    fake_client = FakeDockerClient()
+    fake_client.containers["container-healthy"] = FakeContainer(
+        "container-healthy",
+        status="running",
+    )
+    manager = ContainerManager(fake_client)
+
+    is_healthy = await manager.is_container_healthy("container-healthy")
+
+    assert is_healthy is True
+    assert fake_client.get_calls == ["container-healthy"]
+
+
+@pytest.mark.asyncio
+async def test_is_container_healthy_returns_false_for_non_running_container() -> None:
+    from infra.exec.container_manager import ContainerManager
+
+    fake_client = FakeDockerClient()
+    fake_client.containers["container-exited"] = FakeContainer(
+        "container-exited",
+        status="exited",
+    )
+    manager = ContainerManager(fake_client)
+
+    is_healthy = await manager.is_container_healthy("container-exited")
+
+    assert is_healthy is False
+    assert fake_client.get_calls == ["container-exited"]
+
+
+@pytest.mark.asyncio
+async def test_is_container_healthy_propagates_container_lookup_errors() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.get_error = DockerExecutionError("container missing")
+    manager = ContainerManager(fake_client)
+
+    with pytest.raises(DockerExecutionError, match="container missing"):
+        await manager.is_container_healthy("container-missing")
+
+    assert fake_client.get_calls == ["container-missing"]
