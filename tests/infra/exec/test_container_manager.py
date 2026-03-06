@@ -22,7 +22,12 @@ class FakeDockerClient:
     def __init__(self) -> None:
         self.started_container = FakeContainer()
         self.run_calls: list[dict[str, object]] = []
+        self.stop_calls: list[dict[str, object]] = []
+        self.remove_calls: list[dict[str, object]] = []
+        self.operation_log: list[str] = []
         self.run_error: Exception | None = None
+        self.stop_error: Exception | None = None
+        self.remove_error: Exception | None = None
 
     async def run_container(
         self,
@@ -51,6 +56,18 @@ class FakeDockerClient:
         if self.run_error is not None:
             raise self.run_error
         return self.started_container
+
+    def stop_container(self, name: str, *, timeout: int | None = None) -> None:
+        self.operation_log.append("stop")
+        self.stop_calls.append({"name": name, "timeout": timeout})
+        if self.stop_error is not None:
+            raise self.stop_error
+
+    def remove_container(self, name: str, *, force: bool = False) -> None:
+        self.operation_log.append("remove")
+        self.remove_calls.append({"name": name, "force": force})
+        if self.remove_error is not None:
+            raise self.remove_error
 
 
 @pytest.mark.asyncio
@@ -175,3 +192,51 @@ async def test_start_agent_container_propagates_docker_execution_errors() -> Non
             user_id="user-1",
             payload=payload,
         )
+
+
+@pytest.mark.asyncio
+async def test_stop_container_stops_then_removes_with_lifecycle_defaults() -> None:
+    from infra.exec.container_manager import ContainerManager
+
+    fake_client = FakeDockerClient()
+    manager = ContainerManager(fake_client)
+
+    await manager.stop_container("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.remove_calls == [{"name": "container-123", "force": False}]
+    assert fake_client.operation_log == ["stop", "remove"]
+
+
+@pytest.mark.asyncio
+async def test_stop_container_does_not_remove_when_stop_fails() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.stop_error = DockerExecutionError("stop failed")
+    manager = ContainerManager(fake_client)
+
+    with pytest.raises(DockerExecutionError, match="stop failed"):
+        await manager.stop_container("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.remove_calls == []
+    assert fake_client.operation_log == ["stop"]
+
+
+@pytest.mark.asyncio
+async def test_stop_container_propagates_remove_failures_after_stop() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.remove_error = DockerExecutionError("remove failed")
+    manager = ContainerManager(fake_client)
+
+    with pytest.raises(DockerExecutionError, match="remove failed"):
+        await manager.stop_container("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.remove_calls == [{"name": "container-123", "force": False}]
+    assert fake_client.operation_log == ["stop", "remove"]

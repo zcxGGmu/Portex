@@ -1309,13 +1309,12 @@ class ContainerManager:
         return container.id
 ```
 
-- [ ] **M3.4.2** 实现容器停止
+- [x] **M3.4.2** 实现容器停止
 
 ```python
     async def stop_container(self, container_id: str) -> None:
-        container = self.client.get_container(container_id)
-        container.stop(timeout=30)
-        container.remove()
+        self.client.stop_container(container_id, timeout=30)
+        self.client.remove_container(container_id, force=False)
 ```
 
 - [ ] **M3.4.3** 实现健康检查

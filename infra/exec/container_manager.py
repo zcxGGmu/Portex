@@ -123,6 +123,15 @@ class ContainerManager:
         )
         return container.id
 
+    async def stop_container(
+        self,
+        container_id: str,
+        *,
+        timeout: int = 30,
+    ) -> None:
+        """Stop one runner container and remove it afterwards."""
+        self.client.stop_container(container_id, timeout=timeout)
+        self.client.remove_container(container_id, force=False)
 
 __all__ = [
     "CONTAINER_COMMAND",
