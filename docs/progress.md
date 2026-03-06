@@ -37,8 +37,8 @@
 
 ## 3. 最新验证证据
 
-- M3.4.3 聚焦：`.venv/bin/pytest tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py tests/infra/exec/test_security.py tests/container/agent_runner` -> `35 passed in 3.53s`
-- 全量后端回归：`.venv/bin/pytest` -> `100 passed, 1 warning in 6.95s`
+- M3.4.3 聚焦：`.venv/bin/pytest tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py tests/infra/exec/test_security.py tests/container/agent_runner` -> `35 passed in 3.73s`
+- 全量后端回归：`.venv/bin/pytest` -> `100 passed, 1 warning in 9.08s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
