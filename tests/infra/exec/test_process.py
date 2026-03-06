@@ -231,7 +231,10 @@ async def test_process_executor_run_agent_enforces_max_execution_time(
         data_root=tmp_path / "data",
         runner_root=tmp_path / "runner-root",
         restrictions=HostModeRestrictions(
-            allowed_directories=(tmp_path / "data" / "groups",),
+            allowed_directories=(
+                tmp_path / "data" / "groups",
+                tmp_path / "runner-root",
+            ),
             forbidden_commands=(("rm", "-rf", "/"),),
             max_execution_time=5,
         ),
@@ -259,6 +262,44 @@ def test_host_mode_restrictions_define_required_security_boundaries() -> None:
 
 
 @pytest.mark.asyncio
+async def test_process_executor_rejects_runner_root_outside_allowed_roots(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from infra.exec.process import ProcessExecutionError, ProcessExecutor
+    from src.types import ContainerInput
+
+    create_calls = 0
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> FakeProcess:
+        nonlocal create_calls
+        create_calls += 1
+        _ = (command, kwargs)
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "infra.exec.process.asyncio.create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    executor = ProcessExecutor(
+        data_root=tmp_path / "data",
+        runner_root=tmp_path / "runner-root",
+        restrictions={
+            "allowed_directories": [str((tmp_path / "data" / "groups").resolve())],
+            "forbidden_commands": ["rm -rf /", "dd if="],
+            "max_execution_time": 3600,
+        },
+    )
+    payload = ContainerInput(prompt="hello", group_folder="group-a")
+
+    with pytest.raises(ProcessExecutionError, match="Runner root .* outside allowed host directories"):
+        await executor.run_agent("group-a", payload)
+
+    assert create_calls == 0
+
+
+@pytest.mark.asyncio
 async def test_process_executor_rejects_forbidden_command_fragments(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -283,7 +324,10 @@ async def test_process_executor_rejects_forbidden_command_fragments(
         data_root=tmp_path / "data",
         runner_root=tmp_path / "runner-root",
         restrictions=HostModeRestrictions(
-            allowed_directories=(tmp_path / "data" / "groups",),
+            allowed_directories=(
+                tmp_path / "data" / "groups",
+                tmp_path / "runner-root",
+            ),
             forbidden_commands=(("rm", "-rf", "/"),),
             max_execution_time=60,
         ),

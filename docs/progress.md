@@ -29,7 +29,7 @@
 ## 2. 最近完成
 
 - `M3.5.3`：在 `infra/exec/process.py` 新增 `HostModeRestrictions`、`HOST_MODE_RESTRICTIONS` 与 `is_command_forbidden()`，为 host mode 定义允许目录、危险命令前缀与最大执行时长。
-- `M3.5.3`：`ProcessExecutor.run_agent()` 现会在启动前校验允许目录与危险命令，并通过 `asyncio.wait_for(..., timeout=...)` 强制执行时长上限；超时会 `kill()` 子进程并抛出 `ProcessExecutionError`。
+- `M3.5.3`：`ProcessExecutor.run_agent()` 现会在启动前同时校验 group 目录与 `runner_root` allowlist，并通过 `asyncio.wait_for(..., timeout=...)` 强制执行时长上限；超时会 `kill()` 子进程并抛出 `ProcessExecutionError`。
 - `M3.5.3`：扩展 `tests/infra/exec/test_process.py`，覆盖允许目录拒绝、危险命令匹配、超时 kill，以及默认 host mode 限制常量。
 - `M3.6`：阶段验收完成，`M3.1` ~ `M3.5` 的容器模式、宿主机模式与基础安全/生命周期能力均已通过离线契约与全量回归验证。
 - 最近阶段提交：
@@ -50,8 +50,8 @@
 
 ## 3. 最新验证证据
 
-- M3.6 验收聚焦：`.venv/bin/pytest tests/services/test_execution_mode.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py tests/infra/exec/test_security.py tests/container/agent_runner` -> `52 passed in 3.62s`
-- 全量后端回归：`.venv/bin/pytest` -> `117 passed, 1 warning in 7.29s`
+- M3.6 验收聚焦：`.venv/bin/pytest tests/services/test_execution_mode.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py tests/infra/exec/test_security.py tests/container/agent_runner` -> `53 passed in 3.85s`
+- 全量后端回归：`.venv/bin/pytest` -> `118 passed, 1 warning in 6.77s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass

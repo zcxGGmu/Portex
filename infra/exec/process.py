@@ -155,6 +155,14 @@ class ProcessExecutor:
         group_dir.mkdir(parents=True, exist_ok=True)
         return group_dir
 
+    def validate_runner_root(self) -> Path:
+        """Validate that the runner root stays inside allowed host directories."""
+        if not validate_path(self.runner_root, self.restrictions.allowed_directories):
+            raise ProcessExecutionError(
+                f"Runner root '{self.runner_root}' is outside allowed host directories"
+            )
+        return self.runner_root
+
     def build_env(self, group_folder: str, group_dir: Path) -> dict[str, str]:
         """Build environment variables for the host-mode runner process."""
         env = os.environ.copy()
@@ -186,6 +194,7 @@ class ProcessExecutor:
     ) -> ProcessRunResult:
         """Execute the local runner once and collect stdout, stderr, and return code."""
         group_dir = self.resolve_group_dir(group_folder)
+        runner_root = self.validate_runner_root()
         command = self.build_command()
         effective_timeout = self.resolve_timeout(timeout)
         if is_command_forbidden(command, self.restrictions.forbidden_commands):
@@ -196,7 +205,7 @@ class ProcessExecutor:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=str(self.runner_root),
+                cwd=str(runner_root),
                 env=self.build_env(group_folder, group_dir),
             )
         except (OSError, ValueError) as exc:
