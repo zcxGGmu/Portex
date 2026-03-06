@@ -33,12 +33,18 @@ class FakeDockerClient:
         self.get_calls: list[str] = []
         self.run_calls: list[dict[str, object]] = []
         self.stop_calls: list[dict[str, object]] = []
+        self.wait_calls: list[dict[str, object]] = []
         self.remove_calls: list[dict[str, object]] = []
         self.operation_log: list[str] = []
         self.get_error: Exception | None = None
         self.run_error: Exception | None = None
         self.stop_error: Exception | None = None
+        self.wait_error: Exception | None = None
         self.remove_error: Exception | None = None
+        self.remove_errors_by_force: dict[bool, Exception | None] = {
+            False: None,
+            True: None,
+        }
 
     async def run_container(
         self,
@@ -80,9 +86,18 @@ class FakeDockerClient:
         if self.stop_error is not None:
             raise self.stop_error
 
+    def wait_container(self, name: str, **kwargs: object) -> dict[str, int]:
+        self.operation_log.append("wait")
+        self.wait_calls.append({"name": name, **dict(kwargs)})
+        if self.wait_error is not None:
+            raise self.wait_error
+        return {"StatusCode": 0}
+
     def remove_container(self, name: str, *, force: bool = False) -> None:
         self.operation_log.append("remove")
         self.remove_calls.append({"name": name, "force": force})
+        if self.remove_errors_by_force[force] is not None:
+            raise self.remove_errors_by_force[force]
         if self.remove_error is not None:
             raise self.remove_error
 
@@ -306,3 +321,91 @@ async def test_is_container_healthy_propagates_container_lookup_errors() -> None
         await manager.is_container_healthy("container-missing")
 
     assert fake_client.get_calls == ["container-missing"]
+
+
+@pytest.mark.asyncio
+async def test_graceful_shutdown_stops_waits_and_removes_container() -> None:
+    from infra.exec.container_manager import ContainerManager
+
+    fake_client = FakeDockerClient()
+    manager = ContainerManager(fake_client)
+
+    await manager.graceful_shutdown("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.wait_calls == [{"name": "container-123"}]
+    assert fake_client.remove_calls == [{"name": "container-123", "force": False}]
+    assert fake_client.operation_log == ["stop", "wait", "remove"]
+
+
+@pytest.mark.asyncio
+async def test_graceful_shutdown_force_removes_when_stop_fails() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.stop_error = DockerExecutionError("stop failed")
+    manager = ContainerManager(fake_client)
+
+    await manager.graceful_shutdown("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.wait_calls == []
+    assert fake_client.remove_calls == [{"name": "container-123", "force": True}]
+    assert fake_client.operation_log == ["stop", "remove"]
+
+
+@pytest.mark.asyncio
+async def test_graceful_shutdown_force_removes_when_wait_fails() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.wait_error = DockerExecutionError("wait failed")
+    manager = ContainerManager(fake_client)
+
+    await manager.graceful_shutdown("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.wait_calls == [{"name": "container-123"}]
+    assert fake_client.remove_calls == [{"name": "container-123", "force": True}]
+    assert fake_client.operation_log == ["stop", "wait", "remove"]
+
+
+@pytest.mark.asyncio
+async def test_graceful_shutdown_force_removes_when_regular_remove_fails() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.remove_errors_by_force[False] = DockerExecutionError("remove failed")
+    manager = ContainerManager(fake_client)
+
+    await manager.graceful_shutdown("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.wait_calls == [{"name": "container-123"}]
+    assert fake_client.remove_calls == [
+        {"name": "container-123", "force": False},
+        {"name": "container-123", "force": True},
+    ]
+    assert fake_client.operation_log == ["stop", "wait", "remove", "remove"]
+
+
+@pytest.mark.asyncio
+async def test_graceful_shutdown_propagates_force_remove_failures() -> None:
+    from infra.exec.container_manager import ContainerManager
+    from infra.exec.docker import DockerExecutionError
+
+    fake_client = FakeDockerClient()
+    fake_client.wait_error = DockerExecutionError("wait failed")
+    fake_client.remove_error = DockerExecutionError("force remove failed")
+    manager = ContainerManager(fake_client)
+
+    with pytest.raises(DockerExecutionError, match="force remove failed"):
+        await manager.graceful_shutdown("container-123")
+
+    assert fake_client.stop_calls == [{"name": "container-123", "timeout": 30}]
+    assert fake_client.wait_calls == [{"name": "container-123"}]
+    assert fake_client.remove_calls == [{"name": "container-123", "force": True}]
+    assert fake_client.operation_log == ["stop", "wait", "remove"]

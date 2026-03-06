@@ -8,6 +8,7 @@ from typing import Protocol, runtime_checkable
 
 from .docker import (
     DockerClient,
+    DockerExecutionError,
     GROUP_CONTAINER_PATH,
     IPC_CONTAINER_PATH,
     MEMORY_CONTAINER_PATH,
@@ -137,6 +138,20 @@ class ContainerManager:
         """Return whether one runner container is currently running."""
         container = self.client.get_container(container_id)
         return container.status == "running"
+
+    async def graceful_shutdown(
+        self,
+        container_id: str,
+        *,
+        timeout: int = 30,
+    ) -> None:
+        """Attempt graceful shutdown first, then fall back to forced removal."""
+        try:
+            self.client.stop_container(container_id, timeout=timeout)
+            self.client.wait_container(container_id)
+            self.client.remove_container(container_id, force=False)
+        except DockerExecutionError:
+            self.client.remove_container(container_id, force=True)
 
 __all__ = [
     "CONTAINER_COMMAND",

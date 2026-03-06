@@ -1325,14 +1325,16 @@ class ContainerManager:
         return container.status == "running"
 ```
 
-- [ ] **M3.4.4** 实现优雅关闭
+- [x] **M3.4.4** 实现优雅关闭
 
 ```python
     async def graceful_shutdown(self, container_id: str) -> None:
-        # 1. 发送关闭信号
-        # 2. 等待完成（或超时）
-        # 3. 强制停止
-        pass
+        try:
+            self.client.stop_container(container_id, timeout=30)
+            self.client.wait_container(container_id)
+            self.client.remove_container(container_id, force=False)
+        except DockerExecutionError:
+            self.client.remove_container(container_id, force=True)
 ```
 
 **交付**: 容器生命周期管理
