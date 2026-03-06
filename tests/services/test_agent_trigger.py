@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -17,6 +19,22 @@ class FakeWebSocketManager:
 
     async def send_message(self, message: str, room: str) -> None:
         self.sent_messages.append((message, room))
+
+
+class BlockingResult:
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.finished = asyncio.Event()
+        self.cancel_calls = 0
+
+    def cancel(self) -> None:
+        self.cancel_calls += 1
+        self.finished.set()
+
+    async def stream_events(self):
+        self.started.set()
+        yield SimpleNamespace(type="agent_updated_stream_event", new_agent=SimpleNamespace(name="Portex"))
+        await self.finished.wait()
 
 
 @pytest.mark.asyncio
@@ -114,3 +132,48 @@ async def test_trigger_agent_execution_uses_group_folder_as_default_session_id()
     )
 
     assert runtime.received_requests[0].session_id == "group-default"
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_execution_completes_after_runtime_cancel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from infra.runtime.openai import OpenAIAgentsRuntime
+    from services.agent_trigger import trigger_agent_execution
+
+    result = BlockingResult()
+
+    class FakeRunner:
+        @staticmethod
+        def run_streamed(agent: object, input: str) -> BlockingResult:  # noqa: A002
+            _ = (agent, input)
+            return result
+
+    monkeypatch.setattr("infra.runtime.openai.Runner", FakeRunner)
+
+    runtime = OpenAIAgentsRuntime(tools=[])
+    manager = FakeWebSocketManager()
+
+    execution = asyncio.create_task(
+        trigger_agent_execution(
+            group_folder="group-cancel",
+            message="hello",
+            user_id="user-cancel",
+            websocket_manager=manager,
+            runtime_factory=lambda _group: runtime,
+            request_id="run-cancel",
+        )
+    )
+
+    await asyncio.wait_for(result.started.wait(), timeout=1)
+    await runtime.cancel("run-cancel")
+
+    run_id = await asyncio.wait_for(execution, timeout=1)
+
+    assert run_id == "run-cancel"
+    assert result.cancel_calls == 1
+    assert len(manager.sent_messages) == 1
+
+    payload = json.loads(manager.sent_messages[0][0])
+    assert payload["event_type"] == "run.started"
+    assert payload["run_id"] == "run-cancel"

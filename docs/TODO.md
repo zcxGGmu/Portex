@@ -977,27 +977,29 @@ export function ToolCallTracker({ events }: { events: StreamEvent[] }) {
 
 ### M2.5: 取消与超时处理 [Week 2, Day 4-5]
 
-- [ ] **M2.5.1** 实现取消功能
+- [x] **M2.5.1** 实现取消功能
 
 ```python
 # infra/runtime/openai.py
 class OpenAIAgentsRuntime:
     def __init__(self, tools: list):
-        self.running_tasks: Dict[str, Task] = {}
+        self.active_runs: Dict[str, RunResultStreaming] = {}
 
     async def run_streamed(self, request: RunRequest) -> AsyncIterator[RunEvent]:
-        task = asyncio.create_task(self._run(request))
-        self.running_tasks[request.request_id] = task
-
+        result = Runner.run_streamed(self.agent, input=request.message)
+        self.active_runs[request.request_id] = result
         try:
-            async for event in await task:
-                yield event
+            async for sdk_event in result.stream_events():
+                mapped_event = map_sdk_event(sdk_event, run_id=request.request_id)
+                if mapped_event is not None:
+                    yield mapped_event
         finally:
-            del self.running_tasks[request.request_id]
+            self.active_runs.pop(request.request_id, None)
 
     async def cancel(self, run_id: str) -> None:
-        if run_id in self.running_tasks:
-            self.running_tasks[run_id].cancel()
+        result = self.active_runs.get(run_id)
+        if result is not None:
+            result.cancel()
 ```
 
 - [ ] **M2.5.2** 实现超时控制

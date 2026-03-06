@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, AsyncIterator
 
-from agents import Agent, Runner
+from agents import Agent, RunResultStreaming, Runner
 
 from .adapter import AgentRuntime, RunEvent, RunRequest
 from .mapper import map_sdk_event
@@ -28,16 +28,23 @@ class OpenAIAgentsRuntime(AgentRuntime):
             instructions=instructions,
             tools=tools or [],
         )
+        self._active_streamed_runs: dict[str, RunResultStreaming] = {}
 
     async def run_streamed(self, request: RunRequest) -> AsyncIterator[RunEvent]:
         result = Runner.run_streamed(self.agent, input=request.message)
-        async for sdk_event in result.stream_events():
-            mapped_event = map_sdk_event(sdk_event, run_id=request.request_id)
-            if mapped_event is not None:
-                yield mapped_event
+        self._active_streamed_runs[request.request_id] = result
+        try:
+            async for sdk_event in result.stream_events():
+                mapped_event = map_sdk_event(sdk_event, run_id=request.request_id)
+                if mapped_event is not None:
+                    yield mapped_event
+        finally:
+            self._active_streamed_runs.pop(request.request_id, None)
 
     async def cancel(self, run_id: str) -> None:
-        _ = run_id  # Cancel support lands in M2.5.
+        result = self._active_streamed_runs.get(run_id)
+        if result is not None:
+            result.cancel()
         return None
 
 

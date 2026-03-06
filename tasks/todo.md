@@ -1,18 +1,26 @@
-# Session Plan (2026-03-05) - M1.6
+# Session Plan (2026-03-06) - M2.5.1
 
 ## Goal
-- Continue from latest progress by completing `M1.6.1` ~ `M1.6.3` acceptance checks.
+- Continue from `docs/progress.md` by completing `M2.5.1` cancel flow baseline with multi-agent exploration, tests, verification, and docs updates.
 
 ## Checklist
-- [x] Re-read `AGENTS.md`, `docs/progress.md`, and `docs/TODO.md`
-- [x] Run `pytest tests/unit/ -v` and record results
-- [x] Verify API endpoint via `curl http://localhost:8000/health`
-- [x] Verify frontend build via `cd web && npm run build`
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and `docs/PORTEX_PLAN.md`
+- [x] Check `tasks/lessons.md` startup context (file missing; note for follow-up if needed)
+- [x] Confirm `M2.5.1` design and impacted files
+- [x] Add failing backend tests for runtime cancellation flow
+- [x] Implement runtime task tracking and cancel entry
+- [x] Verify feature tests and targeted regression
 - [x] Update `docs/TODO.md` and `docs/progress.md`
+- [x] Append review notes below
 - [x] Commit changes with a detailed message
 
 ## Review
-- `M1.6.1` 通过：`.venv/bin/pytest tests/unit/ -v` => `1 passed`（新增 `tests/unit/test_auth_unit.py`）。
-- `M1.6.2` 通过：`GET /health` => `200` + `{\"status\":\"ok\",\"version\":\"0.1.0\"}`。
-- `M1.6.3` 通过：`cd web && npm run build` 成功。
-- 回归：`.venv/bin/pytest -q` => `39 passed`；`.venv/bin/ruff check .` => `All checks passed!`
+- Multi-agent exploration confirmed current production path is still WS echo only; `services/agent_trigger.py` + `infra/runtime/openai.py` remain the correct `M2.5.1` scope.
+- TDD RED: `.venv/bin/pytest tests/infra/runtime/test_openai.py -q` -> failed on missing `_active_streamed_runs`.
+- TDD GREEN: `.venv/bin/pytest tests/infra/runtime/test_openai.py -q` -> `3 passed`.
+- Feature regression: `.venv/bin/pytest tests/infra/runtime/test_openai.py tests/services/test_agent_trigger.py -q` -> `6 passed`.
+- Unit acceptance: `.venv/bin/pytest tests/unit/ -v` -> `1 passed`.
+- Full backend regression: `.venv/bin/pytest -q` -> `59 passed`.
+- Lint: `.venv/bin/ruff check .` -> `All checks passed!`
+- Frontend safety check: `cd web && npm run lint && npm run build` -> pass.
+- Commit completed: `feat(runtime): implement M2.5.1 cancel flow baseline`.
