@@ -11,9 +11,10 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-06)
+## Current Baseline Snapshot (2026-03-07)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
-- Current starting point is `M3.1.1` (Docker SDK integration).
+- `M3` progress: `M3.1` ~ `M3.3` are complete.
+- Current starting point is `M3.4.1` (container startup).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -29,6 +30,7 @@
 - If resuming backend work, also skim `app/main.py`, `app/middleware/auth.py`.
 - If resuming frontend work, also skim `web/src/App.tsx`, `web/src/stores/auth.ts`.
 - If resuming after `M2`, also skim `app/routes/websocket.py`, `web/src/components/chat/ChatPanel.tsx`, and `services/agent_trigger.py` because the current run/cancel flow is split across those files.
+- If resuming after `M3.3`, also skim `infra/exec/docker.py`, `infra/exec/security.py`, `container/agent-runner/src/runner.py`, and `container/agent-runner/src/types.py` because `M3.4` container lifecycle work builds directly on those files.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -37,6 +39,8 @@
 - `.venv/bin/pytest tests/unit/ -v`: run M1 acceptance unit test command.
 - `.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q`: run current WS send/cancel acceptance-focused backend test.
 - `.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q`: run message + runtime pipeline feature tests.
+- `.venv/bin/pytest tests/container/agent_runner -q`: run current Agent Runner containerization tests.
+- `.venv/bin/pytest tests/infra/exec/test_docker.py tests/infra/exec/test_security.py -q`: run current container mount / execution safety tests.
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm run lint`: frontend lint.
 - `cd web && npm run build`: frontend production build.

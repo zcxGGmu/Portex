@@ -24,6 +24,10 @@
 - `M3.3.2`：新增 `infra/exec/security.py`，实现 real-path 基础的 `validate_path()`，并在挂载构建时阻断路径逃逸。
 - `M3.3.3`：为 skills 提供默认只读挂载，并允许通过 `readonly_mounts` 扩展到 memory / ipc / group / sessions。
 - 新增 `tests/infra/exec/test_security.py`，并扩展 `tests/infra/exec/test_docker.py` 覆盖只读绑定、挂载构建与 traversal 拒绝路径。
+- 最近阶段提交：
+  - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
+  - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
+  - `ca121b3` `feat(exec): complete M3.3 volume mount safety`
 
 ---
 
@@ -47,6 +51,7 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
+   - 建议顺手再看：`infra/exec/docker.py`、`infra/exec/security.py`、`container/agent-runner/src/runner.py`、`container/agent-runner/src/types.py`
 2. 从 `M3.4.1` 开始：
    - 复用 `build_volumes()` 与 `DockerClient.run_container()` 串起容器启动
    - 明确容器名、工作目录、环境变量和 detach/remove 策略
