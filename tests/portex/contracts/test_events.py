@@ -10,6 +10,7 @@ from portex.contracts.events import EventType, PortexEvent
 def test_event_type_enum_values() -> None:
     assert EventType.RUN_STARTED.value == "run.started"
     assert EventType.TOOL_COMPLETED.value == "run.tool.completed"
+    assert EventType.RUN_TIMEOUT.value == "run.timeout"
     assert EventType.RUN_FAILED.value == "run.failed"
 
 

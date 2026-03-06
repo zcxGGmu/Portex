@@ -177,3 +177,235 @@ async def test_trigger_agent_execution_completes_after_runtime_cancel(
     payload = json.loads(manager.sent_messages[0][0])
     assert payload["event_type"] == "run.started"
     assert payload["run_id"] == "run-cancel"
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_execution_returns_run_id_and_broadcasts_timeout() -> None:
+    from infra.runtime.adapter import RunEvent, RunRequest
+    from services.agent_trigger import trigger_agent_execution
+
+    class SlowRuntime:
+        def __init__(self) -> None:
+            self.received_requests: list[RunRequest] = []
+            self.cancelled_run_ids: list[str] = []
+
+        async def run_streamed(self, request: RunRequest):
+            self.received_requests.append(request)
+            yield RunEvent(event_type="run.started", run_id=request.request_id)
+            await asyncio.sleep(0.05)
+            yield RunEvent(event_type="run.completed", run_id=request.request_id)
+
+        async def cancel(self, run_id: str) -> None:
+            self.cancelled_run_ids.append(run_id)
+
+    runtime = SlowRuntime()
+    manager = FakeWebSocketManager()
+
+    run_id = await asyncio.wait_for(
+        trigger_agent_execution(
+            group_folder="group-timeout",
+            message="hello timeout",
+            user_id="user-timeout",
+            websocket_manager=manager,
+            runtime_factory=lambda _group: runtime,
+            request_id="run-timeout",
+            timeout_ms=10,
+        ),
+        timeout=1,
+    )
+
+    assert run_id == "run-timeout"
+    assert runtime.cancelled_run_ids == ["run-timeout"]
+    assert len(manager.sent_messages) == 2
+
+    started_payload = json.loads(manager.sent_messages[0][0])
+    timeout_payload = json.loads(manager.sent_messages[1][0])
+
+    assert started_payload["event_type"] == "run.started"
+    assert timeout_payload == {
+        "event_type": "run.timeout",
+        "run_id": "run-timeout",
+        "payload": {
+            "status": "timeout",
+            "timeout_ms": 10,
+        },
+    }
+    assert manager.sent_messages[1][1] == "group-timeout"
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_execution_timeout_cancels_active_openai_stream(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from infra.runtime.openai import OpenAIAgentsRuntime
+    from services.agent_trigger import trigger_agent_execution
+
+    result = BlockingResult()
+
+    class FakeRunner:
+        @staticmethod
+        def run_streamed(agent: object, input: str) -> BlockingResult:  # noqa: A002
+            _ = (agent, input)
+            return result
+
+    monkeypatch.setattr("infra.runtime.openai.Runner", FakeRunner)
+
+    runtime = OpenAIAgentsRuntime(tools=[])
+    manager = FakeWebSocketManager()
+
+    run_id = await asyncio.wait_for(
+        trigger_agent_execution(
+            group_folder="group-openai-timeout",
+            message="hello openai timeout",
+            user_id="user-openai-timeout",
+            websocket_manager=manager,
+            runtime_factory=lambda _group: runtime,
+            request_id="run-openai-timeout",
+            timeout_ms=10,
+        ),
+        timeout=1,
+    )
+
+    assert run_id == "run-openai-timeout"
+    assert result.cancel_calls == 1
+    assert len(manager.sent_messages) == 2
+
+    timeout_payload = json.loads(manager.sent_messages[1][0])
+    assert timeout_payload["event_type"] == "run.timeout"
+    assert timeout_payload["run_id"] == "run-openai-timeout"
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_execution_does_not_cancel_before_timeout() -> None:
+    from infra.runtime.adapter import RunEvent, RunRequest
+    from services.agent_trigger import trigger_agent_execution
+
+    class FastRuntime:
+        def __init__(self) -> None:
+            self.received_requests: list[RunRequest] = []
+            self.cancelled_run_ids: list[str] = []
+
+        async def run_streamed(self, request: RunRequest):
+            self.received_requests.append(request)
+            yield RunEvent(event_type="run.started", run_id=request.request_id)
+            await asyncio.sleep(0.001)
+            yield RunEvent(
+                event_type="run.completed",
+                run_id=request.request_id,
+                payload={"status": "ok"},
+            )
+
+        async def cancel(self, run_id: str) -> None:
+            self.cancelled_run_ids.append(run_id)
+
+    runtime = FastRuntime()
+    manager = FakeWebSocketManager()
+
+    run_id = await trigger_agent_execution(
+        group_folder="group-fast",
+        message="hello fast",
+        user_id="user-fast",
+        websocket_manager=manager,
+        runtime_factory=lambda _group: runtime,
+        request_id="run-fast",
+        timeout_ms=200,
+    )
+
+    assert run_id == "run-fast"
+    assert runtime.cancelled_run_ids == []
+    assert len(manager.sent_messages) == 2
+
+    started_payload = json.loads(manager.sent_messages[0][0])
+    completed_payload = json.loads(manager.sent_messages[1][0])
+
+    assert started_payload["event_type"] == "run.started"
+    assert completed_payload["event_type"] == "run.completed"
+    assert completed_payload["payload"] == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_execution_propagates_internal_timeout_error() -> None:
+    from infra.runtime.adapter import RunEvent, RunRequest
+    from services.agent_trigger import trigger_agent_execution
+
+    class TimeoutRuntime:
+        def __init__(self) -> None:
+            self.received_requests: list[RunRequest] = []
+            self.cancelled_run_ids: list[str] = []
+
+        async def run_streamed(self, request: RunRequest):
+            self.received_requests.append(request)
+            yield RunEvent(event_type="run.started", run_id=request.request_id)
+            raise TimeoutError("runtime internal timeout")
+
+        async def cancel(self, run_id: str) -> None:
+            self.cancelled_run_ids.append(run_id)
+
+    runtime = TimeoutRuntime()
+    manager = FakeWebSocketManager()
+
+    with pytest.raises(TimeoutError, match="runtime internal timeout"):
+        await trigger_agent_execution(
+            group_folder="group-internal-timeout",
+            message="hello internal timeout",
+            user_id="user-internal-timeout",
+            websocket_manager=manager,
+            runtime_factory=lambda _group: runtime,
+            request_id="run-internal-timeout",
+            timeout_ms=200,
+        )
+
+    assert runtime.cancelled_run_ids == []
+    assert len(manager.sent_messages) == 1
+
+    payload = json.loads(manager.sent_messages[0][0])
+    assert payload["event_type"] == "run.started"
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_execution_cleans_up_consumer_task_on_outer_cancellation() -> None:
+    from infra.runtime.adapter import RunEvent, RunRequest
+    from services.agent_trigger import trigger_agent_execution
+
+    class HangingRuntime:
+        def __init__(self) -> None:
+            self.received_requests: list[RunRequest] = []
+            self.active_streams = 0
+            self.started = asyncio.Event()
+
+        async def run_streamed(self, request: RunRequest):
+            self.received_requests.append(request)
+            self.active_streams += 1
+            self.started.set()
+            try:
+                yield RunEvent(event_type="run.started", run_id=request.request_id)
+                await asyncio.Future()
+            finally:
+                self.active_streams -= 1
+
+        async def cancel(self, run_id: str) -> None:
+            _ = run_id
+
+    runtime = HangingRuntime()
+    manager = FakeWebSocketManager()
+
+    execution = asyncio.create_task(
+        trigger_agent_execution(
+            group_folder="group-outer-cancel",
+            message="hello outer cancel",
+            user_id="user-outer-cancel",
+            websocket_manager=manager,
+            runtime_factory=lambda _group: runtime,
+            request_id="run-outer-cancel",
+            timeout_ms=300_000,
+        )
+    )
+
+    await asyncio.wait_for(runtime.started.wait(), timeout=1)
+    execution.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await execution
+
+    await asyncio.sleep(0)
+    assert runtime.active_streams == 0

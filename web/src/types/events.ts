@@ -11,6 +11,7 @@ export type StreamEvent =
       run_id: string
       payload: { tool_name?: string; tool_call_id?: string; output?: unknown }
     }
+  | { event_type: 'run.timeout'; run_id: string; payload?: { status?: string; timeout_ms?: number } }
   | { event_type: 'run.completed'; run_id: string; payload?: { final_output?: string } }
   | { event_type: 'run.failed'; run_id: string; payload?: { error?: string; status?: string } }
 
@@ -19,6 +20,7 @@ const STREAM_EVENT_TYPES: StreamEvent['event_type'][] = [
   'run.token.delta',
   'run.tool.started',
   'run.tool.completed',
+  'run.timeout',
   'run.completed',
   'run.failed',
 ]

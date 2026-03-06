@@ -1002,18 +1002,35 @@ class OpenAIAgentsRuntime:
             result.cancel()
 ```
 
-- [ ] **M2.5.2** 实现超时控制
+- [x] **M2.5.2** 实现超时控制
 
 ```python
 # services/agent_trigger.py
-async def trigger_agent_execution(..., timeout: int = 300000):
+async def trigger_agent_execution(..., timeout_ms: int = 300000):
+    consumer_task = asyncio.create_task(_broadcast_runtime_events(...))
+    done, _ = await asyncio.wait({consumer_task}, timeout=timeout_ms / 1000)
+
+    if consumer_task in done:
+        await consumer_task
+        return run_id
+
     try:
-        async with asyncio.timeout(timeout):
-            async for event in runtime.run_streamed(request):
-                # 处理事件
-    except asyncio.TimeoutError:
         await runtime.cancel(request.request_id)
-        yield RunEvent(type="run.timeout", ...)
+    finally:
+        consumer_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await consumer_task
+
+    await websocket_manager.send_message(
+        serialize_run_event(
+            RunEvent(
+                event_type="run.timeout",
+                run_id=run_id,
+                payload={"status": "timeout", "timeout_ms": timeout_ms},
+            )
+        ),
+        group_folder,
+    )
 ```
 
 - [ ] **M2.5.3** 前端取消按钮

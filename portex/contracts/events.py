@@ -14,6 +14,7 @@ class EventType(str, Enum):
     TOKEN_DELTA = "run.token.delta"
     TOOL_STARTED = "run.tool.started"
     TOOL_COMPLETED = "run.tool.completed"
+    RUN_TIMEOUT = "run.timeout"
     RUN_COMPLETED = "run.completed"
     RUN_FAILED = "run.failed"
 
