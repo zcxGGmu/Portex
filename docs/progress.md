@@ -10,59 +10,41 @@
 
 - `M0` 已完成。
 - `M1` 已完成（`M1.1` ~ `M1.6`）。
-- `M2.1` 已完成（WebSocket 基础设施）。
-- `M2.2` 已完成（Runtime 适配器）。
-- `M2.3` 已完成（消息存储 + 触发 + 展示基础）。
-- `M2.4` 已完成（`M2.4.1` ~ `M2.4.4` 流式输出前端展示）。
-- `M2.5.1` 已完成（取消功能基线）。
-- `M2.5.2` 已完成（超时控制）。
-- `M2.5.3` 已完成（前端取消按钮 + WS 取消入口）。
-- `M2.6.1` 已完成（M2 阶段验收）。
-- 下一起点：`M3.1.1`（Docker SDK 集成）。
+- `M2` 已完成（`M2.1` ~ `M2.6.1`）。
+- 当前起点：`M3.1.1`（Docker SDK 集成）。
 
 ---
 
-## 2. 本轮完成内容（M2.6.1）
+## 2. 最近完成
 
-- 启动了真实后端/前端验收环境：
-  - 后端：临时 acceptance harness 驱动 `app.main.app`
-  - 前端：`cd web && npm run dev -- --host 127.0.0.1 --port 5173`
-- 通过 live HTTP 流程验证认证链：
-  - `POST /auth/register`
-  - `POST /auth/login`
-  - token 返回正常
-- 通过 live WebSocket 流程验证聊天链：
-  - `WS /ws/group-demo` 发送普通文本
-  - 收到 `run.started`、多条 `run.token.delta`、`run.completed`
-- 通过 live WebSocket 流程验证取消链：
-  - 发送长运行消息
-  - 收到 `run.started`
-  - 发送 `{"type":"cancel","run_id":"..."}` 控制帧
-  - 收到终态 `run.failed(status=cancelled)`
-- 新增验收计划文档：
-  - `docs/plans/2026-03-06-m2-6-1-acceptance-flow.md`
+- `M2.5.1`：runtime 活跃 run 跟踪与取消基线
+- `M2.5.2`：服务层超时控制与 `run.timeout` 契约
+- `M2.5.3`：前端取消按钮 + WebSocket 取消入口
+- `M2.6.1`：M2 阶段验收
+  - live HTTP 链：`/auth/register` → `/auth/login`
+  - live WS 链：普通消息 → `run.started` / `run.token.delta` / `run.completed`
+  - live cancel 链：取消控制帧 → `run.failed(status=cancelled)`
 
 ---
 
 ## 3. 最新验证证据
 
-- 端到端验收脚本：`.venv/bin/python /tmp/portex_m26_acceptance_check.py` -> `/tmp/portex_m26_acceptance_result.json`
-- 验收结果要点：
-  - 登录用户：`m26-dd4e3115`
-  - 流式 run：`128ea8bed7c942a5a322922e6ca454e5`
-  - 取消 run：`c829dce18609404aa0b258e05e9304b1`
-- 聚焦路由验证：`.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q` -> `4 passed`
+- 聚焦路由：`.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q` -> `4 passed`
 - 单元验收：`.venv/bin/pytest tests/unit/ -v` -> `1 passed`
 - 全量回归：`.venv/bin/pytest -q` -> `65 passed`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
+- M2 live acceptance：`.venv/bin/python /tmp/portex_m26_acceptance_check.py` -> `/tmp/portex_m26_acceptance_result.json`
+- OpenAI 兼容 provider 连通性：
+  - `OPENAI_API_KEY=... OPENAI_BASE_URL=https://api.hanbbq.top/v1 .venv/bin/python -c 'from openai import OpenAI; print(len(list(OpenAI().models.list().data)))'` -> 成功列出模型
+  - `OPENAI_API_KEY=... OPENAI_BASE_URL=https://api.hanbbq.top/v1 OPENAI_DEFAULT_MODEL=gpt-5.1 OPENAI_AGENTS_DISABLE_TRACING=1 .venv/bin/python pocs/streaming/main.py --input '请只回复：测试通过'` -> 成功输出流式事件
 
 备注：
-- 当前环境未设置 `OPENAI_API_KEY`，所以 live 验收使用了临时 fake runtime harness 来验证 HTTP/WS 全链路协议，而非真实 OpenAI 模型调用。
-- `M2.5.2` 的 timeout 语义仍由自动化测试覆盖；live harness 本轮重点验证了 send/stream/cancel 链。
-- `passlib` 仍有 `DeprecationWarning: crypt`（Python 3.13 将移除）。
-- `services/message_service.py` 仍有 `datetime.utcnow()` 的弃用告警，后续可单独处理。
+- 当前环境默认没有 `OPENAI_API_KEY`；`M2.6.1` 的 live 验收使用了临时 fake runtime harness 来覆盖 HTTP/WS 全链路协议。
+- 兼容 provider 下，Agents SDK 默认模型 `gpt-4.1` 不可用；若走真实在线验证，需显式设置 `OPENAI_DEFAULT_MODEL=gpt-5.1`。
+- `passlib` 仍有 `DeprecationWarning: crypt`。
+- `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
 ---
 
@@ -70,15 +52,17 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
 2. 从 `M3.1.1` 开始：
-   - 在依赖中确认并启用 Docker SDK
+   - 确认 `docker` 依赖与本地环境
    - 建立 `infra/exec/docker.py` 客户端
-   - 保持 host/container 双模式边界清晰
-3. 若要提升 M2 体验，可先考虑：
-   - 把 `run.failed(status=cancelled)` 升级为正式 `run.cancelled`
-   - 把前端注册页接到真实 `/auth/register`
+   - 为 container/host 双模式保留清晰边界
+3. 如需真实在线验证 OpenAI 兼容 provider：
+   - 设置 `OPENAI_API_KEY`
+   - 设置 `OPENAI_BASE_URL`
+   - 设置 `OPENAI_DEFAULT_MODEL=gpt-5.1`
+   - 避免把密钥写入仓库文件
 
 ---
 
 ## 5. 一句话版
 
-> 项目已完成 `M2` 阶段验收，HTTP 登录链、WS 流式链、WS 取消链都已跑通，下一步进入 `M3.1.1` Docker SDK 集成。
+> `M2` 已全部完成并验收通过，当前从 `M3.1.1` Docker SDK 集成继续。

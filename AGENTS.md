@@ -3,17 +3,18 @@
 ## Mandatory Development Principles
 - On every Codex restart, read `docs/TODO.md` and `docs/progress.md` before any planning or code changes.
 - This project is a Python + OpenAI Agents SDK refactor of `https://github.com/riba2534/happyclaw.git`.
-- Local reference implementation path: `/home/zcxggmu/workspace/hello-projs/agents/happyclaw`.
+- Local reference implementation path: `/home/zq/work-space/repo/ai-projs/agents/happyclaw`.
 - Implement work strictly according to `docs/TODO.md`.
 - Record progress and handoff notes in `docs/progress.md`.
 - After completing each phase task, commit immediately with a detailed commit message.
 - For every completed feature, run feature-level tests and full-flow regression checks to ensure no impact on other features.
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
+- Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-05)
-- M2.4 is complete (`M2.4.1` ~ `M2.4.4`).
-- Current starting point is `M2.5.1` (cancel and timeout flow).
-- If unsure after restart, treat `docs/progress.md` as source of truth and continue from the "下一起点" entry.
+## Current Baseline Snapshot (2026-03-06)
+- `M2` is complete (`M2.1` ~ `M2.6.1`).
+- Current starting point is `M3.1.1` (Docker SDK integration).
+- If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
 - Backend runtime lives in `app/`, `domain/`, `infra/`, and `services/`.
@@ -27,21 +28,28 @@
 - Quick check: `sed -n '1,220p' docs/progress.md && sed -n '1,220p' docs/TODO.md`.
 - If resuming backend work, also skim `app/main.py`, `app/middleware/auth.py`.
 - If resuming frontend work, also skim `web/src/App.tsx`, `web/src/stores/auth.ts`.
+- If resuming after `M2`, also skim `app/routes/websocket.py`, `web/src/components/chat/ChatPanel.tsx`, and `services/agent_trigger.py` because the current run/cancel flow is split across those files.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
 - `pip install -e ".[dev]"`: install runtime + dev dependencies.
 - `.venv/bin/pytest -q`: run all backend tests (preferred, avoid system Python mismatch).
 - `.venv/bin/pytest tests/unit/ -v`: run M1 acceptance unit test command.
-- `.venv/bin/pytest tests/pocs/streaming/test_main.py -q`: run one test module.
-- `.venv/bin/pytest tests/infra/runtime/ -q`: runtime adapter feature tests (M2.2).
-- `.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q`: message pipeline feature tests (M2.3).
+- `.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q`: run current WS send/cancel acceptance-focused backend test.
+- `.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q`: run message + runtime pipeline feature tests.
 - `.venv/bin/ruff check .`: lint.
-- `python -m pocs.streaming.main --dry-run`: run streaming PoC locally.
-- `python -m pocs.tools.main --dry-run --sample-file README.md`: run tools PoC locally.
 - `cd web && npm run lint`: frontend lint.
 - `cd web && npm run build`: frontend production build.
+- `OPENAI_API_KEY=... OPENAI_BASE_URL=... OPENAI_DEFAULT_MODEL=gpt-5.1 OPENAI_AGENTS_DISABLE_TRACING=1 .venv/bin/python pocs/streaming/main.py --input "请只回复：测试通过"`: real provider streaming sanity check for OpenAI-compatible endpoints.
 - `scripts/commit_push.sh -m "docs: update AGENTS" -d "Explain contributor workflow"`: stage all changes, commit, and push current branch.
+
+## OpenAI-Compatible Provider Notes
+- The local environment often does not have `OPENAI_API_KEY`; when absent, prefer dry-run PoCs or fake-runtime acceptance harnesses.
+- For the tested compatible provider setup, use:
+  - `OPENAI_API_KEY`
+  - `OPENAI_BASE_URL`
+  - `OPENAI_DEFAULT_MODEL=gpt-5.1`
+- Do not rely on the Agents SDK default model under compatible providers unless it has been explicitly verified; the SDK default is `gpt-4.1`, which was not available in the latest provider test.
 
 ## Chat Shortcut Convention
 - Use `/commit <subject>` to ask Codex to run a commit-and-push flow for the current branch.
@@ -60,6 +68,7 @@
 - Name files `test_*.py` and test functions `test_*`.
 - Mirror source layout in tests (example: `pocs/tools/main.py` -> `tests/pocs/tools/test_tools_main.py`).
 - When a TODO-defined acceptance command targets a test directory, ensure at least one meaningful test exists in that directory.
+- Before claiming a phase is complete, pair focused feature tests with full regression and, when relevant, frontend lint/build.
 
 ## Commit & Pull Request Guidelines
 - Follow `type(scope): summary`.
