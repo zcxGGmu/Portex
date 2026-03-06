@@ -1282,7 +1282,7 @@ def build_readonly_volume(host_path: str, container_path: str) -> dict:
 
 ### M3.4: 容器生命周期管理 [Week 2, Day 1-3]
 
-- [ ] **M3.4.1** 实现容器启动
+- [x] **M3.4.1** 实现容器启动
 
 ```python
 # infra/exec/container_manager.py
@@ -1293,13 +1293,18 @@ class ContainerManager:
     async def start_agent_container(
         self,
         group_folder: str,
-        input: ContainerInput
+        user_id: str,
+        payload: ContainerInput
     ) -> str:
         container = await self.client.run_container(
             image=CONTAINER_IMAGE,
-            command=["python", "-m", "runner"],
-            volumes=self.build_volumes(group_folder),
-            environment=self.build_env(group_folder)
+            command=["python", "-m", "src.runner"],
+            volumes=self.build_runner_volumes(group_folder, user_id),
+            environment=self.build_environment(group_folder, payload),
+            name=self.build_container_name(group_folder, payload),
+            working_dir="/workspace/group",
+            detach=True,
+            remove=False,
         )
         return container.id
 ```

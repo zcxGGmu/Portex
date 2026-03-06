@@ -1,5 +1,6 @@
 """Execution infrastructure package."""
 
+from .container_manager import ContainerManager
 from .docker import (
     DockerClient,
     DockerExecutionError,
@@ -12,6 +13,7 @@ from .process import ProcessExecutor
 from .security import validate_path
 
 __all__ = [
+    "ContainerManager",
     "DockerClient",
     "DockerExecutionError",
     "DockerExecutor",
