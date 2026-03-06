@@ -1228,7 +1228,7 @@ class ContainerOutput(BaseModel):
 
 ### M3.3: 卷挂载与安全 [Week 1, Day 4-5]
 
-- [ ] **M3.3.1** 实现卷挂载构建器
+- [x] **M3.3.1** 实现卷挂载构建器
 
 ```python
 # infra/exec/docker.py
@@ -1253,7 +1253,7 @@ def build_volumes(group_folder: str, user_id: str) -> dict:
     }
 ```
 
-- [ ] **M3.3.2** 实现路径安全验证
+- [x] **M3.3.2** 实现路径安全验证
 
 ```python
 # infra/exec/security.py
@@ -1265,7 +1265,7 @@ def validate_path(path: str, allowed_roots: list[str]) -> bool:
     return False
 ```
 
-- [ ] **M3.3.3** 实现只读挂载选项
+- [x] **M3.3.3** 实现只读挂载选项
 
 ```python
 # 为 memory、skills 等使用只读挂载

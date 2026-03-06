@@ -13,23 +13,24 @@
 - `M2` 已完成（`M2.1` ~ `M2.6.1`）。
 - `M3.1` 已完成（`M3.1.1` ~ `M3.1.3`）。
 - `M3.2` 已完成（`M3.2.1` ~ `M3.2.3`）。
-- 当前起点：`M3.3.1`（卷挂载构建器）。
+- `M3.3` 已完成（`M3.3.1` ~ `M3.3.3`）。
+- 当前起点：`M3.4.1`（容器启动）。
 
 ---
 
 ## 2. 最近完成
 
-- `M3.2.1`：升级 `container/agent-runner/Dockerfile`，补齐系统依赖、非 root 用户和 `src.runner` 入口。
-- `M3.2.2`：完成 `container/agent-runner/src/runner.py`，支持 stdin JSON 解析、`Runner.run_sync()` 调用和结构化 JSON 输出。
-- `M3.2.3`：新增 `container/agent-runner/src/types.py` 与默认工具注册，固化容器输入输出协议。
-- 新增 `tests/container/agent_runner/`，覆盖 Dockerfile 静态断言、协议模型默认值、runner 成功/失败路径。
+- `M3.3.1`：在 `infra/exec/docker.py` 中新增 `build_volume()` / `build_readonly_volume()` / `build_volumes()`，固定 sessions、memory、ipc、group、skills 的 host→container 映射。
+- `M3.3.2`：新增 `infra/exec/security.py`，实现 real-path 基础的 `validate_path()`，并在挂载构建时阻断路径逃逸。
+- `M3.3.3`：为 skills 提供默认只读挂载，并允许通过 `readonly_mounts` 扩展到 memory / ipc / group / sessions。
+- 新增 `tests/infra/exec/test_security.py`，并扩展 `tests/infra/exec/test_docker.py` 覆盖只读绑定、挂载构建与 traversal 拒绝路径。
 
 ---
 
 ## 3. 最新验证证据
 
-- Agent Runner 聚焦：`.venv/bin/pytest tests/container/agent_runner` -> `9 passed`
-- 全量后端回归：`.venv/bin/pytest` -> `82 passed, 1 warning`
+- M3.3 聚焦：`.venv/bin/pytest tests/infra/exec/test_docker.py tests/infra/exec/test_security.py` -> `17 passed`
+- 全量后端回归：`.venv/bin/pytest` -> `91 passed, 1 warning`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -37,7 +38,7 @@
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
 
 备注：
-- 当前环境没有可用的 Docker CLI / daemon，`M3.2` 以静态 Dockerfile 断言 + 离线 runner 单元测试完成契约验证，尚未执行真实 `docker build` / 容器烟测。
+- 当前环境没有可用的 Docker CLI / daemon，`M3.2` 与 `M3.3` 均以静态/离线契约验证完成，尚未执行真实 `docker build` / 容器烟测。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -46,14 +47,14 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-2. 从 `M3.3.1` 开始：
-   - 基于 `group_folder` / `user_id` 设计卷挂载构建器
-   - 明确 session / memory / skills / IPC 的宿主机到容器映射
-   - 为额外挂载和只读选项预留可扩展结构
+2. 从 `M3.4.1` 开始：
+   - 复用 `build_volumes()` 与 `DockerClient.run_container()` 串起容器启动
+   - 明确容器名、工作目录、环境变量和 detach/remove 策略
+   - 为停止、健康检查和优雅关闭保留可测接口
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
 
 ---
 
 ## 5. 一句话版
 
-> `M3.2` Agent Runner 容器化已完成并通过回归，当前从 `M3.3.1` 卷挂载与安全继续。
+> `M3.3` 卷挂载与安全已完成并通过回归，当前从 `M3.4.1` 容器生命周期继续。

@@ -287,3 +287,135 @@ def test_docker_client_stop_container_wraps_container_errors(
         client.stop_container("agent-container")
 
     assert isinstance(exc_info.value.__cause__, APIError)
+
+
+def test_build_readonly_volume_returns_ro_binding() -> None:
+    from infra.exec.docker import build_readonly_volume
+
+    volume = build_readonly_volume("/host/skills", "/workspace/skills")
+
+    assert volume == {
+        "/host/skills": {
+            "bind": "/workspace/skills",
+            "mode": "ro",
+        }
+    }
+
+
+def test_build_volumes_creates_expected_rw_and_ro_mounts(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import infra.exec.docker as docker_module
+
+    data_dir = tmp_path / "data"
+    monkeypatch.setattr(docker_module, "DATA_DIR", data_dir)
+
+    volumes = docker_module.build_volumes(group_folder="group-alpha", user_id="user-123")
+
+    assert volumes == {
+        str(data_dir / "sessions" / "group-alpha" / ".claude"): {
+            "bind": "/home/portex/.claude",
+            "mode": "rw",
+        },
+        str(data_dir / "memory" / "group-alpha"): {
+            "bind": "/workspace/memory",
+            "mode": "rw",
+        },
+        str(data_dir / "ipc" / "group-alpha"): {
+            "bind": "/workspace/ipc",
+            "mode": "rw",
+        },
+        str(data_dir / "groups" / "group-alpha"): {
+            "bind": "/workspace/group",
+            "mode": "rw",
+        },
+        str(data_dir / "skills" / "user-123"): {
+            "bind": "/workspace/skills",
+            "mode": "ro",
+        },
+    }
+
+    for host_path in volumes:
+        assert Path(host_path).exists()
+
+
+def test_build_volumes_rejects_invalid_group_folder(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import infra.exec.docker as docker_module
+    from infra.exec.docker import DockerExecutionError
+
+    monkeypatch.setattr(docker_module, "DATA_DIR", tmp_path / "data")
+
+    with pytest.raises(DockerExecutionError, match="group_folder"):
+        docker_module.build_volumes(group_folder="../escape", user_id="user-123")
+
+
+def test_build_readonly_volume_uses_ro_mode(tmp_path: Path) -> None:
+    from infra.exec.docker import build_readonly_volume
+
+    host_path = tmp_path / "skills"
+    host_path.mkdir()
+
+    volume = build_readonly_volume(host_path, "/workspace/skills")
+
+    assert volume == {
+        str(host_path.resolve()): {
+            "bind": "/workspace/skills",
+            "mode": "ro",
+        }
+    }
+
+
+def test_build_volumes_creates_expected_mounts(tmp_path: Path) -> None:
+    from infra.exec.docker import build_volumes
+
+    data_root = tmp_path / "data"
+
+    volumes = build_volumes("group-a", "user-1", data_root=data_root)
+
+    assert volumes[str((data_root / "sessions" / "group-a" / ".claude").resolve())] == {
+        "bind": "/home/portex/.claude",
+        "mode": "rw",
+    }
+    assert volumes[str((data_root / "memory" / "group-a").resolve())] == {
+        "bind": "/workspace/memory",
+        "mode": "rw",
+    }
+    assert volumes[str((data_root / "ipc" / "group-a").resolve())] == {
+        "bind": "/workspace/ipc",
+        "mode": "rw",
+    }
+    assert volumes[str((data_root / "groups" / "group-a").resolve())] == {
+        "bind": "/workspace/group",
+        "mode": "rw",
+    }
+    assert volumes[str((data_root / "skills" / "user-1").resolve())] == {
+        "bind": "/workspace/skills",
+        "mode": "ro",
+    }
+
+
+def test_build_volumes_supports_readonly_mount_overrides(tmp_path: Path) -> None:
+    from infra.exec.docker import build_volumes
+
+    data_root = tmp_path / "data"
+
+    volumes = build_volumes(
+        "group-a",
+        "user-1",
+        data_root=data_root,
+        readonly_mounts={"memory", "skills"},
+    )
+
+    assert volumes[str((data_root / "memory" / "group-a").resolve())]["mode"] == "ro"
+    assert volumes[str((data_root / "skills" / "user-1").resolve())]["mode"] == "ro"
+
+
+def test_build_volumes_rejects_path_traversal(tmp_path: Path) -> None:
+    from infra.exec.docker import DockerExecutionError, build_volumes
+
+    with pytest.raises(DockerExecutionError, match="outside allowed roots"):
+        build_volumes("../../escape", "user-1", data_root=tmp_path / "data")

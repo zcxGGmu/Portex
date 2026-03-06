@@ -4,11 +4,26 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
+import re
 from typing import Any, NoReturn, Protocol, TypeAlias
 
 import docker
 from docker.errors import DockerException, NotFound
 from docker.models.containers import Container
+
+from .security import validate_path
+
+DEFAULT_DATA_ROOT = Path("data")
+DATA_DIR = DEFAULT_DATA_ROOT
+READ_ONLY_MODE = "ro"
+READ_WRITE_MODE = "rw"
+SESSIONS_CONTAINER_PATH = "/home/portex/.claude"
+MEMORY_CONTAINER_PATH = "/workspace/memory"
+IPC_CONTAINER_PATH = "/workspace/ipc"
+GROUP_CONTAINER_PATH = "/workspace/group"
+SKILLS_CONTAINER_PATH = "/workspace/skills"
+SAFE_PATH_SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 class ContainerCollection(Protocol):
@@ -36,6 +51,106 @@ DockerClientFactory: TypeAlias = Callable[[], DockerSDKClient]
 
 class DockerExecutionError(RuntimeError):
     """Raised when Docker SDK operations fail inside the execution layer."""
+
+
+def _validate_path_segment(value: str, *, label: str) -> str:
+    if not SAFE_PATH_SEGMENT.fullmatch(value):
+        raise DockerExecutionError(
+            f"Invalid {label} '{value}': resolved path is outside allowed roots"
+        )
+    return value
+
+
+def build_volume(
+    host_path: str | Path,
+    container_path: str,
+    *,
+    read_only: bool = False,
+) -> dict[str, dict[str, str]]:
+    """Build one Docker SDK volume mapping."""
+    resolved_host_path = Path(host_path).expanduser()
+    return {
+        str(resolved_host_path): {
+            "bind": container_path,
+            "mode": READ_ONLY_MODE if read_only else READ_WRITE_MODE,
+        }
+    }
+
+
+def build_readonly_volume(
+    host_path: str | Path,
+    container_path: str,
+) -> dict[str, dict[str, str]]:
+    """Build one read-only Docker SDK volume mapping."""
+    return build_volume(host_path, container_path, read_only=True)
+
+
+def _scoped_directory(root: str | Path, *parts: str, label: str) -> Path:
+    base_root = Path(root).expanduser().resolve()
+    base_root.mkdir(parents=True, exist_ok=True)
+    candidate = base_root.joinpath(*parts).resolve()
+    if not validate_path(candidate, [base_root]):
+        raise DockerExecutionError(
+            f"Invalid {label} '{parts[0]}': resolved path '{candidate}' is outside allowed roots"
+        )
+    candidate.mkdir(parents=True, exist_ok=True)
+    return candidate
+
+
+def build_volumes(
+    group_folder: str,
+    user_id: str,
+    *,
+    data_root: str | Path | None = None,
+    readonly_mounts: set[str] | None = None,
+) -> dict[str, dict[str, str]]:
+    """Build the default host-to-container volume mappings."""
+    readonly_names = set(readonly_mounts or set())
+    root = Path(data_root or DATA_DIR).expanduser().resolve()
+    safe_group_folder = _validate_path_segment(group_folder, label="group_folder")
+    safe_user_id = _validate_path_segment(user_id, label="user_id")
+
+    sessions_dir = _scoped_directory(root / "sessions", safe_group_folder, ".claude", label="group_folder")
+    memory_dir = _scoped_directory(root / "memory", safe_group_folder, label="group_folder")
+    ipc_dir = _scoped_directory(root / "ipc", safe_group_folder, label="group_folder")
+    group_dir = _scoped_directory(root / "groups", safe_group_folder, label="group_folder")
+    skills_dir = _scoped_directory(root / "skills", safe_user_id, label="user_id")
+
+    mounts: dict[str, dict[str, str]] = {}
+    mounts.update(
+        build_volume(
+            sessions_dir,
+            SESSIONS_CONTAINER_PATH,
+            read_only="sessions" in readonly_names,
+        )
+    )
+    mounts.update(
+        build_volume(
+            memory_dir,
+            MEMORY_CONTAINER_PATH,
+            read_only="memory" in readonly_names,
+        )
+    )
+    mounts.update(
+        build_volume(
+            ipc_dir,
+            IPC_CONTAINER_PATH,
+            read_only="ipc" in readonly_names,
+        )
+    )
+    mounts.update(
+        build_volume(
+            group_dir,
+            GROUP_CONTAINER_PATH,
+            read_only="group" in readonly_names,
+        )
+    )
+    mounts.update(
+        build_readonly_volume(skills_dir, SKILLS_CONTAINER_PATH)
+        if "skills" not in readonly_names
+        else build_volume(skills_dir, SKILLS_CONTAINER_PATH, read_only=True)
+    )
+    return mounts
 
 
 class DockerClient:
@@ -169,9 +284,14 @@ DockerExecutor = DockerClient
 
 __all__ = [
     "Container",
+    "DATA_DIR",
+    "DEFAULT_DATA_ROOT",
     "DockerClient",
     "DockerClientFactory",
     "DockerExecutionError",
     "DockerExecutor",
     "DockerSDKClient",
+    "build_readonly_volume",
+    "build_volume",
+    "build_volumes",
 ]
