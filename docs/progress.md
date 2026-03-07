@@ -45,7 +45,7 @@
   - `016efc3` `feat(exec): complete M3.5.1 host process runner`
   - `4aec343` `feat(services): complete M3.5.2 execution mode selection`
   - `fb62bed` `feat(exec): complete M3.5.3 host mode restrictions`
-  - `b367c70` `feat(user): complete M4.1.1 user model extension`
+  - `cb83fcc` `feat(user): complete M4.1.1 user model extension`
 
 ---
 
