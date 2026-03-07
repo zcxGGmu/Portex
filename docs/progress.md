@@ -24,15 +24,16 @@
 - `M3` 已完成（`M3.1` ~ `M3.6`）。
 - `M4.1.1` 已完成（扩展用户模型）。
 - `M4.1.2` 已完成（实现用户管理 API）。
-- 当前起点：`M4.1.3`（实现邀请码系统）。
+- `M4.1.3` 已完成（实现邀请码系统）。
+- 当前起点：`M4.2.1`（定义权限模板）。
 
 ---
 
 ## 2. 最近完成
 
-- `M4.1.2`：在 `app/middleware/auth.py` 增加 `require_role()`，为管理员接口提供复用型 `403` 角色校验依赖。
-- `M4.1.2`：在 `services/auth.py` 增加 `UserNotFoundError`、`list_users()`、`update_user()`，并允许以 `role=` 注册测试 / 管理员用户，继续沿用当前 in-memory auth 存储。
-- `M4.1.2`：在 `app/routes/users.py` 与 `domain/schemas.py` 补齐 `GET /admin/users`、`PATCH /admin/users/{user_id}`、`UserListResponse`、`UpdateUserRequest`，同时保持 `/users/me` 契约不变。
+- `M4.1.3`：新增 `domain/models/invite_code.py` 并接入 `domain/models/__init__.py`，把邀请码纳入统一 SQLAlchemy metadata，支持单次消费的 `used_by` / `used_at` 状态。
+- `M4.1.3`：扩展 `services/auth.py` 的 in-memory `AuthService`，新增邀请码创建、查询、消费能力，并在 `register_user()` 中支持可选 `invite_code` 赋予邀请角色、阻止过期/已使用邀请码，以及保证用户名冲突不会消耗邀请码。
+- `M4.1.3`：在 `app/routes/users.py` 与 `app/routes/auth.py` 补齐 `GET /admin/invites`、`POST /admin/invites` 和注册消费逻辑，并扩展模型/API 测试覆盖邀请码管理与消费路径。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -48,13 +49,14 @@
   - `fb62bed` `feat(exec): complete M3.5.3 host mode restrictions`
   - `cb83fcc` `feat(user): complete M4.1.1 user model extension`
   - `bd50272` `feat(user): complete M4.1.2 admin user management api`
+  - `e9ca2e1` `feat(user): complete M4.1.3 invite code system`
 
 ---
 
 ## 3. 最新验证证据
 
-- M4.1.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/app/routes/test_api_routes.py tests/app/middleware/test_auth_middleware.py tests/services/test_auth_service.py -q` -> `25 passed, 1 warning in 2.86s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `130 passed, 1 warning in 4.39s`
+- M4.1.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_auth_service.py tests/app/routes/test_api_routes.py -q` -> `32 passed, 1 warning in 3.50s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `138 passed, 1 warning in 4.76s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -65,6 +67,7 @@
 - 当前环境没有可用的 Docker CLI / daemon，`M3` 仍以静态/离线契约验证完成，尚未执行真实容器/宿主机混合模式烟测。
 - `M3` 的容器生命周期、宿主机运行器、模式选择与 host mode 安全限制已就位；进入 `M4` 前仍应记住：真实请求注入策略与混合模式烟测尚未完成。
 - `M4.1` 当前仍沿用 in-memory `AuthService` 作为用户真实来源；`last_login_at` 继续保持默认 `null`，DB-backed 用户服务迁移尚未开始。
+- `M4.1.3` 当前提供的是“可选消费”的单次邀请码：管理员可创建 / 查看邀请码，注册时可选携带 `invite_code` 继承邀请角色；注册开关（开放注册 / 必须邀请码 / 关闭注册）仍未实现。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -73,10 +76,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`domain/models/user.py`、`domain/schemas.py`、`services/auth.py`、`app/routes/users.py`
-2. 从 `M4.1.3` 开始：
-   - 新增 `InviteCode` 模型与邀请码创建 / 消耗约束，优先保持与当前 in-memory 用户体系兼容
-   - 明确邀请码和后续 RBAC / 群成员模型之间的最小衔接接口，避免提前展开完整 DB 用户迁移
+   - 建议顺手再看：`domain/models/user.py`、`domain/models/invite_code.py`、`domain/schemas.py`、`services/auth.py`、`app/routes/users.py`
+2. 从 `M4.2.1` 开始：
+   - 在新建 `domain/permissions.py` 中定义角色权限模板，并与当前 `role` / 邀请码赋权结果保持命名一致
+   - 明确 `M4.1` 当前 in-memory 用户 / 邀请码体系如何为后续 `require_permission` 与 `group_members` 提供最小兼容接口
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M4` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
 
@@ -84,4 +87,4 @@
 
 ## 5. 一句话版
 
-> `M4.1.2` 已完成，下一步进入 `M4.1.3` 邀请码系统。
+> `M4.1.3` 已完成，下一步进入 `M4.2.1` 权限模板。
