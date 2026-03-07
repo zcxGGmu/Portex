@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 
@@ -9,7 +10,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from services.auth import UserAlreadyExistsError, UserNotFoundError, auth_service  # noqa: E402
+from services.auth import (  # noqa: E402
+    InviteCodeAlreadyExistsError,
+    InviteCodeUnavailableError,
+    UserAlreadyExistsError,
+    UserNotFoundError,
+    auth_service,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -48,6 +55,79 @@ def test_list_users_returns_deterministic_username_order() -> None:
     auth_service.register_user("alice", "password123")
 
     assert [user.username for user in auth_service.list_users()] == ["alice", "zoe"]
+
+
+def test_create_invite_code_and_list_returns_deterministic_order() -> None:
+    auth_service.create_invite_code(created_by="admin-1", code="z-code")
+    auth_service.create_invite_code(created_by="admin-1", code="a-code", role="admin")
+
+    invites = auth_service.list_invite_codes()
+
+    assert [invite.code for invite in invites] == ["a-code", "z-code"]
+    assert invites[0].role == "admin"
+
+
+def test_create_invite_code_rejects_duplicate_code() -> None:
+    auth_service.create_invite_code(created_by="admin-1", code="invite-1")
+
+    with pytest.raises(InviteCodeAlreadyExistsError):
+        auth_service.create_invite_code(created_by="admin-2", code="invite-1")
+
+
+def test_register_user_with_valid_invite_applies_role_and_consumes_invite() -> None:
+    invite = auth_service.create_invite_code(
+        created_by="admin-1",
+        code="invite-admin",
+        role="admin",
+    )
+
+    user = auth_service.register_user(
+        "alice",
+        "password123",
+        invite_code=invite.code,
+    )
+    consumed_invite = auth_service.get_invite_code(invite.code)
+
+    assert user.role == "admin"
+    assert consumed_invite is not None
+    assert consumed_invite.used_by == user.id
+    assert consumed_invite.used_at is not None
+
+
+def test_register_user_rejects_invalid_expired_and_used_invite_codes() -> None:
+    expired_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+    expired_invite = auth_service.create_invite_code(
+        created_by="admin-1",
+        code="expired",
+        expires_at=expired_at,
+    )
+    used_invite = auth_service.create_invite_code(
+        created_by="admin-1",
+        code="used",
+    )
+    auth_service.consume_invite_code(used_invite.code, used_by="existing-user")
+
+    with pytest.raises(InviteCodeUnavailableError):
+        auth_service.register_user("missing", "password123", invite_code="missing")
+
+    with pytest.raises(InviteCodeUnavailableError):
+        auth_service.register_user("expired-user", "password123", invite_code=expired_invite.code)
+
+    with pytest.raises(InviteCodeUnavailableError):
+        auth_service.register_user("used-user", "password123", invite_code=used_invite.code)
+
+
+def test_duplicate_username_does_not_consume_invite() -> None:
+    invite = auth_service.create_invite_code(created_by="admin-1", code="member-invite")
+    auth_service.register_user("alice", "password123")
+
+    with pytest.raises(UserAlreadyExistsError):
+        auth_service.register_user("alice", "new-password", invite_code=invite.code)
+
+    available_invite = auth_service.get_invite_code(invite.code)
+    assert available_invite is not None
+    assert available_invite.used_by is None
+    assert available_invite.used_at is None
 
 
 def test_update_user_updates_selected_fields() -> None:

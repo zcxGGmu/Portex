@@ -1444,7 +1444,7 @@ async def update_user(
     pass
 ```
 
-- [ ] **M4.1.3** 实现邀请码系统
+- [x] **M4.1.3** 实现邀请码系统
 
 ```python
 # domain/models/invite_code.py

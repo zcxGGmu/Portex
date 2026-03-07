@@ -83,6 +83,12 @@ def _decode_access_token(*, token: str, secret_key: str, algorithm: str) -> str 
     return subject if isinstance(subject, str) else None
 
 
+def _to_utc_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def create_access_token(
     data: dict[str, Any],
     expires_delta: timedelta | None = None,
@@ -128,12 +134,31 @@ class _UserRecord:
     password_hash: str
 
 
+@dataclass(frozen=True, slots=True)
+class AuthInviteCode:
+    code: str
+    created_by: str
+    role: str
+    permission_template: str | None = None
+    expires_at: datetime | None = None
+    used_by: str | None = None
+    used_at: datetime | None = None
+
+
 class UserAlreadyExistsError(Exception):
     """Raised when trying to register an existing username."""
 
 
 class UserNotFoundError(Exception):
     """Raised when an operation targets a missing user."""
+
+
+class InviteCodeAlreadyExistsError(Exception):
+    """Raised when trying to create a duplicate invite code."""
+
+
+class InviteCodeUnavailableError(Exception):
+    """Raised when an invite code is missing, expired, or already used."""
 
 
 class AuthService:
@@ -151,6 +176,7 @@ class AuthService:
         self._access_token_expires_delta = timedelta(hours=access_token_expire_hours)
         self._users_by_username: dict[str, _UserRecord] = {}
         self._users_by_id: dict[str, AuthUser] = {}
+        self._invite_codes_by_code: dict[str, AuthInviteCode] = {}
 
     def register_user(
         self,
@@ -158,14 +184,19 @@ class AuthService:
         password: str,
         *,
         role: str = "member",
+        invite_code: str | None = None,
     ) -> AuthUser:
         if username in self._users_by_username:
             raise UserAlreadyExistsError(username)
 
+        effective_role = role
+        if invite_code is not None:
+            effective_role = self._get_available_invite(invite_code).role
+
         user = AuthUser(
             id=uuid4().hex,
             username=username,
-            role=role,
+            role=effective_role,
             status="active",
             avatar_emoji=None,
             avatar_color=None,
@@ -179,10 +210,50 @@ class AuthService:
         record = _UserRecord(user=user, password_hash=hash_password(password))
         self._users_by_username[username] = record
         self._users_by_id[user.id] = user
+        if invite_code is not None:
+            self.consume_invite_code(invite_code, used_by=user.id)
         return user
 
     def list_users(self) -> list[AuthUser]:
         return sorted(self._users_by_id.values(), key=lambda user: user.username)
+
+    def create_invite_code(
+        self,
+        *,
+        created_by: str,
+        role: str = "member",
+        permission_template: str | None = None,
+        expires_at: datetime | None = None,
+        code: str | None = None,
+    ) -> AuthInviteCode:
+        invite_code = code or uuid4().hex[:12]
+        if invite_code in self._invite_codes_by_code:
+            raise InviteCodeAlreadyExistsError(invite_code)
+
+        invite = AuthInviteCode(
+            code=invite_code,
+            created_by=created_by,
+            role=role,
+            permission_template=permission_template,
+            expires_at=expires_at,
+            used_by=None,
+            used_at=None,
+        )
+        self._invite_codes_by_code[invite_code] = invite
+        return invite
+
+    def list_invite_codes(self) -> list[AuthInviteCode]:
+        return sorted(self._invite_codes_by_code.values(), key=lambda invite: invite.code)
+
+    def get_invite_code(self, code: str) -> AuthInviteCode | None:
+        return self._invite_codes_by_code.get(code)
+
+    def consume_invite_code(self, code: str, *, used_by: str) -> AuthInviteCode:
+        invite = self._get_available_invite(code)
+        used_at = datetime.now(timezone.utc)
+        updated_invite = replace(invite, used_by=used_by, used_at=used_at)
+        self._invite_codes_by_code[code] = updated_invite
+        return updated_invite
 
     def update_user(
         self,
@@ -242,9 +313,22 @@ class AuthService:
     def get_user_by_id(self, user_id: str) -> AuthUser | None:
         return self._users_by_id.get(user_id)
 
+    def _get_available_invite(self, code: str) -> AuthInviteCode:
+        invite = self._invite_codes_by_code.get(code)
+        if invite is None:
+            raise InviteCodeUnavailableError(code)
+        if invite.used_by is not None or invite.used_at is not None:
+            raise InviteCodeUnavailableError(code)
+        if invite.expires_at is not None:
+            expires_at = _to_utc_datetime(invite.expires_at)
+            if expires_at < datetime.now(timezone.utc):
+                raise InviteCodeUnavailableError(code)
+        return invite
+
     def reset(self) -> None:
         self._users_by_username.clear()
         self._users_by_id.clear()
+        self._invite_codes_by_code.clear()
 
 
 auth_service = AuthService(secret_key=DEFAULT_AUTH_SECRET)
@@ -252,7 +336,10 @@ auth_service = AuthService(secret_key=DEFAULT_AUTH_SECRET)
 
 __all__ = [
     "AuthUser",
+    "AuthInviteCode",
     "AuthService",
+    "InviteCodeAlreadyExistsError",
+    "InviteCodeUnavailableError",
     "UserAlreadyExistsError",
     "UserNotFoundError",
     "auth_service",

@@ -5,11 +5,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from domain.models import Base, Message, RegisteredGroup, ScheduledTask, Session, User  # noqa: E402
+from domain.models import Base, InviteCode, Message, RegisteredGroup, ScheduledTask, Session, User  # noqa: E402
 
 
 def test_model_table_names() -> None:
     assert User.__tablename__ == "users"
+    assert InviteCode.__tablename__ == "invite_codes"
     assert Message.__tablename__ == "messages"
     assert Session.__tablename__ == "sessions"
     assert RegisteredGroup.__tablename__ == "registered_groups"
@@ -18,6 +19,7 @@ def test_model_table_names() -> None:
 
 def test_model_key_fields_exist() -> None:
     user_columns = User.__table__.columns.keys()
+    invite_columns = InviteCode.__table__.columns.keys()
     message_columns = Message.__table__.columns.keys()
     session_columns = Session.__table__.columns.keys()
 
@@ -30,6 +32,9 @@ def test_model_key_fields_exist() -> None:
     assert "last_login_at" in user_columns
     assert "disable_reason" in user_columns
     assert "notes" in user_columns
+    assert "role" in invite_columns
+    assert "permission_template" in invite_columns
+    assert "used_at" in invite_columns
     assert "attachments" in message_columns
     assert "group_folder" in session_columns
 
@@ -48,10 +53,27 @@ def test_user_model_extended_account_columns_have_expected_defaults() -> None:
     assert last_login_at.nullable is True
 
 
+def test_invite_code_model_fields_have_expected_defaults() -> None:
+    role = InviteCode.__table__.c.role
+    permission_template = InviteCode.__table__.c.permission_template
+    expires_at = InviteCode.__table__.c.expires_at
+    used_by = InviteCode.__table__.c.used_by
+    used_at = InviteCode.__table__.c.used_at
+
+    assert role.nullable is False
+    assert role.default is not None
+    assert role.default.arg == "member"
+    assert permission_template.nullable is True
+    assert expires_at.nullable is True
+    assert used_by.nullable is True
+    assert used_at.nullable is True
+
+
 def test_shared_metadata_contains_all_tables() -> None:
     table_names = set(Base.metadata.tables.keys())
     expected = {
         "users",
+        "invite_codes",
         "messages",
         "sessions",
         "registered_groups",
@@ -60,6 +82,7 @@ def test_shared_metadata_contains_all_tables() -> None:
 
     assert expected.issubset(table_names)
     assert User.metadata is Base.metadata
+    assert InviteCode.metadata is Base.metadata
     assert Message.metadata is Base.metadata
     assert Session.metadata is Base.metadata
     assert RegisteredGroup.metadata is Base.metadata

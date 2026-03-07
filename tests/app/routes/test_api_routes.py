@@ -239,3 +239,201 @@ def test_admin_update_missing_user_returns_404(api_client: TestClient) -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_admin_invite_routes_require_authentication(api_client: TestClient) -> None:
+    list_response = api_client.get("/admin/invites")
+    create_response = api_client.post("/admin/invites", json={})
+
+    assert list_response.status_code == 401
+    assert create_response.status_code == 401
+
+
+def test_non_admin_cannot_manage_invites(api_client: TestClient) -> None:
+    api_client.post("/auth/register", json={"username": "member", "password": "secret"})
+    member_headers = _login_headers(api_client, "member", "secret")
+
+    list_response = api_client.get("/admin/invites", headers=member_headers)
+    create_response = api_client.post(
+        "/admin/invites",
+        json={"role": "admin"},
+        headers=member_headers,
+    )
+
+    assert list_response.status_code == 403
+    assert create_response.status_code == 403
+
+
+def test_admin_can_create_and_list_invites(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    create_response = api_client.post(
+        "/admin/invites",
+        json={"role": "admin", "permission_template": "owner-lite"},
+        headers=admin_headers,
+    )
+
+    assert create_response.status_code == 200
+    created_payload = create_response.json()
+    assert created_payload["code"]
+    assert created_payload["role"] == "admin"
+    assert created_payload["permission_template"] == "owner-lite"
+    assert created_payload["used_by"] is None
+    assert created_payload["used_at"] is None
+
+    list_response = api_client.get("/admin/invites", headers=admin_headers)
+
+    assert list_response.status_code == 200
+    list_payload = list_response.json()
+    assert len(list_payload["invites"]) == 1
+    assert list_payload["invites"][0]["code"] == created_payload["code"]
+
+
+def test_register_accepts_valid_invite_and_applies_invite_role(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    invite_response = api_client.post(
+        "/admin/invites",
+        json={"role": "admin"},
+        headers=admin_headers,
+    )
+    invite_code = invite_response.json()["code"]
+
+    register_response = api_client.post(
+        "/auth/register",
+        json={
+            "username": "invited-user",
+            "password": "secret",
+            "invite_code": invite_code,
+        },
+    )
+
+    assert register_response.status_code == 200
+
+    login_headers = _login_headers(api_client, "invited-user", "secret")
+    me_response = api_client.get("/users/me", headers=login_headers)
+
+    assert me_response.status_code == 200
+    assert me_response.json()["role"] == "admin"
+
+    list_response = api_client.get("/admin/invites", headers=admin_headers)
+    invite_payload = list_response.json()["invites"][0]
+    assert invite_payload["used_by"] == register_response.json()["user_id"]
+    assert invite_payload["used_at"] is not None
+
+
+def test_register_rejects_invalid_invite_code(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    api_client.post(
+        "/admin/invites",
+        json={"role": "member"},
+        headers=admin_headers,
+    )
+
+    register_response = api_client.post(
+        "/auth/register",
+        json={
+            "username": "bad-invite-user",
+            "password": "secret",
+            "invite_code": "missing-code",
+        },
+    )
+
+    assert register_response.status_code == 400
+
+
+def test_register_rejects_expired_and_used_invite_codes(api_client: TestClient) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    expired_response = api_client.post(
+        "/admin/invites",
+        json={
+            "code": "expired-code",
+            "role": "member",
+            "expires_at": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(),
+        },
+        headers=admin_headers,
+    )
+    used_response = api_client.post(
+        "/admin/invites",
+        json={"code": "used-code", "role": "member"},
+        headers=admin_headers,
+    )
+    assert expired_response.status_code == 200
+    assert used_response.status_code == 200
+
+    first_register = api_client.post(
+        "/auth/register",
+        json={
+            "username": "first-used-user",
+            "password": "secret",
+            "invite_code": "used-code",
+        },
+    )
+    assert first_register.status_code == 200
+
+    expired_register = api_client.post(
+        "/auth/register",
+        json={
+            "username": "expired-user",
+            "password": "secret",
+            "invite_code": "expired-code",
+        },
+    )
+    used_register = api_client.post(
+        "/auth/register",
+        json={
+            "username": "second-used-user",
+            "password": "secret",
+            "invite_code": "used-code",
+        },
+    )
+
+    assert expired_register.status_code == 400
+    assert used_register.status_code == 400
+
+
+def test_duplicate_username_does_not_consume_invite_code(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    create_response = api_client.post(
+        "/admin/invites",
+        json={"code": "reusable-check", "role": "member"},
+        headers=admin_headers,
+    )
+    assert create_response.status_code == 200
+
+    register_response = api_client.post(
+        "/auth/register",
+        json={"username": "plain-user", "password": "secret"},
+    )
+    assert register_response.status_code == 200
+
+    duplicate_response = api_client.post(
+        "/auth/register",
+        json={
+            "username": "plain-user",
+            "password": "new-secret",
+            "invite_code": "reusable-check",
+        },
+    )
+    assert duplicate_response.status_code == 409
+
+    list_response = api_client.get("/admin/invites", headers=admin_headers)
+    invite_payload = list_response.json()["invites"][0]
+    assert invite_payload["used_by"] is None
+    assert invite_payload["used_at"] is None

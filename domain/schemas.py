@@ -13,6 +13,7 @@ class HealthResponse(BaseModel):
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=1)
     password: str = Field(min_length=1)
+    invite_code: str | None = None
 
 
 class RegisterResponse(BaseModel):
@@ -62,6 +63,29 @@ class UpdateUserRequest(BaseModel):
     notes: str | None = None
 
 
+class CreateInviteCodeRequest(BaseModel):
+    code: str | None = Field(default=None, min_length=1)
+    role: str = Field(default="member", min_length=1)
+    permission_template: str | None = None
+    expires_at: datetime | None = None
+
+
+class InviteCodeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    code: str
+    created_by: str
+    role: str
+    permission_template: str | None = None
+    expires_at: datetime | None = None
+    used_by: str | None = None
+    used_at: datetime | None = None
+
+
+class InviteCodeListResponse(BaseModel):
+    invites: list[InviteCodeResponse]
+
+
 class GroupSummaryResponse(BaseModel):
     group_id: str
     name: str
@@ -85,6 +109,9 @@ __all__ = [
     "GroupListResponse",
     "GroupSummaryResponse",
     "HealthResponse",
+    "CreateInviteCodeRequest",
+    "InviteCodeListResponse",
+    "InviteCodeResponse",
     "LoginRequest",
     "RegisterRequest",
     "RegisterResponse",

@@ -4,15 +4,32 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.middleware.auth import get_current_user, require_role
-from domain.schemas import UpdateUserRequest, UserListResponse, UserResponse
+from domain.schemas import (
+    CreateInviteCodeRequest,
+    InviteCodeListResponse,
+    InviteCodeResponse,
+    UpdateUserRequest,
+    UserListResponse,
+    UserResponse,
+)
 from infra.db.database import get_db
-from services.auth import AuthUser, UserNotFoundError, auth_service
+from services.auth import (
+    AuthInviteCode,
+    AuthUser,
+    InviteCodeAlreadyExistsError,
+    UserNotFoundError,
+    auth_service,
+)
 
 router = APIRouter(tags=["users"])
 
 
 def _to_user_response(user: AuthUser) -> UserResponse:
     return UserResponse.model_validate(user, from_attributes=True)
+
+
+def _to_invite_response(invite: AuthInviteCode) -> InviteCodeResponse:
+    return InviteCodeResponse.model_validate(invite, from_attributes=True)
 
 
 @router.get("/users/me", response_model=UserResponse)
@@ -50,6 +67,41 @@ async def update_user(
             detail="user not found",
         ) from exc
     return _to_user_response(updated_user)
+
+
+@router.get("/admin/invites", response_model=InviteCodeListResponse, tags=["admin"])
+async def list_invite_codes(
+    current_user: AuthUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> InviteCodeListResponse:
+    _ = current_user
+    _ = db  # Reserved for future DB-backed invite listing.
+    return InviteCodeListResponse(
+        invites=[_to_invite_response(invite) for invite in auth_service.list_invite_codes()]
+    )
+
+
+@router.post("/admin/invites", response_model=InviteCodeResponse, tags=["admin"])
+async def create_invite_code(
+    request: CreateInviteCodeRequest,
+    current_user: AuthUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> InviteCodeResponse:
+    _ = db  # Reserved for future DB-backed invite creation.
+    try:
+        invite = auth_service.create_invite_code(
+            created_by=current_user.id,
+            role=request.role,
+            permission_template=request.permission_template,
+            expires_at=request.expires_at,
+            code=request.code,
+        )
+    except InviteCodeAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="invite code already exists",
+        ) from exc
+    return _to_invite_response(invite)
 
 
 __all__ = ["router"]

@@ -10,7 +10,7 @@ from domain.schemas import (
     RegisterResponse,
     TokenResponse,
 )
-from services.auth import UserAlreadyExistsError, auth_service
+from services.auth import InviteCodeUnavailableError, UserAlreadyExistsError, auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -27,11 +27,17 @@ async def register(request: RegisterRequest) -> RegisterResponse:
         user = auth_service.register_user(
             username=request.username,
             password=request.password,
+            invite_code=request.invite_code,
         )
     except UserAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="username already exists",
+        ) from exc
+    except InviteCodeUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invite code is invalid, expired, or already used",
         ) from exc
 
     return RegisterResponse(user_id=_user_attr(user, "id"))
