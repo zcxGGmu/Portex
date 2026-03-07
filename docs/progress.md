@@ -55,8 +55,8 @@
 
 ## 3. 最新验证证据
 
-- M4.1.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_auth_service.py tests/app/routes/test_api_routes.py -q` -> `32 passed, 1 warning in 3.50s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `138 passed, 1 warning in 4.76s`
+- M4.1.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_auth_service.py tests/app/routes/test_api_routes.py -q` -> `37 passed, 1 warning in 4.48s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `143 passed, 1 warning in 4.41s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
