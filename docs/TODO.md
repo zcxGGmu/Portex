@@ -1423,7 +1423,7 @@ class User(Base):
     notes = Column(Text)
 ```
 
-- [ ] **M4.1.2** 实现用户管理 API
+- [x] **M4.1.2** 实现用户管理 API
 
 ```python
 # app/routes/users.py

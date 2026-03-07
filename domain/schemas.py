@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HealthResponse(BaseModel):
@@ -30,6 +30,8 @@ class TokenResponse(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     username: str
     role: str
@@ -40,6 +42,22 @@ class UserResponse(BaseModel):
     ai_avatar_emoji: str | None = None
     must_change_password: bool = False
     last_login_at: datetime | None = None
+    disable_reason: str | None = None
+    notes: str | None = None
+
+
+class UserListResponse(BaseModel):
+    users: list[UserResponse]
+
+
+class UpdateUserRequest(BaseModel):
+    role: str | None = Field(default=None, min_length=1)
+    status: str | None = Field(default=None, min_length=1)
+    avatar_emoji: str | None = None
+    avatar_color: str | None = None
+    ai_name: str | None = None
+    ai_avatar_emoji: str | None = None
+    must_change_password: bool | None = None
     disable_reason: str | None = None
     notes: str | None = None
 
@@ -73,5 +91,7 @@ __all__ = [
     "SendMessageRequest",
     "SendMessageResponse",
     "TokenResponse",
+    "UpdateUserRequest",
+    "UserListResponse",
     "UserResponse",
 ]

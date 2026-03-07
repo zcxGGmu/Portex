@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import os
 from typing import Any
@@ -132,6 +132,10 @@ class UserAlreadyExistsError(Exception):
     """Raised when trying to register an existing username."""
 
 
+class UserNotFoundError(Exception):
+    """Raised when an operation targets a missing user."""
+
+
 class AuthService:
     """Minimal auth service for registration, login and token handling."""
 
@@ -148,14 +152,20 @@ class AuthService:
         self._users_by_username: dict[str, _UserRecord] = {}
         self._users_by_id: dict[str, AuthUser] = {}
 
-    def register_user(self, username: str, password: str) -> AuthUser:
+    def register_user(
+        self,
+        username: str,
+        password: str,
+        *,
+        role: str = "member",
+    ) -> AuthUser:
         if username in self._users_by_username:
             raise UserAlreadyExistsError(username)
 
         user = AuthUser(
             id=uuid4().hex,
             username=username,
-            role="member",
+            role=role,
             status="active",
             avatar_emoji=None,
             avatar_color=None,
@@ -170,6 +180,40 @@ class AuthService:
         self._users_by_username[username] = record
         self._users_by_id[user.id] = user
         return user
+
+    def list_users(self) -> list[AuthUser]:
+        return sorted(self._users_by_id.values(), key=lambda user: user.username)
+
+    def update_user(
+        self,
+        user_id: str,
+        **changes: str | bool | None,
+    ) -> AuthUser:
+        current_user = self._users_by_id.get(user_id)
+        if current_user is None:
+            raise UserNotFoundError(user_id)
+
+        allowed_fields = {
+            "role",
+            "status",
+            "avatar_emoji",
+            "avatar_color",
+            "ai_name",
+            "ai_avatar_emoji",
+            "must_change_password",
+            "disable_reason",
+            "notes",
+        }
+        updated_fields = {
+            field_name: field_value
+            for field_name, field_value in changes.items()
+            if field_name in allowed_fields
+        }
+        updated_user = replace(current_user, **updated_fields)
+        record = self._users_by_username[updated_user.username]
+        record.user = updated_user
+        self._users_by_id[user_id] = updated_user
+        return updated_user
 
     def authenticate_user(self, username: str, password: str) -> AuthUser | None:
         record = self._users_by_username.get(username)
@@ -210,6 +254,7 @@ __all__ = [
     "AuthUser",
     "AuthService",
     "UserAlreadyExistsError",
+    "UserNotFoundError",
     "auth_service",
     "create_access_token",
     "decode_access_token",

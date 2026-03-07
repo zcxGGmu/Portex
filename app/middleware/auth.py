@@ -39,4 +39,18 @@ async def get_current_user(
     return user
 
 
-__all__ = ["get_current_user", "security"]
+def require_role(role: str):
+    async def dependency(
+        current_user: AuthUser = Depends(get_current_user),
+    ) -> AuthUser:
+        if current_user.role != role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="permission denied",
+            )
+        return current_user
+
+    return dependency
+
+
+__all__ = ["get_current_user", "require_role", "security"]

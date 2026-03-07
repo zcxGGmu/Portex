@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.middleware.auth import get_current_user  # noqa: E402
+from app.middleware.auth import get_current_user, require_role  # noqa: E402
 from services.auth import auth_service  # noqa: E402
 
 
@@ -53,3 +53,25 @@ async def test_get_current_user_raises_401_for_invalid_token() -> None:
         await get_current_user(credentials=credentials, db=None)
 
     assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_require_role_returns_user_for_allowed_role() -> None:
+    admin_user = auth_service.register_user("admin", "password123", role="admin")
+
+    dependency = require_role("admin")
+    resolved_user = await dependency(current_user=admin_user)
+
+    assert resolved_user == admin_user
+
+
+@pytest.mark.asyncio
+async def test_require_role_raises_403_for_disallowed_role() -> None:
+    member_user = auth_service.register_user("member", "password123")
+
+    dependency = require_role("admin")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(current_user=member_user)
+
+    assert exc_info.value.status_code == 403

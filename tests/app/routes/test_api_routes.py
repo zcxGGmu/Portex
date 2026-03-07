@@ -23,6 +23,16 @@ def api_client() -> Iterator[TestClient]:
     auth_service.reset()
 
 
+def _login_headers(api_client: TestClient, username: str, password: str) -> dict[str, str]:
+    login_response = api_client.post(
+        "/auth/login",
+        json={"username": username, "password": password},
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_health_check_endpoint(api_client: TestClient) -> None:
     response = api_client.get("/health")
 
@@ -138,3 +148,94 @@ def test_login_failure_returns_401(api_client: TestClient) -> None:
         json={"username": "dora", "password": "wrong-password"},
     )
     assert failed_login.status_code == 401
+
+
+def test_admin_user_routes_require_authentication(api_client: TestClient) -> None:
+    list_response = api_client.get("/admin/users")
+    patch_response = api_client.patch("/admin/users/missing-user", json={"role": "admin"})
+
+    assert list_response.status_code == 401
+    assert patch_response.status_code == 401
+
+
+def test_non_admin_cannot_manage_users(api_client: TestClient) -> None:
+    api_client.post("/auth/register", json={"username": "member", "password": "secret"})
+    member_headers = _login_headers(api_client, "member", "secret")
+
+    list_response = api_client.get("/admin/users", headers=member_headers)
+    patch_response = api_client.patch(
+        "/admin/users/member-id",
+        json={"role": "admin"},
+        headers=member_headers,
+    )
+
+    assert list_response.status_code == 403
+    assert patch_response.status_code == 403
+
+
+def test_admin_can_list_users(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    admin_user = auth_service.register_user("admin", "secret", role="admin")
+    member_user = auth_service.register_user("member", "secret")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.get("/admin/users", headers=admin_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [user["username"] for user in payload["users"]] == ["admin", "member"]
+    assert payload["users"][0]["id"] == admin_user.id
+    assert payload["users"][1]["id"] == member_user.id
+
+
+def test_admin_can_update_user(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    target_user = auth_service.register_user("member", "secret")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.patch(
+        f"/admin/users/{target_user.id}",
+        json={
+            "role": "admin",
+            "status": "disabled",
+            "avatar_emoji": "🤖",
+            "avatar_color": "#00AAFF",
+            "ai_name": "Portex",
+            "ai_avatar_emoji": "🧠",
+            "must_change_password": True,
+            "disable_reason": "manual-review",
+            "notes": "promoted by admin",
+        },
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == target_user.id
+    assert payload["role"] == "admin"
+    assert payload["status"] == "disabled"
+    assert payload["avatar_emoji"] == "🤖"
+    assert payload["avatar_color"] == "#00AAFF"
+    assert payload["ai_name"] == "Portex"
+    assert payload["ai_avatar_emoji"] == "🧠"
+    assert payload["must_change_password"] is True
+    assert payload["disable_reason"] == "manual-review"
+    assert payload["notes"] == "promoted by admin"
+
+
+def test_admin_update_missing_user_returns_404(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.patch(
+        "/admin/users/missing-user-id",
+        json={"status": "disabled"},
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 404

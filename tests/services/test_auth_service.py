@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from services.auth import UserAlreadyExistsError, auth_service  # noqa: E402
+from services.auth import UserAlreadyExistsError, UserNotFoundError, auth_service  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +35,52 @@ def test_register_user_success_and_get_user_by_id() -> None:
     assert user.disable_reason is None
     assert user.notes is None
     assert auth_service.get_user_by_id(user.id) == user
+
+
+def test_register_user_accepts_explicit_role() -> None:
+    admin_user = auth_service.register_user("admin", "password123", role="admin")
+
+    assert admin_user.role == "admin"
+
+
+def test_list_users_returns_deterministic_username_order() -> None:
+    auth_service.register_user("zoe", "password123")
+    auth_service.register_user("alice", "password123")
+
+    assert [user.username for user in auth_service.list_users()] == ["alice", "zoe"]
+
+
+def test_update_user_updates_selected_fields() -> None:
+    user = auth_service.register_user("alice", "password123")
+
+    updated_user = auth_service.update_user(
+        user.id,
+        role="admin",
+        status="disabled",
+        avatar_emoji="🤖",
+        avatar_color="#00AAFF",
+        ai_name="Portex",
+        ai_avatar_emoji="🧠",
+        must_change_password=True,
+        disable_reason="manual-review",
+        notes="promoted by admin",
+    )
+
+    assert updated_user.role == "admin"
+    assert updated_user.status == "disabled"
+    assert updated_user.avatar_emoji == "🤖"
+    assert updated_user.avatar_color == "#00AAFF"
+    assert updated_user.ai_name == "Portex"
+    assert updated_user.ai_avatar_emoji == "🧠"
+    assert updated_user.must_change_password is True
+    assert updated_user.disable_reason == "manual-review"
+    assert updated_user.notes == "promoted by admin"
+    assert auth_service.get_user_by_id(user.id) == updated_user
+
+
+def test_update_user_raises_for_missing_user() -> None:
+    with pytest.raises(UserNotFoundError):
+        auth_service.update_user("missing-user-id", role="admin")
 
 
 def test_register_user_duplicate_raises() -> None:
