@@ -22,8 +22,30 @@ def test_model_key_fields_exist() -> None:
     session_columns = Session.__table__.columns.keys()
 
     assert "username" in user_columns
+    assert "avatar_emoji" in user_columns
+    assert "avatar_color" in user_columns
+    assert "ai_name" in user_columns
+    assert "ai_avatar_emoji" in user_columns
+    assert "must_change_password" in user_columns
+    assert "last_login_at" in user_columns
+    assert "disable_reason" in user_columns
+    assert "notes" in user_columns
     assert "attachments" in message_columns
     assert "group_folder" in session_columns
+
+
+def test_user_model_extended_account_columns_have_expected_defaults() -> None:
+    must_change_password = User.__table__.c.must_change_password
+    disable_reason = User.__table__.c.disable_reason
+    notes = User.__table__.c.notes
+    last_login_at = User.__table__.c.last_login_at
+
+    assert must_change_password.nullable is False
+    assert must_change_password.default is not None
+    assert must_change_password.default.arg is False
+    assert disable_reason.nullable is True
+    assert notes.nullable is True
+    assert last_login_at.nullable is True
 
 
 def test_shared_metadata_contains_all_tables() -> None:

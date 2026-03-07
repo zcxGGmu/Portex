@@ -112,6 +112,14 @@ class AuthUser:
     username: str
     role: str
     status: str
+    avatar_emoji: str | None = None
+    avatar_color: str | None = None
+    ai_name: str | None = None
+    ai_avatar_emoji: str | None = None
+    must_change_password: bool = False
+    last_login_at: datetime | None = None
+    disable_reason: str | None = None
+    notes: str | None = None
 
 
 @dataclass(slots=True)
@@ -149,6 +157,14 @@ class AuthService:
             username=username,
             role="member",
             status="active",
+            avatar_emoji=None,
+            avatar_color=None,
+            ai_name=None,
+            ai_avatar_emoji=None,
+            must_change_password=False,
+            last_login_at=None,
+            disable_reason=None,
+            notes=None,
         )
         record = _UserRecord(user=user, password_hash=hash_password(password))
         self._users_by_username[username] = record

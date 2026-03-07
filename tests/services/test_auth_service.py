@@ -26,6 +26,14 @@ def test_register_user_success_and_get_user_by_id() -> None:
     assert user.username == "alice"
     assert user.role == "member"
     assert user.status == "active"
+    assert user.avatar_emoji is None
+    assert user.avatar_color is None
+    assert user.ai_name is None
+    assert user.ai_avatar_emoji is None
+    assert user.must_change_password is False
+    assert user.last_login_at is None
+    assert user.disable_reason is None
+    assert user.notes is None
     assert auth_service.get_user_by_id(user.id) == user
 
 

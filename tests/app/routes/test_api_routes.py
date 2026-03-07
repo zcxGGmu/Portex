@@ -72,6 +72,14 @@ def test_register_login_and_get_current_user_flow(api_client: TestClient) -> Non
     assert me_payload["username"] == "alice"
     assert me_payload["role"] == "member"
     assert me_payload["status"] == "active"
+    assert me_payload["avatar_emoji"] is None
+    assert me_payload["avatar_color"] is None
+    assert me_payload["ai_name"] is None
+    assert me_payload["ai_avatar_emoji"] is None
+    assert me_payload["must_change_password"] is False
+    assert me_payload["last_login_at"] is None
+    assert me_payload["disable_reason"] is None
+    assert me_payload["notes"] is None
 
 
 def test_groups_and_messages_require_authentication(api_client: TestClient) -> None:

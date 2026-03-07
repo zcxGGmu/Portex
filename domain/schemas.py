@@ -1,5 +1,7 @@
 """Domain request and response schemas for API routes."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -32,6 +34,14 @@ class UserResponse(BaseModel):
     username: str
     role: str
     status: str
+    avatar_emoji: str | None = None
+    avatar_color: str | None = None
+    ai_name: str | None = None
+    ai_avatar_emoji: str | None = None
+    must_change_password: bool = False
+    last_login_at: datetime | None = None
+    disable_reason: str | None = None
+    notes: str | None = None
 
 
 class GroupSummaryResponse(BaseModel):

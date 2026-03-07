@@ -1407,7 +1407,7 @@ HOST_MODE_RESTRICTIONS = {
 
 ### M4.1: 完整用户系统 [Week 1, Day 1-3]
 
-- [ ] **M4.1.1** 扩展用户模型
+- [x] **M4.1.1** 扩展用户模型
 
 ```python
 # domain/models/user.py
