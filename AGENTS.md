@@ -3,7 +3,7 @@
 ## Mandatory Development Principles
 - On every Codex restart, read `docs/TODO.md` and `docs/progress.md` before any planning or code changes.
 - This project is a Python + OpenAI Agents SDK refactor of `https://github.com/riba2534/happyclaw.git`.
-- Local reference implementation path: `/home/zq/work-space/repo/ai-projs/agents/happyclaw`.
+- Local reference implementation path: `/home/zcxggmu/workspace/hello-projs/agents/happyclaw`.
 - Implement work strictly according to `docs/TODO.md`.
 - Record progress and handoff notes in `docs/progress.md`.
 - After completing each phase task, commit immediately with a detailed commit message.
@@ -11,17 +11,18 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-07)
+## Current Baseline Snapshot (2026-03-08)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
-- `M3` progress: `M3.1` ~ `M3.3` are complete.
-- Current starting point is `M3.4.1` (container startup).
+- `M3` is complete (`M3.1` ~ `M3.6`).
+- `M4.1` is complete (`M4.1.1` ~ `M4.1.3`).
+- Current starting point is `M4.2.1` (permission templates).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
 - Backend runtime lives in `app/`, `domain/`, `infra/`, and `services/`.
 - Core event contract PoC baseline remains in `portex/contracts/events.py` and `pocs/`.
 - Frontend app lives in `web/` (Vite + React + TypeScript).
-- Tests are split by concern (`tests/app/`, `tests/services/`, `tests/unit/`, `tests/pocs/`, `tests/portex/`).
+- Tests are split by concern (`tests/app/`, `tests/domain/`, `tests/services/`, `tests/unit/`, `tests/pocs/`, `tests/portex/`).
 - `docs/` stores planning/progress and is the handoff source of truth.
 
 ## Agent Startup Context
@@ -31,6 +32,7 @@
 - If resuming frontend work, also skim `web/src/App.tsx`, `web/src/stores/auth.ts`.
 - If resuming after `M2`, also skim `app/routes/websocket.py`, `web/src/components/chat/ChatPanel.tsx`, and `services/agent_trigger.py` because the current run/cancel flow is split across those files.
 - If resuming after `M3.3`, also skim `infra/exec/docker.py`, `infra/exec/security.py`, `container/agent-runner/src/runner.py`, and `container/agent-runner/src/types.py` because `M3.4` container lifecycle work builds directly on those files.
+- If resuming after `M4.1.3`, also skim `app/routes/auth.py`, `app/routes/users.py`, `services/auth.py`, `domain/models/invite_code.py`, and `domain/schemas.py` because `M4.2` RBAC work now builds directly on the current in-memory user + invite contracts.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -39,6 +41,7 @@
 - `.venv/bin/pytest tests/unit/ -v`: run M1 acceptance unit test command.
 - `.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q`: run current WS send/cancel acceptance-focused backend test.
 - `.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q`: run message + runtime pipeline feature tests.
+- `.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_auth_service.py tests/app/routes/test_api_routes.py -q`: run current user / auth / invite acceptance-focused backend tests.
 - `.venv/bin/pytest tests/container/agent_runner -q`: run current Agent Runner containerization tests.
 - `.venv/bin/pytest tests/infra/exec/test_docker.py tests/infra/exec/test_security.py -q`: run current container mount / execution safety tests.
 - `.venv/bin/ruff check .`: lint.

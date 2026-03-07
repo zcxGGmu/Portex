@@ -1,6 +1,6 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-07 (Asia/Shanghai)
+最后更新: 2026-03-08 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
 
@@ -50,6 +50,7 @@
   - `cb83fcc` `feat(user): complete M4.1.1 user model extension`
   - `bd50272` `feat(user): complete M4.1.2 admin user management api`
   - `e9ca2e1` `feat(user): complete M4.1.3 invite code system`
+  - `f7f20aa` `docs(progress): refresh M4.1.3 verification evidence`
 
 ---
 
