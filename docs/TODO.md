@@ -1689,7 +1689,7 @@ async def memory_search(ctx, query: str) -> str:
 
 ### M5.1: 飞书集成 [Week 1, Day 1-3]
 
-- [ ] **M5.1.1** 创建飞书客户端
+- [x] **M5.1.1** 创建飞书客户端
 
 ```python
 # infra/im/feishu.py
