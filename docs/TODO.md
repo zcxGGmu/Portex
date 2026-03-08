@@ -1707,7 +1707,7 @@ class FeishuClient:
         pass
 ```
 
-- [ ] **M5.1.2** 实现 WebSocket 事件接收
+- [x] **M5.1.2** 实现 WebSocket 事件接收
 
 ```python
 # infra/im/feishu.py

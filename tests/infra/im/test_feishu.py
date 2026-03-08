@@ -135,3 +135,118 @@ def test_decrypt_event_raises_without_encrypt_key() -> None:
 
     with pytest.raises(FeishuClientError, match="encrypt_key"):
         client.decrypt_event("anything")
+
+
+def test_handle_webhook_event_normalizes_plaintext_message_event() -> None:
+    from infra.im.feishu import FeishuClient, FeishuMessageEvent
+
+    client = FeishuClient(app_id="app-id", app_secret="app-secret")
+
+    result = client.handle_webhook_event(
+        {
+            "header": {"event_type": "im.message.receive_v1"},
+            "event": {
+                "sender": {"sender_id": {"open_id": "ou_sender"}},
+                "message": {
+                    "chat_id": "oc_chat",
+                    "message_id": "om_message",
+                    "message_type": "text",
+                    "content": json.dumps({"text": "hello feishu"}),
+                },
+            },
+        }
+    )
+
+    assert result == FeishuMessageEvent(
+        event_type="im.message.receive_v1",
+        chat_id="oc_chat",
+        message_id="om_message",
+        sender_id="ou_sender",
+        message_type="text",
+        text="hello feishu",
+        raw_event={
+            "sender": {"sender_id": {"open_id": "ou_sender"}},
+            "message": {
+                "chat_id": "oc_chat",
+                "message_id": "om_message",
+                "message_type": "text",
+                "content": json.dumps({"text": "hello feishu"}),
+            },
+        },
+    )
+
+
+def test_handle_webhook_event_normalizes_encrypted_message_event() -> None:
+    from infra.im.feishu import FeishuClient
+
+    encrypt_key = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"
+    payload = {
+        "header": {"event_type": "im.message.receive_v1"},
+        "event": {
+            "sender": {"sender_id": {"open_id": "ou_sender"}},
+            "message": {
+                "chat_id": "oc_chat",
+                "message_id": "om_message",
+                "message_type": "text",
+                "content": json.dumps({"text": "encrypted hello"}),
+            },
+        },
+    }
+    encrypted = _encrypt_event(
+        encrypt_key=encrypt_key,
+        payload=payload,
+        app_id="app-id",
+    )
+    client = FeishuClient(
+        app_id="app-id",
+        app_secret="app-secret",
+        encrypt_key=encrypt_key,
+    )
+
+    result = client.handle_webhook_event({"encrypt": encrypted})
+
+    assert result is not None
+    assert result.text == "encrypted hello"
+    assert result.chat_id == "oc_chat"
+
+
+def test_handle_webhook_event_returns_none_for_unsupported_event() -> None:
+    from infra.im.feishu import FeishuClient
+
+    client = FeishuClient(app_id="app-id", app_secret="app-secret")
+
+    assert (
+        client.handle_webhook_event(
+            {
+                "header": {"event_type": "contact.user.created"},
+                "event": {"user": {"open_id": "ou_user"}},
+            }
+        )
+        is None
+    )
+
+
+def test_handle_webhook_event_keeps_ids_when_text_content_is_not_plain_text() -> None:
+    from infra.im.feishu import FeishuClient
+
+    client = FeishuClient(app_id="app-id", app_secret="app-secret")
+
+    result = client.handle_webhook_event(
+        {
+            "type": "im.message.receive_v1",
+            "sender": {"sender_id": {"open_id": "ou_sender"}},
+            "message": {
+                "chat_id": "oc_chat",
+                "message_id": "om_message",
+                "message_type": "image",
+                "content": '{"image_key":"img_123"}',
+            },
+        }
+    )
+
+    assert result is not None
+    assert result.chat_id == "oc_chat"
+    assert result.message_id == "om_message"
+    assert result.sender_id == "ou_sender"
+    assert result.message_type == "image"
+    assert result.text is None
