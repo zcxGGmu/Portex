@@ -60,6 +60,7 @@
   - `435fb6c` `feat(auth): complete M4.2.2 permission dependency`
   - `6203fa7` `feat(groups): complete M4.2.3 group member management`
   - `35d550c` `fix(groups): block owner role transfer via member api`
+  - `90443f5` `feat(tasks): complete M4.3.1 scheduler core`
 
 ---
 
