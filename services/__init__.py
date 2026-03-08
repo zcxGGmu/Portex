@@ -5,6 +5,7 @@ __all__ = [
     "agent_trigger",
     "group_queue",
     "scheduler",
+    "task_service",
     "memory",
     "skills",
     "message_service",

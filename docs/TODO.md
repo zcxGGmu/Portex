@@ -1562,7 +1562,7 @@ class TaskScheduler:
                     task.status = "completed"
 ```
 
-- [ ] **M4.3.2** 实现任务 CRUD API
+- [x] **M4.3.2** 实现任务 CRUD API
 
 ```python
 # app/routes/tasks.py

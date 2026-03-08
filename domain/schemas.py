@@ -1,6 +1,7 @@
 """Domain request and response schemas for API routes."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -121,8 +122,40 @@ class SendMessageResponse(BaseModel):
     status: str
 
 
+class CreateTaskRequest(BaseModel):
+    group_folder: str = Field(min_length=1)
+    chat_jid: str = Field(min_length=1)
+    prompt: str = Field(min_length=1)
+    schedule_type: Literal["cron", "interval", "once"]
+    schedule_value: str | None = None
+    next_run: datetime | None = None
+
+
+class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    group_folder: str
+    chat_jid: str
+    prompt: str
+    schedule_type: str | None
+    schedule_value: str | None = None
+    next_run: datetime | None = None
+    status: str
+    created_at: datetime
+
+
+class TaskListResponse(BaseModel):
+    tasks: list[TaskResponse]
+
+
+class DeleteTaskResponse(BaseModel):
+    status: str
+
+
 __all__ = [
     "CreateGroupMemberRequest",
+    "DeleteTaskResponse",
     "GroupListResponse",
     "GroupMemberListResponse",
     "GroupMemberResponse",
@@ -136,6 +169,9 @@ __all__ = [
     "RegisterResponse",
     "SendMessageRequest",
     "SendMessageResponse",
+    "CreateTaskRequest",
+    "TaskListResponse",
+    "TaskResponse",
     "TokenResponse",
     "UpdateUserRequest",
     "UserListResponse",

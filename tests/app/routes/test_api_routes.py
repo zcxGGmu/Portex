@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 from typing import Iterator
@@ -18,12 +19,21 @@ def api_client() -> Iterator[TestClient]:
     from services.auth import auth_service
     from services.group_member_service import group_member_service
 
+    try:
+        from services.task_service import task_service
+    except ModuleNotFoundError:
+        task_service = None
+
     auth_service.reset()
     group_member_service.reset()
+    if task_service is not None:
+        task_service.reset()
     with TestClient(app) as client:
         yield client
     auth_service.reset()
     group_member_service.reset()
+    if task_service is not None:
+        task_service.reset()
 
 
 def _login_headers(api_client: TestClient, username: str, password: str) -> dict[str, str]:
@@ -324,6 +334,147 @@ def test_group_owner_cannot_remove_self(api_client: TestClient) -> None:
     )
 
     assert response.status_code == 400
+
+
+def test_task_routes_require_authentication(api_client: TestClient) -> None:
+    list_response = api_client.get("/tasks")
+    create_response = api_client.post(
+        "/tasks",
+        json={
+            "group_folder": "group-demo",
+            "chat_jid": "group-demo",
+            "prompt": "run once",
+            "schedule_type": "once",
+            "next_run": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    delete_response = api_client.delete("/tasks/task-missing")
+
+    assert list_response.status_code == 401
+    assert create_response.status_code == 401
+    assert delete_response.status_code == 401
+
+
+def test_admin_can_create_list_and_delete_tasks(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    next_run = datetime.now(timezone.utc) + timedelta(minutes=5)
+
+    create_response = api_client.post(
+        "/tasks",
+        json={
+            "group_folder": "group-demo",
+            "chat_jid": "group-demo",
+            "prompt": "send scheduled prompt",
+            "schedule_type": "once",
+            "next_run": next_run.isoformat(),
+        },
+        headers=admin_headers,
+    )
+
+    assert create_response.status_code == 200
+    created_payload = create_response.json()
+    assert created_payload["id"].startswith("task-")
+    assert created_payload["group_folder"] == "group-demo"
+    assert created_payload["chat_jid"] == "group-demo"
+    assert created_payload["prompt"] == "send scheduled prompt"
+    assert created_payload["schedule_type"] == "once"
+    assert created_payload["schedule_value"] is None
+    assert created_payload["status"] == "active"
+    assert created_payload["next_run"]
+    assert created_payload["created_at"]
+
+    list_response = api_client.get("/tasks", headers=admin_headers)
+
+    assert list_response.status_code == 200
+    list_payload = list_response.json()
+    assert [task["id"] for task in list_payload["tasks"]] == [created_payload["id"]]
+
+    delete_response = api_client.delete(
+        f"/tasks/{created_payload['id']}",
+        headers=admin_headers,
+    )
+
+    assert delete_response.status_code == 200
+    assert delete_response.json() == {"status": "removed"}
+
+    final_list_response = api_client.get("/tasks", headers=admin_headers)
+    assert final_list_response.status_code == 200
+    assert final_list_response.json() == {"tasks": []}
+
+
+def test_member_can_list_tasks_but_cannot_create_or_delete_tasks(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    auth_service.register_user("member", "secret")
+
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    member_headers = _login_headers(api_client, "member", "secret")
+    create_seed_response = api_client.post(
+        "/tasks",
+        json={
+            "group_folder": "group-demo",
+            "chat_jid": "group-demo",
+            "prompt": "scheduled task",
+            "schedule_type": "once",
+            "next_run": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        },
+        headers=admin_headers,
+    )
+
+    assert create_seed_response.status_code == 200
+    list_response = api_client.get("/tasks", headers=member_headers)
+    create_response = api_client.post(
+        "/tasks",
+        json={
+            "group_folder": "group-demo",
+            "chat_jid": "group-demo",
+            "prompt": "member task",
+            "schedule_type": "once",
+            "next_run": datetime.now(timezone.utc).isoformat(),
+        },
+        headers=member_headers,
+    )
+    delete_response = api_client.delete("/tasks/task-missing", headers=member_headers)
+
+    assert list_response.status_code == 200
+    assert len(list_response.json()["tasks"]) == 1
+    assert create_response.status_code == 403
+    assert delete_response.status_code == 403
+
+
+def test_task_route_rejects_invalid_schedule_payload(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.post(
+        "/tasks",
+        json={
+            "group_folder": "group-demo",
+            "chat_jid": "group-demo",
+            "prompt": "invalid once task",
+            "schedule_type": "once",
+        },
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 400
+
+
+def test_delete_missing_task_returns_404(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.delete("/tasks/task-missing", headers=admin_headers)
+
+    assert response.status_code == 404
 
 
 def test_register_duplicate_username_returns_409(api_client: TestClient) -> None:

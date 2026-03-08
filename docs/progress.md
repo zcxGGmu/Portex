@@ -29,15 +29,16 @@
 - `M4.2.2` 已完成（实现权限检查装饰器）。
 - `M4.2.3` 已完成（实现群组成员管理）。
 - `M4.3.1` 已完成（实现任务调度器）。
-- 当前起点：`M4.3.2`（实现任务 CRUD API）。
+- `M4.3.2` 已完成（实现任务 CRUD API）。
+- 当前起点：`M4.3.3`（实现任务执行日志）。
 
 ---
 
 ## 2. 最近完成
 
-- `M4.3.1`：用正式 `TaskScheduler` 替换 `services/scheduler.py` 占位实现，补齐 in-memory 任务注册、`run_pending()`、异步 `start()/stop()`、`cron/interval/once` 三类调度，以及运行中任务去重保护。
-- `M4.3.1`：保持 `ScheduledTask` 现有模型契约不变，继续以 `next_run` 作为最小到期触发字段；当前调度执行仍通过注入式 async executor 完成，尚未接入任务 API、真实执行链和执行日志。
-- `M4.3.1`：新增 `tests/services/test_scheduler.py`，覆盖 once/interval/cron 调度、inactive/future 跳过、执行失败保持调度状态、循环 stop 控制与重复触发保护。
+- `M4.3.2`：补齐 `domain/schemas.py` 任务 DTO、新增薄层 `services/task_service.py`，将当前 in-memory `TaskScheduler` 暴露为最小 create/list/delete 服务边界。
+- `M4.3.2`：实现并挂载 `/tasks` CRUD API：`POST /tasks`、`GET /tasks`、`DELETE /tasks/{task_id}`；继续沿用 `tasks` 资源权限模板，`owner/admin` 可写、`member` 只读。
+- `M4.3.2`：补齐任务服务与任务路由测试，覆盖 create/list/delete、鉴权、权限差异与非法调度载荷校验。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -67,8 +68,8 @@
 
 ## 3. 最新验证证据
 
-- M4.3.1 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_scheduler.py -q` -> `7 passed in 0.37s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `180 passed, 1 warning in 5.16s`
+- M4.3.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_api_routes.py -q` -> `50 passed, 1 warning in 5.69s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `192 passed, 1 warning in 7.42s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -85,7 +86,8 @@
 - `M4.2.3` 当前已建立正式 `GroupMember` 模型，但运行态成员真实来源仍是 in-memory `group_member_service`；后续若进入 DB-backed 群组/成员迁移，需要与用户/群组 source of truth 一并设计。
 - `M4.2.3` 当前的群内 `admin` 角色仅作为数据契约保留，不额外赋予成员管理权限；成员增删仍限定为 group owner。
 - `M4.2.3` 当前不支持通过成员管理接口进行 owner 角色转移或 owner 降级；若后续需要 owner transfer，需单独设计迁移规则与唯一 owner 约束。
-- `M4.3.1` 当前的 scheduler 仍是进程内 in-memory 运行态，只接受注入式 async executor；尚未接入 `/tasks` CRUD、DB 轮询恢复、执行日志或真实 `agent_trigger` 执行链。
+- `M4.3.2` 当前的任务运行态仍是进程内 in-memory：`/tasks` 只管理单例 `task_service` / `TaskScheduler` 中的注册表，尚未接入 DB 轮询恢复、执行日志或真实 `agent_trigger` 执行链。
+- `M4.3.2` 当前未把 scheduler `start()/stop()` 挂到 FastAPI 生命周期；现阶段完成的是任务 CRUD 与注册表装载/卸载边界，不是持续执行守护进程。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -94,11 +96,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`services/scheduler.py`、`app/routes/tasks.py`、`domain/models/task.py`、`domain/schemas.py`
-2. 从 `M4.3.2` 开始：
-   - 先围绕 `app/routes/tasks.py` 与 `domain/schemas.py` 设计最小任务 CRUD API，再决定 scheduler 与 API 的装载/卸载边界
-   - 继续复用现有 `ScheduledTask` 契约，优先把 `schedule_type` / `schedule_value` / `next_run` 的创建与更新约束补完整
-   - 当前 `TaskScheduler` 仍是注入 executor 的 in-memory 服务；`M4.3.2` 不要顺手扩成 DB 轮询恢复、执行日志或真实运行时串接，相关内容留给后续里程碑
+   - 建议顺手再看：`services/task_service.py`、`services/scheduler.py`、`app/routes/tasks.py`、`domain/models/task.py`、`domain/schemas.py`
+2. 从 `M4.3.3` 开始：
+   - 以当前 `task_service` + `TaskScheduler` 单例边界为起点，为任务执行补最小日志契约
+   - 优先思考日志记录是包裹 scheduler executor，还是由后续真实执行链统一回填，但本阶段不要顺手做 DB 恢复或生命周期托管
+   - 当前 `/tasks` 只是注册表 CRUD；若 `M4.3.3` 需要观测执行结果，应显式保留“尚未自动启动 scheduler loop”的现状说明
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M4` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
@@ -107,4 +109,4 @@
 
 ## 5. 一句话版
 
-> `M4.3.1` 已完成，下一步进入 `M4.3.2` 任务 CRUD API。
+> `M4.3.2` 已完成，下一步进入 `M4.3.3` 任务执行日志。
