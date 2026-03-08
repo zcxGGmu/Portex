@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from pathlib import Path
 import sys
 
@@ -23,6 +24,25 @@ def _agents_path(data_dir: Path, user_id: str) -> Path:
 
 def _claude_path(data_dir: Path, user_id: str) -> Path:
     return data_dir / "memory" / "user-global" / user_id / "CLAUDE.md"
+
+
+def _daily_path(data_dir: Path, group_folder: str, day: date) -> Path:
+    return data_dir / "memory" / group_folder / f"{day.isoformat()}.md"
+
+
+def _freeze_utc_today(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    value: date,
+) -> None:
+    from services import memory as memory_module
+
+    class _FrozenDateTime:
+        @classmethod
+        def utcnow(cls) -> datetime:
+            return datetime(value.year, value.month, value.day)
+
+    monkeypatch.setattr(memory_module, "datetime", _FrozenDateTime, raising=False)
 
 
 @pytest.mark.asyncio
@@ -99,3 +119,77 @@ async def test_update_user_memory_does_not_create_legacy_claude_file(
     await service.update_user_memory("user-1", "agents only")
 
     assert not _claude_path(data_dir, "user-1").exists()
+
+
+@pytest.mark.asyncio
+async def test_append_daily_memory_creates_expected_dated_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    today = date(2026, 3, 8)
+    _freeze_utc_today(monkeypatch, value=today)
+
+    await service.append_daily_memory("group-a", "first entry")
+
+    daily_path = _daily_path(data_dir, "group-a", today)
+    assert daily_path.exists()
+    assert "first entry" in daily_path.read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_append_daily_memory_accumulates_content_in_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    today = date(2026, 3, 8)
+    _freeze_utc_today(monkeypatch, value=today)
+
+    await service.append_daily_memory("group-a", "first entry")
+    await service.append_daily_memory("group-a", "second entry")
+
+    daily_path = _daily_path(data_dir, "group-a", today)
+    content = daily_path.read_text(encoding="utf-8")
+    assert content.count("first entry") == 1
+    assert content.count("second entry") == 1
+    assert content.index("first entry") < content.index("second entry")
+
+
+@pytest.mark.asyncio
+async def test_append_daily_memory_is_isolated_by_group_folder(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    today = date(2026, 3, 8)
+    _freeze_utc_today(monkeypatch, value=today)
+
+    await service.append_daily_memory("group-a", "alpha")
+    await service.append_daily_memory("group-b", "beta")
+
+    group_a_content = _daily_path(data_dir, "group-a", today).read_text(encoding="utf-8")
+    group_b_content = _daily_path(data_dir, "group-b", today).read_text(encoding="utf-8")
+
+    assert "alpha" in group_a_content
+    assert "beta" not in group_a_content
+    assert "beta" in group_b_content
+    assert "alpha" not in group_b_content
+
+
+@pytest.mark.asyncio
+async def test_append_daily_memory_does_not_affect_user_agents_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    today = date(2026, 3, 8)
+    _freeze_utc_today(monkeypatch, value=today)
+
+    await service.update_user_memory("user-1", "agents only")
+    await service.append_daily_memory("group-a", "daily note")
+
+    assert _agents_path(data_dir, "user-1").read_text(encoding="utf-8") == "agents only"
+    assert "daily note" in _daily_path(data_dir, "group-a", today).read_text(
+        encoding="utf-8"
+    )

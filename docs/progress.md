@@ -32,7 +32,8 @@
 - `M4.3.2` 已完成（实现任务 CRUD API）。
 - `M4.3.3` 已完成（实现任务执行日志）。
 - `M4.4.1` 已完成（实现 `AGENTS.md` 用户全局记忆管理）。
-- 当前起点：`M4.4.2`（实现日期记忆）。
+- `M4.4.2` 已完成（实现日期记忆）。
+- 当前起点：`M4.4.3`（实现记忆搜索）。
 
 ---
 
@@ -47,6 +48,8 @@
 - `M4.3.3`：补齐模型、日志服务、任务执行与日志路由测试，覆盖 most-recent-first 排序、limit、缺失任务 `404` 与真实 `run_pending()` 执行日志记录。
 - `M4.4.1`：用文件系统版 `MemoryService` 替换占位内存 KV，实现 `get_user_memory()` / `update_user_memory()`，并按用户要求使用 `AGENTS.md` 替代 `CLAUDE.md` 作为用户全局记忆文件名。
 - `M4.4.1`：新增 `tests/services/test_memory_service.py`，覆盖缺失文件返回空字符串、`AGENTS.md` 路径创建、覆盖写入与多用户隔离。
+- `M4.4.2`：扩展 `MemoryService.append_daily_memory()`，将群组日期记忆追加到 `data/memory/{group_folder}/YYYY-MM-DD.md`。
+- `M4.4.2`：为 `MemoryService` 增加可注入的 `today_func`，并补齐日期记忆测试，覆盖建档、重复追加、群组隔离与不影响用户全局 `AGENTS.md`。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -76,8 +79,8 @@
 
 ## 3. 最新验证证据
 
-- M4.4.1 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_memory_service.py -q` -> `6 passed in 0.07s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `209 passed, 1 warning in 6.12s`
+- M4.4.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_memory_service.py -q` -> `10 passed in 0.17s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `213 passed, 1 warning in 9.34s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -100,6 +103,7 @@
 - `M4.3.3` 当前的任务执行日志同样仍是进程内 in-memory，只会反映当前进程里 `TaskScheduler.run_pending()` 的真实执行结果；重启后不会恢复历史日志。
 - `M4.3.3` 当前日志状态仅覆盖 `success` / `error`；`timeout` 仍保留为后续真实执行链与超时控制接入后的预留状态。
 - `M4.4.1` 当前只完成用户全局记忆文件管理，且文件名按本仓库当前决策使用 `AGENTS.md`；尚未实现 daily memory、memory search、API 暴露或 runner / MCP 集成。
+- `M4.4.2` 当前已补齐群组日期记忆文件，但仍只停留在服务层文件读写；尚未实现搜索、API 暴露或 runner / MCP 集成。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -109,10 +113,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`services/memory.py`、`tests/services/test_memory_service.py`
-2. 从 `M4.4.2` 开始：
-   - 在当前用户全局 `AGENTS.md` 文件管理之上补最小日期记忆，不要回退到 `CLAUDE.md` 命名
+2. 从 `M4.4.3` 开始：
+   - 在当前用户全局 `AGENTS.md` + 群组日期记忆文件之上补最小搜索能力，不要回退到 `CLAUDE.md` 命名
    - 保留 `M4.3` 当前边界：任务与任务日志仍是进程内 in-memory，不要在进入记忆系统时顺手扩成 DB 恢复或后台守护
-   - 若后续要把 memory 暴露给 runner / MCP，再明确接口边界，不要把 `M4.4.2` 直接扩成完整 memory API 套餐
+   - 若后续要把 memory 暴露给 runner / MCP，再明确接口边界，不要把 `M4.4.3` 直接扩成完整 memory API 套餐
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M4` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
@@ -121,4 +125,4 @@
 
 ## 5. 一句话版
 
-> `M4.4.1` 已完成，下一步进入 `M4.4.2` 日期记忆。
+> `M4.4.2` 已完成，下一步进入 `M4.4.3` 记忆搜索。

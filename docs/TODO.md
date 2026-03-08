@@ -1627,7 +1627,7 @@ class MemoryService:
         open(path, 'w').write(content)
 ```
 
-- [ ] **M4.4.2** 实现日期记忆
+- [x] **M4.4.2** 实现日期记忆
 
 ```python
     async def append_daily_memory(self, group_folder: str, content: str) -> None:
