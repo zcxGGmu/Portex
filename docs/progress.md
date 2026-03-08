@@ -25,15 +25,16 @@
 - `M4.1.1` 已完成（扩展用户模型）。
 - `M4.1.2` 已完成（实现用户管理 API）。
 - `M4.1.3` 已完成（实现邀请码系统）。
-- 当前起点：`M4.2.1`（定义权限模板）。
+- `M4.2.1` 已完成（定义权限模板）。
+- 当前起点：`M4.2.2`（实现权限检查装饰器）。
 
 ---
 
 ## 2. 最近完成
 
-- `M4.1.3`：新增 `domain/models/invite_code.py` 并接入 `domain/models/__init__.py`，把邀请码纳入统一 SQLAlchemy metadata，支持单次消费的 `used_by` / `used_at` 状态。
-- `M4.1.3`：扩展 `services/auth.py` 的 in-memory `AuthService`，新增邀请码创建、查询、消费能力，并在 `register_user()` 中支持可选 `invite_code` 赋予邀请角色、阻止过期/已使用邀请码，以及保证用户名冲突不会消耗邀请码。
-- `M4.1.3`：在 `app/routes/users.py` 与 `app/routes/auth.py` 补齐 `GET /admin/invites`、`POST /admin/invites` 和注册消费逻辑，并扩展模型/API 测试覆盖邀请码管理与消费路径。
+- `M4.2.1`：新增 `domain/permissions.py`，定义 `owner` / `admin` / `member` 三套静态权限模板，覆盖 `users`、`groups`、`messages`、`tasks`、`settings` 五类资源。
+- `M4.2.1`：补充 `get_permissions_for_role()` 与 `has_permission()` 两个纯函数 helper，为下一步 `require_permission` 依赖提供直接复用的最小契约。
+- `M4.2.1`：新增 `tests/domain/test_permissions.py`，覆盖模板结构、角色权限正反例、未知 role/resource/action 的默认拒绝，以及 helper 的防篡改返回行为。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -51,13 +52,14 @@
   - `bd50272` `feat(user): complete M4.1.2 admin user management api`
   - `e9ca2e1` `feat(user): complete M4.1.3 invite code system`
   - `f7f20aa` `docs(progress): refresh M4.1.3 verification evidence`
+  - `f2516ae` `feat(auth): complete M4.2.1 permission templates`
 
 ---
 
 ## 3. 最新验证证据
 
-- M4.1.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_auth_service.py tests/app/routes/test_api_routes.py -q` -> `37 passed, 1 warning in 4.48s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `143 passed, 1 warning in 4.41s`
+- M4.2.1 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/test_permissions.py -q` -> `6 passed in 0.03s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `149 passed, 1 warning in 4.87s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -69,6 +71,7 @@
 - `M3` 的容器生命周期、宿主机运行器、模式选择与 host mode 安全限制已就位；进入 `M4` 前仍应记住：真实请求注入策略与混合模式烟测尚未完成。
 - `M4.1` 当前仍沿用 in-memory `AuthService` 作为用户真实来源；`last_login_at` 继续保持默认 `null`，DB-backed 用户服务迁移尚未开始。
 - `M4.1.3` 当前提供的是“可选消费”的单次邀请码：管理员可创建 / 查看邀请码，注册时可选携带 `invite_code` 继承邀请角色；注册开关（开放注册 / 必须邀请码 / 关闭注册）仍未实现。
+- `M4.2.1` 当前只完成“静态角色模板 + 纯函数 helper”，尚未启用 `user.permissions` 自定义覆盖，也未把现有路由迁移到 `require_permission`。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -77,10 +80,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`domain/models/user.py`、`domain/models/invite_code.py`、`domain/schemas.py`、`services/auth.py`、`app/routes/users.py`
-2. 从 `M4.2.1` 开始：
-   - 在新建 `domain/permissions.py` 中定义角色权限模板，并与当前 `role` / 邀请码赋权结果保持命名一致
-   - 明确 `M4.1` 当前 in-memory 用户 / 邀请码体系如何为后续 `require_permission` 与 `group_members` 提供最小兼容接口
+   - 建议顺手再看：`domain/permissions.py`、`app/middleware/auth.py`、`services/auth.py`、`app/routes/users.py`
+2. 从 `M4.2.2` 开始：
+   - 在 `app/middleware/auth.py` 新增 `require_permission(resource, action)`，先基于当前用户 `role` 与 `domain/permissions.py` 的静态模板进行判断
+   - 保持边界最小：暂不启用 `user.permissions` 自定义覆盖，也不要顺手启动 DB-backed 权限迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M4` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
 
@@ -88,4 +91,4 @@
 
 ## 5. 一句话版
 
-> `M4.1.3` 已完成，下一步进入 `M4.2.1` 权限模板。
+> `M4.2.1` 已完成，下一步进入 `M4.2.2` 权限检查依赖。
