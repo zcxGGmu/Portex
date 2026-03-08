@@ -189,6 +189,22 @@ def test_admin_can_list_users(api_client: TestClient) -> None:
     assert payload["users"][1]["id"] == member_user.id
 
 
+def test_owner_can_list_users_via_permission_template(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    member_user = auth_service.register_user("member", "secret")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.get("/admin/users", headers=owner_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [user["username"] for user in payload["users"]] == ["member", "owner"]
+    assert payload["users"][0]["id"] == member_user.id
+    assert payload["users"][1]["id"] == owner_user.id
+
+
 def test_admin_can_update_user(api_client: TestClient) -> None:
     from services.auth import auth_service
 
@@ -262,6 +278,17 @@ def test_non_admin_cannot_manage_invites(api_client: TestClient) -> None:
 
     assert list_response.status_code == 403
     assert create_response.status_code == 403
+
+
+def test_unknown_role_cannot_list_invites(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("guest", "secret", role="guest")
+    guest_headers = _login_headers(api_client, "guest", "secret")
+
+    response = api_client.get("/admin/invites", headers=guest_headers)
+
+    assert response.status_code == 403
 
 
 def test_admin_can_create_and_list_invites(api_client: TestClient) -> None:

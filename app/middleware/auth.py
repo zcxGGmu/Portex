@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from domain.permissions import has_permission
 from infra.db.database import get_db
 from services.auth import AuthUser, auth_service
 
@@ -53,4 +54,18 @@ def require_role(role: str):
     return dependency
 
 
-__all__ = ["get_current_user", "require_role", "security"]
+def require_permission(resource: str, action: str):
+    async def dependency(
+        current_user: AuthUser = Depends(get_current_user),
+    ) -> AuthUser:
+        if not has_permission(current_user.role, resource, action):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="permission denied",
+            )
+        return current_user
+
+    return dependency
+
+
+__all__ = ["get_current_user", "require_permission", "require_role", "security"]

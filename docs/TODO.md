@@ -1491,7 +1491,7 @@ PERMISSION_TEMPLATES = {
 }
 ```
 
-- [ ] **M4.2.2** 实现权限检查装饰器
+- [x] **M4.2.2** 实现权限检查装饰器
 
 ```python
 # app/middleware/permissions.py

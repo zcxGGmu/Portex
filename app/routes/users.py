@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.middleware.auth import get_current_user, require_role
+from app.middleware.auth import get_current_user, require_permission
 from domain.schemas import (
     CreateInviteCodeRequest,
     InviteCodeListResponse,
@@ -39,7 +39,7 @@ async def get_me(current_user: AuthUser = Depends(get_current_user)) -> UserResp
 
 @router.get("/admin/users", response_model=UserListResponse, tags=["admin"])
 async def list_users(
-    current_user: AuthUser = Depends(require_role("admin")),
+    current_user: AuthUser = Depends(require_permission("users", "read")),
     db: AsyncSession = Depends(get_db),
 ) -> UserListResponse:
     _ = current_user
@@ -51,7 +51,7 @@ async def list_users(
 async def update_user(
     user_id: str,
     request: UpdateUserRequest,
-    current_user: AuthUser = Depends(require_role("admin")),
+    current_user: AuthUser = Depends(require_permission("users", "write")),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     _ = current_user
@@ -71,7 +71,7 @@ async def update_user(
 
 @router.get("/admin/invites", response_model=InviteCodeListResponse, tags=["admin"])
 async def list_invite_codes(
-    current_user: AuthUser = Depends(require_role("admin")),
+    current_user: AuthUser = Depends(require_permission("users", "read")),
     db: AsyncSession = Depends(get_db),
 ) -> InviteCodeListResponse:
     _ = current_user
@@ -84,7 +84,7 @@ async def list_invite_codes(
 @router.post("/admin/invites", response_model=InviteCodeResponse, tags=["admin"])
 async def create_invite_code(
     request: CreateInviteCodeRequest,
-    current_user: AuthUser = Depends(require_role("admin")),
+    current_user: AuthUser = Depends(require_permission("users", "write")),
     db: AsyncSession = Depends(get_db),
 ) -> InviteCodeResponse:
     _ = db  # Reserved for future DB-backed invite creation.
