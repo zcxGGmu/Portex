@@ -1638,7 +1638,7 @@ class MemoryService:
             f.write(f"\n{content}\n")
 ```
 
-- [ ] **M4.4.3** 实现记忆搜索
+- [x] **M4.4.3** 实现记忆搜索
 
 ```python
     async def search_memory(self, group_folder: str, query: str) -> list[str]:

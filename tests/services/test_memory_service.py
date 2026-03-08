@@ -193,3 +193,71 @@ async def test_append_daily_memory_does_not_affect_user_agents_file(
     assert "daily note" in _daily_path(data_dir, "group-a", today).read_text(
         encoding="utf-8"
     )
+
+
+@pytest.mark.asyncio
+async def test_search_memory_returns_matching_markdown_paths_for_target_group(
+    tmp_path: Path,
+) -> None:
+    from services.memory import MemoryService
+
+    data_dir = tmp_path / "data"
+    service = MemoryService(data_dir=data_dir)
+    match_path = data_dir / "memory" / "group-a" / "2026-03-08.md"
+    miss_path = data_dir / "memory" / "group-a" / "2026-03-09.md"
+    match_path.parent.mkdir(parents=True, exist_ok=True)
+    match_path.write_text("Remember launch checklist", encoding="utf-8")
+    miss_path.write_text("unrelated note", encoding="utf-8")
+
+    results = await service.search_memory("group-a", "launch")
+
+    assert results == [str(match_path)]
+
+
+@pytest.mark.asyncio
+async def test_search_memory_is_case_insensitive(tmp_path: Path) -> None:
+    from services.memory import MemoryService
+
+    data_dir = tmp_path / "data"
+    service = MemoryService(data_dir=data_dir)
+    match_path = data_dir / "memory" / "group-a" / "2026-03-08.md"
+    match_path.parent.mkdir(parents=True, exist_ok=True)
+    match_path.write_text("Remember Launch Checklist", encoding="utf-8")
+
+    results = await service.search_memory("group-a", "launch")
+
+    assert results == [str(match_path)]
+
+
+@pytest.mark.asyncio
+async def test_search_memory_returns_empty_list_for_blank_query(tmp_path: Path) -> None:
+    from services.memory import MemoryService
+
+    data_dir = tmp_path / "data"
+    service = MemoryService(data_dir=data_dir)
+
+    assert await service.search_memory("group-a", "") == []
+    assert await service.search_memory("group-a", "   ") == []
+
+
+@pytest.mark.asyncio
+async def test_search_memory_excludes_other_groups_and_user_agents_files(
+    tmp_path: Path,
+) -> None:
+    from services.memory import MemoryService
+
+    data_dir = tmp_path / "data"
+    service = MemoryService(data_dir=data_dir)
+    group_match = data_dir / "memory" / "group-a" / "2026-03-08.md"
+    other_group = data_dir / "memory" / "group-b" / "2026-03-08.md"
+    agents_file = data_dir / "memory" / "user-global" / "user-1" / "AGENTS.md"
+    group_match.parent.mkdir(parents=True, exist_ok=True)
+    other_group.parent.mkdir(parents=True, exist_ok=True)
+    agents_file.parent.mkdir(parents=True, exist_ok=True)
+    group_match.write_text("shared keyword", encoding="utf-8")
+    other_group.write_text("shared keyword", encoding="utf-8")
+    agents_file.write_text("shared keyword", encoding="utf-8")
+
+    results = await service.search_memory("group-a", "shared")
+
+    assert results == [str(group_match)]
