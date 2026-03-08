@@ -5,11 +5,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from domain.models import Base, InviteCode, Message, RegisteredGroup, ScheduledTask, Session, User  # noqa: E402
+from domain.models import (  # noqa: E402
+    Base,
+    GroupMember,
+    InviteCode,
+    Message,
+    RegisteredGroup,
+    ScheduledTask,
+    Session,
+    User,
+)
 
 
 def test_model_table_names() -> None:
     assert User.__tablename__ == "users"
+    assert GroupMember.__tablename__ == "group_members"
     assert InviteCode.__tablename__ == "invite_codes"
     assert Message.__tablename__ == "messages"
     assert Session.__tablename__ == "sessions"
@@ -19,6 +29,7 @@ def test_model_table_names() -> None:
 
 def test_model_key_fields_exist() -> None:
     user_columns = User.__table__.columns.keys()
+    group_member_columns = GroupMember.__table__.columns.keys()
     invite_columns = InviteCode.__table__.columns.keys()
     message_columns = Message.__table__.columns.keys()
     session_columns = Session.__table__.columns.keys()
@@ -32,6 +43,10 @@ def test_model_key_fields_exist() -> None:
     assert "last_login_at" in user_columns
     assert "disable_reason" in user_columns
     assert "notes" in user_columns
+    assert "group_jid" in group_member_columns
+    assert "user_id" in group_member_columns
+    assert "role" in group_member_columns
+    assert "joined_at" in group_member_columns
     assert "role" in invite_columns
     assert "permission_template" in invite_columns
     assert "used_at" in invite_columns
@@ -69,10 +84,20 @@ def test_invite_code_model_fields_have_expected_defaults() -> None:
     assert used_at.nullable is True
 
 
+def test_group_member_model_fields_have_expected_defaults() -> None:
+    role = GroupMember.__table__.c.role
+    joined_at = GroupMember.__table__.c.joined_at
+
+    assert role.nullable is False
+    assert joined_at.nullable is False
+    assert joined_at.default is not None
+
+
 def test_shared_metadata_contains_all_tables() -> None:
     table_names = set(Base.metadata.tables.keys())
     expected = {
         "users",
+        "group_members",
         "invite_codes",
         "messages",
         "sessions",
@@ -82,6 +107,7 @@ def test_shared_metadata_contains_all_tables() -> None:
 
     assert expected.issubset(table_names)
     assert User.metadata is Base.metadata
+    assert GroupMember.metadata is Base.metadata
     assert InviteCode.metadata is Base.metadata
     assert Message.metadata is Base.metadata
     assert Session.metadata is Base.metadata

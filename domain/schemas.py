@@ -95,6 +95,22 @@ class GroupListResponse(BaseModel):
     groups: list[GroupSummaryResponse]
 
 
+class CreateGroupMemberRequest(BaseModel):
+    user_id: str = Field(min_length=1)
+    role: str = Field(default="member", min_length=1)
+
+
+class GroupMemberResponse(BaseModel):
+    group_id: str
+    user_id: str
+    role: str
+    joined_at: datetime
+
+
+class GroupMemberListResponse(BaseModel):
+    members: list[GroupMemberResponse]
+
+
 class SendMessageRequest(BaseModel):
     group_id: str
     content: str = Field(min_length=1)
@@ -106,7 +122,10 @@ class SendMessageResponse(BaseModel):
 
 
 __all__ = [
+    "CreateGroupMemberRequest",
     "GroupListResponse",
+    "GroupMemberListResponse",
+    "GroupMemberResponse",
     "GroupSummaryResponse",
     "HealthResponse",
     "CreateInviteCodeRequest",

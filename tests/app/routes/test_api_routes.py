@@ -16,11 +16,14 @@ if str(PROJECT_ROOT) not in sys.path:
 def api_client() -> Iterator[TestClient]:
     from app.main import app
     from services.auth import auth_service
+    from services.group_member_service import group_member_service
 
     auth_service.reset()
+    group_member_service.reset()
     with TestClient(app) as client:
         yield client
     auth_service.reset()
+    group_member_service.reset()
 
 
 def _login_headers(api_client: TestClient, username: str, password: str) -> dict[str, str]:
@@ -124,6 +127,166 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     message_payload = messages_response.json()
     assert message_payload["message_id"]
     assert message_payload["status"]
+
+
+def test_group_member_routes_require_authentication(api_client: TestClient) -> None:
+    list_response = api_client.get("/groups/group-demo/members")
+    create_response = api_client.post(
+        "/groups/group-demo/members",
+        json={"user_id": "user-1", "role": "member"},
+    )
+    remove_response = api_client.delete("/groups/group-demo/members/user-1")
+
+    assert list_response.status_code == 401
+    assert create_response.status_code == 401
+    assert remove_response.status_code == 401
+
+
+def test_group_member_can_list_group_members(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    member_user = auth_service.register_user("member", "secret")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    group_member_service.add_member("group-demo", member_user.id, role="member")
+    member_headers = _login_headers(api_client, "member", "secret")
+
+    response = api_client.get("/groups/group-demo/members", headers=member_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["members"]) == 2
+    roles_by_user_id = {member["user_id"]: member["role"] for member in payload["members"]}
+    assert roles_by_user_id == {
+        owner_user.id: "owner",
+        member_user.id: "member",
+    }
+
+
+def test_non_member_cannot_list_group_members(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    auth_service.register_user("outsider", "secret")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    outsider_headers = _login_headers(api_client, "outsider", "secret")
+
+    response = api_client.get("/groups/group-demo/members", headers=outsider_headers)
+
+    assert response.status_code == 403
+
+
+def test_group_owner_can_add_member(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    target_user = auth_service.register_user("target", "secret")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.post(
+        "/groups/group-demo/members",
+        json={"user_id": target_user.id, "role": "member"},
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["group_id"] == "group-demo"
+    assert payload["user_id"] == target_user.id
+    assert payload["role"] == "member"
+
+
+def test_group_admin_cannot_add_member(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    admin_user = auth_service.register_user("admin", "secret", role="admin")
+    target_user = auth_service.register_user("target", "secret")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    group_member_service.add_member("group-demo", admin_user.id, role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.post(
+        "/groups/group-demo/members",
+        json={"user_id": target_user.id, "role": "member"},
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 403
+
+
+def test_group_owner_can_remove_member(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    target_user = auth_service.register_user("target", "secret")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    group_member_service.add_member("group-demo", target_user.id, role="member")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.delete(
+        f"/groups/group-demo/members/{target_user.id}",
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "removed"}
+
+
+def test_group_owner_cannot_add_invalid_member_role(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    target_user = auth_service.register_user("target", "secret")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.post(
+        "/groups/group-demo/members",
+        json={"user_id": target_user.id, "role": "guest"},
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 400
+
+
+def test_group_owner_remove_missing_member_returns_404(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.delete(
+        "/groups/group-demo/members/missing-user-id",
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_group_owner_cannot_remove_self(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.delete(
+        f"/groups/group-demo/members/{owner_user.id}",
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 400
 
 
 def test_register_duplicate_username_returns_409(api_client: TestClient) -> None:

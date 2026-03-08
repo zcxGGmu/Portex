@@ -1509,7 +1509,7 @@ def require_permission(resource: str, action: str):
     return dependency
 ```
 
-- [ ] **M4.2.3** 实现群组成员管理
+- [x] **M4.2.3** 实现群组成员管理
 
 ```python
 # domain/models/group_member.py
