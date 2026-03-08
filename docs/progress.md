@@ -58,13 +58,14 @@
   - `999f163` `docs(progress): refresh M4.2.1 verification evidence`
   - `435fb6c` `feat(auth): complete M4.2.2 permission dependency`
   - `6203fa7` `feat(groups): complete M4.2.3 group member management`
+  - `35d550c` `fix(groups): block owner role transfer via member api`
 
 ---
 
 ## 3. 最新验证证据
 
-- M4.2.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_group_member_service.py tests/app/routes/test_api_routes.py -q` -> `43 passed, 1 warning in 5.35s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `173 passed, 1 warning in 7.61s`
+- M4.2.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_group_member_service.py tests/app/routes/test_api_routes.py -q` -> `43 passed, 1 warning in 8.31s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `173 passed, 1 warning in 9.31s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
