@@ -71,29 +71,14 @@
 - `M5.1.3`：扩展 `FeishuClient.send_message()`，基于 `tenant_access_token` 调用飞书消息发送接口，支持最小 `msg_type + content` 请求契约与 `receive_id_type` 参数。
 - `M5.1.3`：补齐飞书消息发送测试，覆盖请求 URL / headers / body、字典 content 自动序列化，以及飞书错误码映射。
 - 最近阶段提交：
-  - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
-  - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
-  - `ca121b3` `feat(exec): complete M3.3 volume mount safety`
-  - `7337f1d` `feat(exec): complete M3.4.1 container startup`
-  - `066bdbf` `feat(exec): complete M3.4.2 container stop`
-  - `3ca3b83` `feat(exec): complete M3.4.3 container health`
-  - `399b99c` `docs(progress): refresh M3.4.3 verification evidence`
-  - `9180756` `feat(exec): complete M3.4.4 graceful shutdown`
-  - `9ddc7fe` `docs(progress): refresh M3.4.4 verification evidence`
-  - `016efc3` `feat(exec): complete M3.5.1 host process runner`
-  - `4aec343` `feat(services): complete M3.5.2 execution mode selection`
-  - `fb62bed` `feat(exec): complete M3.5.3 host mode restrictions`
-  - `cb83fcc` `feat(user): complete M4.1.1 user model extension`
-  - `bd50272` `feat(user): complete M4.1.2 admin user management api`
-  - `e9ca2e1` `feat(user): complete M4.1.3 invite code system`
-  - `f7f20aa` `docs(progress): refresh M4.1.3 verification evidence`
-  - `f2516ae` `feat(auth): complete M4.2.1 permission templates`
-  - `999f163` `docs(progress): refresh M4.2.1 verification evidence`
-  - `435fb6c` `feat(auth): complete M4.2.2 permission dependency`
-  - `6203fa7` `feat(groups): complete M4.2.3 group member management`
-  - `35d550c` `fix(groups): block owner role transfer via member api`
-  - `90443f5` `feat(tasks): complete M4.3.1 scheduler core`
-  - `0b0564d` `docs(progress): refresh M4.3.1 verification evidence`
+  - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
+  - `d97f13a` `feat(memory): complete M4.4.3 memory search`
+  - `e8c48f7` `feat(memory): complete M4.4.4 runner memory tools`
+  - `5f64365` `docs(acceptance): complete M4.5 milestone verification`
+  - `44b8826` `feat(im): complete M5.1.1 feishu client skeleton`
+  - `3ae0f12` `feat(im): complete M5.1.2 feishu event receive`
+  - `5d6144e` `feat(im): complete M5.1.3 feishu send message`
+  - `0a608ad` `docs(handoff): refresh progress and agents baseline`
 
 ---
 
