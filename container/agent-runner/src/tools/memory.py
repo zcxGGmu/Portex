@@ -1,20 +1,44 @@
-"""Memory tool placeholders."""
+"""Memory tools backed by the mounted runner memory directory."""
 
 from __future__ import annotations
 
-from typing import Any
+import os
+from datetime import date, datetime
+from pathlib import Path
 
 
-class MemoryStore:
-    """In-memory placeholder store for runner tools."""
+MEMORY_DIR = Path(os.getenv("PORTEX_MEMORY_DIR", "/workspace/memory"))
 
-    def __init__(self) -> None:
-        self._values: dict[str, Any] = {}
 
-    def set(self, key: str, value: Any) -> None:
-        """Set a value in the placeholder memory."""
-        self._values[key] = value
+def _today() -> date:
+    return datetime.utcnow().date()
 
-    def get(self, key: str) -> Any | None:
-        """Get a value from the placeholder memory."""
-        return self._values.get(key)
+
+def _daily_memory_path() -> Path:
+    return MEMORY_DIR / f"{_today().isoformat()}.md"
+
+
+def memory_append_tool(content: str) -> str:
+    """Append content to today's memory file in the mounted memory directory."""
+    path = _daily_memory_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(f"\n{content}\n")
+    return f"memory appended: {path.name}"
+
+
+def memory_search_tool(query: str) -> list[str]:
+    """Search markdown files in the mounted memory directory."""
+    normalized_query = query.strip().lower()
+    if normalized_query == "" or not MEMORY_DIR.exists():
+        return []
+
+    matches: list[str] = []
+    for path in sorted(MEMORY_DIR.rglob("*.md")):
+        content = path.read_text(encoding="utf-8")
+        if normalized_query in content.lower():
+            matches.append(str(path.relative_to(MEMORY_DIR)))
+    return matches
+
+
+__all__ = ["MEMORY_DIR", "memory_append_tool", "memory_search_tool"]

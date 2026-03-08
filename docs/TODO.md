@@ -1652,7 +1652,7 @@ class MemoryService:
         return results
 ```
 
-- [ ] **M4.4.4** 实现 MCP 工具包装
+- [x] **M4.4.4** 实现 MCP 工具包装
 
 ```python
 # container/agent-runner/src/tools/memory.py
