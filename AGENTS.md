@@ -11,13 +11,12 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-08)
+## Current Baseline Snapshot (2026-03-09)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
 - `M3` is complete (`M3.1` ~ `M3.6`).
-- `M4.1` is complete (`M4.1.1` ~ `M4.1.3`).
-- `M4.2` is complete (`M4.2.1` ~ `M4.2.3`).
-- `M4.3.1` is complete (scheduler core).
-- Current starting point is `M4.3.2` (task CRUD API).
+- `M4` is complete (`M4.1` ~ `M4.5`).
+- `M5.1` is complete (`M5.1.1` ~ `M5.1.3`).
+- Current starting point is `M5.2.1` (Telegram client skeleton).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -37,6 +36,8 @@
 - If resuming after `M4.1.3`, also skim `app/routes/auth.py`, `app/routes/users.py`, `services/auth.py`, `domain/models/invite_code.py`, and `domain/schemas.py` because `M4.2` RBAC work now builds directly on the current in-memory user + invite contracts.
 - If resuming after `M4.2.1`, also skim `domain/permissions.py` and `tests/domain/test_permissions.py` because `M4.2.2` must reuse the static role template contract instead of re-defining permission rules elsewhere.
 - If resuming after `M4.3.1`, also skim `services/scheduler.py`, `app/routes/tasks.py`, `domain/models/task.py`, `domain/schemas.py`, and `tests/services/test_scheduler.py` because `M4.3.2` task CRUD work now builds directly on the injected-executor scheduler core and the current `ScheduledTask` contract.
+- If resuming after `M4.4.4`, also skim `services/memory.py`, `container/agent-runner/src/tools/memory.py`, `tests/services/test_memory_service.py`, and `tests/container/agent_runner/test_memory_tools.py` because memory now spans both service-side files and runner-side tool wrappers.
+- If resuming after `M5.1.1`, also skim `infra/im/feishu.py`, `tests/infra/im/test_feishu.py`, and `infra/im/base.py` because Feishu auth, signature verification, decrypt helpers, event parsing, and send-message logic now all live in that slice.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -50,6 +51,7 @@
 - `.venv/bin/pytest -o addopts='' tests/domain/test_permissions.py -q`: run current RBAC permission-template focused test.
 - `.venv/bin/pytest tests/container/agent_runner -q`: run current Agent Runner containerization tests.
 - `.venv/bin/pytest tests/infra/exec/test_docker.py tests/infra/exec/test_security.py -q`: run current container mount / execution safety tests.
+- `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py -q`: run current Feishu client acceptance-focused tests.
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm run lint`: frontend lint.
 - `cd web && npm run build`: frontend production build.
