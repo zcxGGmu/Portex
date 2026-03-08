@@ -1610,19 +1610,19 @@ class TaskRunLog(Base):
 
 ### M4.4: 记忆系统 [Week 2, Day 3-5]
 
-- [ ] **M4.4.1** 实现 CLAUDE.md 管理
+- [x] **M4.4.1** 实现 `AGENTS.md` 管理
 
 ```python
 # services/memory.py
 class MemoryService:
     async def get_user_memory(self, user_id: str) -> str:
-        path = f"{DATA_DIR}/memory/user-global/{user_id}/CLAUDE.md"
+        path = f"{DATA_DIR}/memory/user-global/{user_id}/AGENTS.md"
         if os.path.exists(path):
             return open(path).read()
         return ""
 
     async def update_user_memory(self, user_id: str, content: str) -> None:
-        path = f"{DATA_DIR}/memory/user-global/{user_id}/CLAUDE.md"
+        path = f"{DATA_DIR}/memory/user-global/{user_id}/AGENTS.md"
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, 'w').write(content)
 ```
