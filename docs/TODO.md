@@ -1464,7 +1464,7 @@ class InviteCode(Base):
 
 ### M4.2: RBAC 权限系统 [Week 1, Day 3-5]
 
-- [ ] **M4.2.1** 定义权限模板
+- [x] **M4.2.1** 定义权限模板
 
 ```python
 # domain/permissions.py
