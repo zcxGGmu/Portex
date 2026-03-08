@@ -36,7 +36,7 @@
 
 - `M4.2.3`：新增 `domain/models/group_member.py`，定义 `group_members` SQLAlchemy 契约（`group_jid` / `user_id` 复合主键，角色 `owner/admin/member`，`joined_at` 默认时间戳）。
 - `M4.2.3`：新增 `services/group_member_service.py` 作为当前最小 in-memory 群成员服务；支持列举、添加、删除成员，以及按群查询成员角色。
-- `M4.2.3`：扩展 `app/routes/groups.py` 与 `domain/schemas.py`，提供 `GET/POST/DELETE /groups/{group_id}/members` 最小 API，并补充模型 / 服务 / 路由测试覆盖成员可见性与 owner-only 管理规则。
+- `M4.2.3`：扩展 `app/routes/groups.py` 与 `domain/schemas.py`，提供 `GET/POST/DELETE /groups/{group_id}/members` 最小 API，并补充模型 / 服务 / 路由测试覆盖成员可见性、owner-only 管理规则，以及 owner 角色转移/降级保护。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -63,8 +63,8 @@
 
 ## 3. 最新验证证据
 
-- M4.2.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_group_member_service.py tests/app/routes/test_api_routes.py -q` -> `41 passed, 1 warning in 6.73s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `171 passed, 1 warning in 10.91s`
+- M4.2.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_group_member_service.py tests/app/routes/test_api_routes.py -q` -> `43 passed, 1 warning in 5.35s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `173 passed, 1 warning in 7.61s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -80,6 +80,7 @@
 - `M4.2.2` 当前将 `/admin/invites` 暂时映射到 `users` 资源的 `read/write` 权限，作为不扩展 RBAC 模型的最小桥接；更细粒度的 `invites` 资源需在后续阶段单独设计。
 - `M4.2.3` 当前已建立正式 `GroupMember` 模型，但运行态成员真实来源仍是 in-memory `group_member_service`；后续若进入 DB-backed 群组/成员迁移，需要与用户/群组 source of truth 一并设计。
 - `M4.2.3` 当前的群内 `admin` 角色仅作为数据契约保留，不额外赋予成员管理权限；成员增删仍限定为 group owner。
+- `M4.2.3` 当前不支持通过成员管理接口进行 owner 角色转移或 owner 降级；若后续需要 owner transfer，需单独设计迁移规则与唯一 owner 约束。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 

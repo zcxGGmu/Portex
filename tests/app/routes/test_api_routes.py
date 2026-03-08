@@ -257,6 +257,43 @@ def test_group_owner_cannot_add_invalid_member_role(api_client: TestClient) -> N
     assert response.status_code == 400
 
 
+def test_group_owner_cannot_promote_another_member_to_owner(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    target_user = auth_service.register_user("target", "secret", role="admin")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.post(
+        "/groups/group-demo/members",
+        json={"user_id": target_user.id, "role": "owner"},
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 400
+    assert group_member_service.get_member_role("group-demo", target_user.id) is None
+
+
+def test_group_owner_cannot_demote_self_via_member_update(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.group_member_service import group_member_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+
+    response = api_client.post(
+        "/groups/group-demo/members",
+        json={"user_id": owner_user.id, "role": "member"},
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 400
+    assert group_member_service.get_member_role("group-demo", owner_user.id) == "owner"
+
+
 def test_group_owner_remove_missing_member_returns_404(api_client: TestClient) -> None:
     from services.auth import auth_service
     from services.group_member_service import group_member_service

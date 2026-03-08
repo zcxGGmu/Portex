@@ -42,6 +42,27 @@ def _require_group_owner(group_id: str, current_user: AuthUser) -> None:
         )
 
 
+def _ensure_owner_role_change_supported(
+    group_id: str,
+    user_id: str,
+    requested_role: str,
+) -> None:
+    existing_member = group_member_service.get_member(group_id, user_id)
+    if requested_role == "owner":
+        if existing_member is None or existing_member.role != "owner":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="owner role changes are not supported",
+            )
+        return
+
+    if existing_member is not None and existing_member.role == "owner":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="owner role changes are not supported",
+        )
+
+
 @router.get("", response_model=GroupListResponse)
 async def list_groups(
     current_user: AuthUser = Depends(get_current_user),
@@ -77,6 +98,7 @@ async def add_group_member(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="user not found",
         )
+    _ensure_owner_role_change_supported(group_id, request.user_id, request.role)
 
     try:
         member = group_member_service.add_member(
