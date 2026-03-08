@@ -61,6 +61,7 @@
   - `6203fa7` `feat(groups): complete M4.2.3 group member management`
   - `35d550c` `fix(groups): block owner role transfer via member api`
   - `90443f5` `feat(tasks): complete M4.3.1 scheduler core`
+  - `0b0564d` `docs(progress): refresh M4.3.1 verification evidence`
 
 ---
 
@@ -93,7 +94,7 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`domain/permissions.py`、`app/middleware/auth.py`、`app/routes/users.py`、`services/auth.py`
+   - 建议顺手再看：`services/scheduler.py`、`app/routes/tasks.py`、`domain/models/task.py`、`domain/schemas.py`
 2. 从 `M4.3.2` 开始：
    - 先围绕 `app/routes/tasks.py` 与 `domain/schemas.py` 设计最小任务 CRUD API，再决定 scheduler 与 API 的装载/卸载边界
    - 继续复用现有 `ScheduledTask` 契约，优先把 `schedule_type` / `schedule_value` / `next_run` 的创建与更新约束补完整
