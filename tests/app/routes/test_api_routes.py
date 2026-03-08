@@ -405,6 +405,43 @@ def test_admin_can_create_list_and_delete_tasks(api_client: TestClient) -> None:
     assert final_list_response.json() == {"tasks": []}
 
 
+def test_task_api_normalizes_time_fields_to_utc(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    source_next_run = datetime(2026, 3, 8, 12, 5, 0, tzinfo=timezone(timedelta(hours=8)))
+
+    create_response = api_client.post(
+        "/tasks",
+        json={
+            "group_folder": "group-demo",
+            "chat_jid": "group-demo",
+            "prompt": "normalize timezone",
+            "schedule_type": "once",
+            "next_run": source_next_run.isoformat(),
+        },
+        headers=admin_headers,
+    )
+
+    assert create_response.status_code == 200
+    created_payload = create_response.json()
+    created_next_run = datetime.fromisoformat(created_payload["next_run"])
+    created_at = datetime.fromisoformat(created_payload["created_at"])
+
+    assert created_next_run == datetime(2026, 3, 8, 4, 5, 0, tzinfo=timezone.utc)
+    assert created_at.tzinfo == timezone.utc
+
+    list_response = api_client.get("/tasks", headers=admin_headers)
+
+    assert list_response.status_code == 200
+    listed_task = list_response.json()["tasks"][0]
+    listed_next_run = datetime.fromisoformat(listed_task["next_run"])
+    listed_created_at = datetime.fromisoformat(listed_task["created_at"])
+    assert listed_next_run == datetime(2026, 3, 8, 4, 5, 0, tzinfo=timezone.utc)
+    assert listed_created_at.tzinfo == timezone.utc
+
+
 def test_member_can_list_tasks_but_cannot_create_or_delete_tasks(api_client: TestClient) -> None:
     from services.auth import auth_service
 

@@ -1,9 +1,17 @@
 """Domain request and response schemas for API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _normalize_utc_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 class HealthResponse(BaseModel):
@@ -130,6 +138,11 @@ class CreateTaskRequest(BaseModel):
     schedule_value: str | None = None
     next_run: datetime | None = None
 
+    @field_validator("next_run", mode="after")
+    @classmethod
+    def normalize_next_run(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
 
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -138,11 +151,16 @@ class TaskResponse(BaseModel):
     group_folder: str
     chat_jid: str
     prompt: str
-    schedule_type: str | None
+    schedule_type: Literal["cron", "interval", "once"]
     schedule_value: str | None = None
     next_run: datetime | None = None
     status: str
     created_at: datetime
+
+    @field_validator("next_run", "created_at", mode="after")
+    @classmethod
+    def normalize_datetime_fields(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
 
 
 class TaskListResponse(BaseModel):

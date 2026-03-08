@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import sys
@@ -77,6 +77,23 @@ def test_create_task_initializes_missing_interval_next_run_via_scheduler() -> No
 
     assert task.next_run == now + timedelta(seconds=30)
     assert task.status == "active"
+
+
+def test_create_task_normalizes_aware_next_run_to_internal_utc_naive() -> None:
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    service, _scheduler = _build_service(now=now)
+
+    task = service.create_task(
+        group_folder="group-a",
+        chat_jid="chat-a",
+        prompt="run once with timezone",
+        schedule_type="once",
+        schedule_value=None,
+        next_run=datetime(2026, 3, 8, 12, 5, 0, tzinfo=timezone(timedelta(hours=8))),
+    )
+
+    assert task.next_run == datetime(2026, 3, 8, 4, 5, 0)
+    assert task.next_run.tzinfo is None
 
 
 def test_list_tasks_returns_tasks_in_scheduler_order() -> None:

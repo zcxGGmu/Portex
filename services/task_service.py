@@ -58,19 +58,17 @@ class TaskService:
         schedule_type: str,
         schedule_value: str | None,
     ) -> str | None:
-        if schedule_value is None:
-            if schedule_type == "once":
+        if schedule_type == "once":
+            if schedule_value is None or schedule_value.strip() == "":
                 return None
+            raise ValueError("once tasks do not accept schedule_value")
+
+        if schedule_value is None:
             return None
 
         normalized_value = schedule_value.strip()
         if normalized_value == "":
-            if schedule_type == "once":
-                return None
             return None
-
-        if schedule_type == "once":
-            raise ValueError("once tasks do not accept schedule_value")
 
         return normalized_value
 

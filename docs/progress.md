@@ -39,6 +39,7 @@
 - `M4.3.2`：补齐 `domain/schemas.py` 任务 DTO、新增薄层 `services/task_service.py`，将当前 in-memory `TaskScheduler` 暴露为最小 create/list/delete 服务边界。
 - `M4.3.2`：实现并挂载 `/tasks` CRUD API：`POST /tasks`、`GET /tasks`、`DELETE /tasks/{task_id}`；继续沿用 `tasks` 资源权限模板，`owner/admin` 可写、`member` 只读。
 - `M4.3.2`：补齐任务服务与任务路由测试，覆盖 create/list/delete、鉴权、权限差异与非法调度载荷校验。
+- `M4.3.2`：根据代码评审补齐任务 API 的时间契约测试；对外请求/响应统一按 UTC 表达，服务内部继续维持 scheduler 现有的 naive UTC 运行态。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -68,8 +69,8 @@
 
 ## 3. 最新验证证据
 
-- M4.3.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_api_routes.py -q` -> `50 passed, 1 warning in 5.69s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `192 passed, 1 warning in 7.42s`
+- M4.3.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_api_routes.py -q` -> `52 passed, 1 warning in 5.95s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `194 passed, 1 warning in 5.45s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -88,6 +89,7 @@
 - `M4.2.3` 当前不支持通过成员管理接口进行 owner 角色转移或 owner 降级；若后续需要 owner transfer，需单独设计迁移规则与唯一 owner 约束。
 - `M4.3.2` 当前的任务运行态仍是进程内 in-memory：`/tasks` 只管理单例 `task_service` / `TaskScheduler` 中的注册表，尚未接入 DB 轮询恢复、执行日志或真实 `agent_trigger` 执行链。
 - `M4.3.2` 当前未把 scheduler `start()/stop()` 挂到 FastAPI 生命周期；现阶段完成的是任务 CRUD 与注册表装载/卸载边界，不是持续执行守护进程。
+- `M4.3.2` 当前对外 API 的 `next_run` / `created_at` 已统一按 UTC 返回；服务内部仍为了兼容现有 scheduler 比较逻辑，保留 naive UTC datetime。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
