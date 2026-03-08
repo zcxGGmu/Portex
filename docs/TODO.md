@@ -1526,7 +1526,7 @@ class GroupMember(Base):
 
 ### M4.3: 定时任务调度 [Week 2, Day 1-3]
 
-- [ ] **M4.3.1** 实现任务调度器
+- [x] **M4.3.1** 实现任务调度器
 
 ```python
 # services/scheduler.py
