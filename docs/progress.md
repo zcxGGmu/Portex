@@ -35,7 +35,9 @@
 - `M4.4.2` 已完成（实现日期记忆）。
 - `M4.4.3` 已完成（实现记忆搜索）。
 - `M4.4.4` 已完成（实现 MCP 工具包装）。
-- 当前起点：`M4.5`（M4 阶段验收）。
+- `M4.5` 已完成（M4 阶段验收）。
+- `M4` 已完成（`M4.1` ~ `M4.5`）。
+- 当前起点：`M5.1.1`（创建飞书客户端）。
 
 ---
 
@@ -56,6 +58,8 @@
 - `M4.4.3`：补齐记忆搜索测试，覆盖大小写不敏感、空查询返回空列表、排除其他群组结果，以及不把用户全局 `AGENTS.md` 混入搜索结果。
 - `M4.4.4`：用挂载的 `/workspace/memory` 目录替换 runner 内存工具占位，实现 `memory_append_tool()` / `memory_search_tool()`，并通过 `@function_tool` 暴露为默认工具。
 - `M4.4.4`：新增 `tests/container/agent_runner/test_memory_tools.py`，覆盖日期追加、大小写不敏感搜索、空查询返回空列表，以及默认工具注册包含 memory tools。
+- `M4.5`：完成 `M4.1` ~ `M4.4` 的阶段验收，围绕用户系统、RBAC、任务系统、记忆系统与多用户隔离证据执行 fresh 验证，未发现阻塞 `M5` 的缺口。
+- `M4.5`：确认 `M4` 当前边界清晰：用户、权限、任务、记忆能力均可验证，但运行态仍以 in-memory / 文件型最小实现为主，真实产品化持久化与生命周期托管留待后续阶段。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -85,8 +89,8 @@
 
 ## 3. 最新验证证据
 
-- M4.4.4 聚焦验证：`.venv/bin/pytest -o addopts='' tests/container/agent_runner/test_memory_tools.py tests/container/agent_runner -q` -> `15 passed in 2.34s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `223 passed, 1 warning in 7.45s`
+- M4.5 聚焦验收：`.venv/bin/pytest -o addopts='' tests/services/test_auth_service.py tests/app/routes/test_api_routes.py tests/domain/test_permissions.py tests/services/test_group_member_service.py tests/services/test_scheduler.py tests/services/test_task_service.py tests/services/test_task_log_service.py tests/services/test_memory_service.py tests/container/agent_runner -q` -> `115 passed, 1 warning in 5.51s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `223 passed, 1 warning in 5.89s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -112,6 +116,7 @@
 - `M4.4.2` 当前已补齐群组日期记忆文件，但仍只停留在服务层文件读写；尚未实现搜索、API 暴露或 runner / MCP 集成。
 - `M4.4.3` 当前搜索仍只停留在服务层：按 group folder 扫描 markdown 文件内容并返回路径列表，不提供片段、高亮、排序优化或 API / runner 集成。
 - `M4.4.4` 当前 runner memory tools 直接操作挂载的 group-scoped `/workspace/memory`，不经过主服务 API，也不覆盖用户全局 `AGENTS.md`。
+- `M4.5` 验收结论：`M4` 已达成当前 TODO 定义的用户 / RBAC / 任务 / 记忆 / 多用户隔离目标，但仍不是完整产品态；进入 `M5` 前需继续保留上述 in-memory / 文件型边界说明。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -120,17 +125,17 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`services/memory.py`、`container/agent-runner/src/tools/memory.py`、`tests/services/test_memory_service.py`、`tests/container/agent_runner/test_memory_tools.py`
-2. 从 `M4.5` 开始：
-   - 围绕 `M4` 的用户、权限、任务、记忆四条线做阶段验收清单，不要回退到 `CLAUDE.md` 命名
-   - 保留 `M4.3` 当前边界：任务与任务日志仍是进程内 in-memory，不要在进入记忆系统时顺手扩成 DB 恢复或后台守护
-   - 若后续要把 memory / task / auth 真正产品化，再明确 API / DB / lifecycle 边界，不要把 `M4.5` 验收顺手扩成新功能开发
+   - 建议顺手再看：`infra/im/feishu.py`、`infra/im/base.py`、`app/main.py`
+2. 从 `M5.1.1` 开始：
+   - 先实现最小飞书客户端骨架，保持 `M4` 验收通过后的现有边界不变
+   - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
+   - 飞书接入优先聚焦 HTTP 客户端骨架与最小认证链路，不要一次性扩到全部事件流与多平台抽象细节
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
-   - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M4` 中意外遗失
+   - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
 
 ---
 
 ## 5. 一句话版
 
-> `M4.4.4` 已完成，下一步进入 `M4.5` 阶段验收。
+> `M4.5` 已完成，下一步进入 `M5.1.1` 飞书客户端骨架。
