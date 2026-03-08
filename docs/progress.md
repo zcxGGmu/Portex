@@ -53,6 +53,7 @@
   - `e9ca2e1` `feat(user): complete M4.1.3 invite code system`
   - `f7f20aa` `docs(progress): refresh M4.1.3 verification evidence`
   - `f2516ae` `feat(auth): complete M4.2.1 permission templates`
+  - `999f163` `docs(progress): refresh M4.2.1 verification evidence`
 
 ---
 
