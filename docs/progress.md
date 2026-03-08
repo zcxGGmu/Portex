@@ -39,7 +39,9 @@
 - `M4` 已完成（`M4.1` ~ `M4.5`）。
 - `M5.1.1` 已完成（创建飞书客户端）。
 - `M5.1.2` 已完成（实现 WebSocket 事件接收）。
-- 当前起点：`M5.1.3`（实现消息发送）。
+- `M5.1.3` 已完成（实现消息发送）。
+- `M5.1` 已完成（`M5.1.1` ~ `M5.1.3`）。
+- 当前起点：`M5.2.1`（创建 Telegram 客户端）。
 
 ---
 
@@ -66,6 +68,8 @@
 - `M5.1.1`：新增 `tests/infra/im/test_feishu.py`，覆盖 token 成功/失败、签名校验、加密事件解密与缺少 `encrypt_key` 的错误路径。
 - `M5.1.2`：扩展 `FeishuClient.handle_webhook_event()`，支持明文/密文回调 payload，识别 `im.message.receive_v1` 并产出标准化 `FeishuMessageEvent` 结构。
 - `M5.1.2`：补齐飞书事件接收测试，覆盖明文消息事件、密文消息事件、非消息事件跳过，以及非文本内容下的最小容错解析。
+- `M5.1.3`：扩展 `FeishuClient.send_message()`，基于 `tenant_access_token` 调用飞书消息发送接口，支持最小 `msg_type + content` 请求契约与 `receive_id_type` 参数。
+- `M5.1.3`：补齐飞书消息发送测试，覆盖请求 URL / headers / body、字典 content 自动序列化，以及飞书错误码映射。
 - 最近阶段提交：
   - `fa96e35` `feat(exec): complete M3.1 docker sdk wrapper`
   - `d08e544` `feat(container): complete M3.2 agent runner scaffold`
@@ -95,8 +99,8 @@
 
 ## 3. 最新验证证据
 
-- M5.1.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py -q` -> `9 passed in 0.08s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `232 passed, 1 warning in 6.46s`
+- M5.1.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py -q` -> `12 passed in 0.10s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `235 passed, 1 warning in 8.04s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - 前端：`cd web && npm run lint` -> pass
 - 前端：`cd web && npm run build` -> pass
@@ -123,8 +127,7 @@
 - `M4.4.3` 当前搜索仍只停留在服务层：按 group folder 扫描 markdown 文件内容并返回路径列表，不提供片段、高亮、排序优化或 API / runner 集成。
 - `M4.4.4` 当前 runner memory tools 直接操作挂载的 group-scoped `/workspace/memory`，不经过主服务 API，也不覆盖用户全局 `AGENTS.md`。
 - `M4.5` 验收结论：`M4` 已达成当前 TODO 定义的用户 / RBAC / 任务 / 记忆 / 多用户隔离目标，但仍不是完整产品态；进入 `M5` 前需继续保留上述 in-memory / 文件型边界说明。
-- `M5.1.1` 当前只完成飞书认证 / 验签 / 解密基础能力；尚未接入事件路由、消息发送、或真实 webhook/WebSocket 入口。
-- `M5.1.2` 当前只完成飞书回调 payload 的最小标准化解析，尚未接入 FastAPI 路由、Portex 消息主链或飞书响应回写逻辑。
+- `M5.1` 当前已具备飞书认证、回调 payload 解析和最小消息发送能力，但尚未接入 FastAPI 路由、Portex 消息主链、或飞书生产级重试/限流。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
 
@@ -133,11 +136,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`infra/im/feishu.py`、`tests/infra/im/test_feishu.py`、`infra/im/base.py`
-2. 从 `M5.1.3` 开始：
-   - 在当前飞书认证 / 验签 / 解密 / 事件标准化解析基础之上补最小消息发送能力，不要顺手扩成完整通道产品化
+   - 建议顺手再看：`infra/im/telegram.py`、`infra/im/base.py`、`infra/im/feishu.py`
+2. 从 `M5.2.1` 开始：
+   - 先实现最小 Telegram 客户端骨架，保持刚完成的飞书链路边界不变
    - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
-   - 飞书接入优先聚焦最小消息发送链路，不要一次性扩到 Telegram、完整多平台抽象或生产级重试/限流
+   - Telegram 接入优先聚焦 HTTP 客户端骨架与最小 update 拉取，不要一次性扩到完整多平台抽象或生产级重试/限流
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
@@ -146,4 +149,4 @@
 
 ## 5. 一句话版
 
-> `M5.1.2` 已完成，下一步进入 `M5.1.3` 飞书消息发送。
+> `M5.1.3` 已完成，下一步进入 `M5.2.1` Telegram 客户端骨架。

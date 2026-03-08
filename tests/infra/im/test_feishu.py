@@ -25,10 +25,15 @@ class _FakeResponse:
 class _FakeAsyncClient:
     def __init__(self, payload: dict[str, object]) -> None:
         self._payload = payload
-        self.calls: list[tuple[str, dict[str, object]]] = []
+        self.calls: list[tuple[str, dict[str, object], dict[str, str] | None]] = []
 
-    async def post(self, url: str, json: dict[str, object]) -> _FakeResponse:
-        self.calls.append((url, json))
+    async def post(
+        self,
+        url: str,
+        json: dict[str, object],
+        headers: dict[str, str] | None = None,
+    ) -> _FakeResponse:
+        self.calls.append((url, json, headers))
         return _FakeResponse(self._payload)
 
 
@@ -73,6 +78,7 @@ async def test_get_access_token_returns_token_on_success() -> None:
         (
             "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
             {"app_id": "app-id", "app_secret": "app-secret"},
+            None,
         )
     ]
 
@@ -250,3 +256,117 @@ def test_handle_webhook_event_keeps_ids_when_text_content_is_not_plain_text() ->
     assert result.sender_id == "ou_sender"
     assert result.message_type == "image"
     assert result.text is None
+
+
+@pytest.mark.asyncio
+async def test_send_message_posts_expected_url_headers_and_json_body() -> None:
+    from infra.im.feishu import FeishuClient
+
+    fake_client = _FakeAsyncClient(
+        {
+            "code": 0,
+            "tenant_access_token": "tenant-token",
+            "data": {"message_id": "om_123"},
+        }
+    )
+    client = FeishuClient(
+        app_id="app-id",
+        app_secret="app-secret",
+        http_client=fake_client,
+    )
+
+    payload = await client.send_message(
+        "oc_chat",
+        {
+            "msg_type": "text",
+            "content": {"text": "hello feishu"},
+        },
+    )
+
+    assert payload["data"]["message_id"] == "om_123"
+    assert fake_client.calls == [
+        (
+            "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+            {"app_id": "app-id", "app_secret": "app-secret"},
+            None,
+        ),
+        (
+            "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
+            {
+                "receive_id": "oc_chat",
+                "msg_type": "text",
+                "content": json.dumps({"text": "hello feishu"}),
+            },
+            {"Authorization": "Bearer tenant-token"},
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_send_message_accepts_pre_serialized_string_content() -> None:
+    from infra.im.feishu import FeishuClient
+
+    fake_client = _FakeAsyncClient(
+        {
+            "code": 0,
+            "tenant_access_token": "tenant-token",
+            "data": {"message_id": "om_123"},
+        }
+    )
+    client = FeishuClient(
+        app_id="app-id",
+        app_secret="app-secret",
+        http_client=fake_client,
+    )
+
+    await client.send_message(
+        "ou_user",
+        {
+            "msg_type": "text",
+            "content": '{"text":"already string"}',
+        },
+        receive_id_type="open_id",
+    )
+
+    assert fake_client.calls[-1] == (
+        "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id",
+        {
+            "receive_id": "ou_user",
+            "msg_type": "text",
+            "content": '{"text":"already string"}',
+        },
+        {"Authorization": "Bearer tenant-token"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_message_raises_when_feishu_returns_error_code() -> None:
+    from infra.im.feishu import FeishuClient, FeishuClientError
+
+    fake_client = _FakeAsyncClient(
+        {
+            "code": 0,
+            "tenant_access_token": "tenant-token",
+        }
+    )
+    message_client = _FakeAsyncClient({"code": 999, "msg": "send failed"})
+    client = FeishuClient(
+        app_id="app-id",
+        app_secret="app-secret",
+        http_client=fake_client,
+    )
+
+    async def fake_get_access_token() -> str:
+        client.http_client = message_client
+        return "tenant-token"
+
+    client.get_access_token = fake_get_access_token  # type: ignore[method-assign]
+
+    with pytest.raises(FeishuClientError, match="send failed"):
+        await client.send_message(
+            "oc_chat",
+            {
+                "msg_type": "text",
+                "content": {"text": "hello feishu"},
+            },
+        )

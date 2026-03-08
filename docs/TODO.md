@@ -1718,7 +1718,7 @@ async def handle_websocket_event(event: dict):
         # 处理消息
 ```
 
-- [ ] **M5.1.3** 实现消息发送
+- [x] **M5.1.3** 实现消息发送
 
 ```python
 # infra/im/feishu.py

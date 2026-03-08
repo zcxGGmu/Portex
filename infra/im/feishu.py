@@ -142,10 +142,43 @@ class FeishuClient(IMClient):
             raw_event=raw_event,
         )
 
-    def send_message(self, channel: str, text: str) -> bool:
-        """Placeholder send hook reserved for later Feishu messaging work."""
-        _ = (channel, text)
-        return True
+    async def send_message(
+        self,
+        receive_id: str,
+        content: dict[str, object],
+        receive_id_type: str = "chat_id",
+    ) -> dict[str, object]:
+        """Send a minimal message payload through the Feishu message endpoint."""
+        msg_type = content.get("msg_type")
+        raw_content = content.get("content")
+        if not isinstance(msg_type, str) or msg_type == "":
+            raise FeishuClientError("msg_type is required for Feishu message sending")
+        if raw_content is None:
+            raise FeishuClientError("content is required for Feishu message sending")
+
+        serialized_content = self._serialize_message_content(raw_content)
+        access_token = await self.get_access_token()
+
+        client = self.http_client or httpx.AsyncClient()
+        close_client = self.http_client is None
+        try:
+            response = await client.post(
+                f"{self.base_url.rstrip('/')}/open-apis/im/v1/messages?receive_id_type={receive_id_type}",
+                json={
+                    "receive_id": receive_id,
+                    "msg_type": msg_type,
+                    "content": serialized_content,
+                },
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            payload = response.json()
+        finally:
+            if close_client:
+                await client.aclose()
+
+        if payload.get("code") != 0:
+            raise FeishuClientError(str(payload.get("msg", "failed to send Feishu message")))
+        return payload
 
     def _pkcs7_unpad(self, value: bytes) -> bytes:
         if not value:
@@ -198,6 +231,13 @@ class FeishuClient(IMClient):
         if isinstance(text, str) and text:
             return text
         return None
+
+    def _serialize_message_content(self, content: object) -> str:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, dict):
+            return json.dumps(content)
+        raise FeishuClientError("invalid Feishu message content payload")
 
 
 __all__ = ["FeishuClient", "FeishuClientError", "FeishuMessageEvent"]
