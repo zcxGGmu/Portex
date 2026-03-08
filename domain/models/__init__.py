@@ -7,6 +7,7 @@ from domain.models.invite_code import InviteCode
 from domain.models.message import Message
 from domain.models.session import Session
 from domain.models.task import ScheduledTask
+from domain.models.task_log import TaskRunLog
 from domain.models.user import User
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "Session",
     "RegisteredGroup",
     "ScheduledTask",
+    "TaskRunLog",
 ]

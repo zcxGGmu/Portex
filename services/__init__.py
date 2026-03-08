@@ -6,6 +6,7 @@ __all__ = [
     "group_queue",
     "scheduler",
     "task_service",
+    "task_log_service",
     "memory",
     "skills",
     "message_service",

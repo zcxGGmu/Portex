@@ -1590,7 +1590,7 @@ async def delete_task(
     pass
 ```
 
-- [ ] **M4.3.3** 实现任务执行日志
+- [x] **M4.3.3** 实现任务执行日志
 
 ```python
 # domain/models/task_log.py

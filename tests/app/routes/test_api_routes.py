@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
@@ -23,17 +24,25 @@ def api_client() -> Iterator[TestClient]:
         from services.task_service import task_service
     except ModuleNotFoundError:
         task_service = None
+    try:
+        from services.task_log_service import task_log_service
+    except ModuleNotFoundError:
+        task_log_service = None
 
     auth_service.reset()
     group_member_service.reset()
     if task_service is not None:
         task_service.reset()
+    if task_log_service is not None:
+        task_log_service.reset()
     with TestClient(app) as client:
         yield client
     auth_service.reset()
     group_member_service.reset()
     if task_service is not None:
         task_service.reset()
+    if task_log_service is not None:
+        task_log_service.reset()
 
 
 def _login_headers(api_client: TestClient, username: str, password: str) -> dict[str, str]:
@@ -338,6 +347,7 @@ def test_group_owner_cannot_remove_self(api_client: TestClient) -> None:
 
 def test_task_routes_require_authentication(api_client: TestClient) -> None:
     list_response = api_client.get("/tasks")
+    logs_response = api_client.get("/tasks/task-missing/logs")
     create_response = api_client.post(
         "/tasks",
         json={
@@ -351,6 +361,7 @@ def test_task_routes_require_authentication(api_client: TestClient) -> None:
     delete_response = api_client.delete("/tasks/task-missing")
 
     assert list_response.status_code == 401
+    assert logs_response.status_code == 401
     assert create_response.status_code == 401
     assert delete_response.status_code == 401
 
@@ -481,6 +492,103 @@ def test_member_can_list_tasks_but_cannot_create_or_delete_tasks(api_client: Tes
     assert len(list_response.json()["tasks"]) == 1
     assert create_response.status_code == 403
     assert delete_response.status_code == 403
+
+
+def test_admin_can_list_task_logs(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.task_service import task_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    task = task_service.create_task(
+        group_folder="group-demo",
+        chat_jid="group-demo",
+        prompt="run once",
+        schedule_type="once",
+        next_run=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+
+    asyncio.run(task_service.run_pending())
+
+    response = api_client.get(f"/tasks/{task.id}/logs", headers=admin_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["logs"]) == 1
+    assert payload["logs"][0]["task_id"] == task.id
+    assert payload["logs"][0]["status"] == "success"
+
+
+def test_member_can_list_task_logs(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.task_service import task_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    auth_service.register_user("member", "secret")
+    member_headers = _login_headers(api_client, "member", "secret")
+    task = task_service.create_task(
+        group_folder="group-demo",
+        chat_jid="group-demo",
+        prompt="run once",
+        schedule_type="once",
+        next_run=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+
+    asyncio.run(task_service.run_pending())
+
+    response = api_client.get(f"/tasks/{task.id}/logs", headers=member_headers)
+
+    assert response.status_code == 200
+    assert len(response.json()["logs"]) == 1
+
+
+def test_task_logs_route_honors_limit(api_client: TestClient) -> None:
+    from services.auth import auth_service
+    from services.task_log_service import task_log_service
+    from services.task_service import task_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+    task = task_service.create_task(
+        group_folder="group-demo",
+        chat_jid="group-demo",
+        prompt="run later",
+        schedule_type="once",
+        next_run=datetime.now(timezone.utc) + timedelta(minutes=10),
+    )
+    base_time = datetime(2026, 3, 8, 12, 0, 0)
+    task_log_service.record_log(
+        task_id=task.id,
+        run_at=base_time,
+        duration_ms=10,
+        status="success",
+        result="first",
+    )
+    latest = task_log_service.record_log(
+        task_id=task.id,
+        run_at=base_time + timedelta(minutes=1),
+        duration_ms=20,
+        status="error",
+        result="second",
+    )
+
+    response = api_client.get(f"/tasks/{task.id}/logs?limit=1", headers=admin_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["logs"]) == 1
+    assert payload["logs"][0]["id"] == latest.id
+
+
+def test_task_logs_route_returns_404_for_missing_task(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    auth_service.register_user("admin", "secret", role="admin")
+    admin_headers = _login_headers(api_client, "admin", "secret")
+
+    response = api_client.get("/tasks/task-missing/logs", headers=admin_headers)
+
+    assert response.status_code == 404
 
 
 def test_task_route_rejects_invalid_schedule_payload(api_client: TestClient) -> None:

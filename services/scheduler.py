@@ -47,6 +47,9 @@ class TaskScheduler:
     def remove_task(self, task_id: str) -> bool:
         return self._tasks.pop(task_id, None) is not None
 
+    def set_executor(self, executor: Executor) -> None:
+        self._executor = executor
+
     def list_tasks(self) -> list[ScheduledTask]:
         return sorted(
             self._tasks.values(),

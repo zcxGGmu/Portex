@@ -12,12 +12,17 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def _build_service(*, now: datetime):
+def _build_service(*, now: datetime, executor=None, task_log_service=None):
     from services.scheduler import TaskScheduler
     from services.task_service import TaskService
 
     scheduler = TaskScheduler(now_func=lambda: now)
-    service = TaskService(scheduler=scheduler)
+    service = TaskService(
+        scheduler=scheduler,
+        executor=executor,
+        task_log_service=task_log_service,
+        run_at_now_func=lambda: now,
+    )
     return service, scheduler
 
 
@@ -94,6 +99,73 @@ def test_create_task_normalizes_aware_next_run_to_internal_utc_naive() -> None:
 
     assert task.next_run == datetime(2026, 3, 8, 4, 5, 0)
     assert task.next_run.tzinfo is None
+
+
+@pytest.mark.asyncio
+async def test_run_pending_records_success_log_for_due_task() -> None:
+    from services.task_log_service import TaskLogService
+
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    executed_task_ids: list[str] = []
+    log_service = TaskLogService()
+
+    async def executor(task) -> None:
+        executed_task_ids.append(task.id)
+
+    service, _scheduler = _build_service(
+        now=now,
+        executor=executor,
+        task_log_service=log_service,
+    )
+    task = service.create_task(
+        group_folder="group-a",
+        chat_jid="chat-a",
+        prompt="run once",
+        schedule_type="once",
+        schedule_value=None,
+        next_run=now,
+    )
+
+    await service.run_pending()
+
+    assert executed_task_ids == [task.id]
+    logs = log_service.list_logs(task.id)
+    assert len(logs) == 1
+    assert logs[0].task_id == task.id
+    assert logs[0].status == "success"
+
+
+@pytest.mark.asyncio
+async def test_run_pending_records_error_log_when_executor_fails() -> None:
+    from services.task_log_service import TaskLogService
+
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    log_service = TaskLogService()
+
+    async def executor(_task) -> None:
+        raise RuntimeError("boom")
+
+    service, _scheduler = _build_service(
+        now=now,
+        executor=executor,
+        task_log_service=log_service,
+    )
+    task = service.create_task(
+        group_folder="group-a",
+        chat_jid="chat-a",
+        prompt="run once",
+        schedule_type="once",
+        schedule_value=None,
+        next_run=now,
+    )
+
+    await service.run_pending()
+
+    logs = log_service.list_logs(task.id)
+    assert len(logs) == 1
+    assert logs[0].status == "error"
+    assert logs[0].result is None
+    assert logs[0].error == "boom"
 
 
 def test_list_tasks_returns_tasks_in_scheduler_order() -> None:

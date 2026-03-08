@@ -171,6 +171,29 @@ class DeleteTaskResponse(BaseModel):
     status: str
 
 
+class TaskRunLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    task_id: str
+    run_at: datetime
+    duration_ms: int
+    status: Literal["success", "error", "timeout"]
+    result: str | None = None
+    error: str | None = None
+
+    @field_validator("run_at", mode="after")
+    @classmethod
+    def normalize_run_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        assert normalized is not None
+        return normalized
+
+
+class TaskRunLogListResponse(BaseModel):
+    logs: list[TaskRunLogResponse]
+
+
 __all__ = [
     "CreateGroupMemberRequest",
     "DeleteTaskResponse",
@@ -189,6 +212,8 @@ __all__ = [
     "SendMessageResponse",
     "CreateTaskRequest",
     "TaskListResponse",
+    "TaskRunLogListResponse",
+    "TaskRunLogResponse",
     "TaskResponse",
     "TokenResponse",
     "UpdateUserRequest",
