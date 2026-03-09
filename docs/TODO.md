@@ -1762,7 +1762,7 @@ async def handle_update(self, update: dict):
         pass
 ```
 
-- [ ] **M5.2.3** 实现 Markdown 转换
+- [x] **M5.2.3** 实现 Markdown 转换
 
 ```python
 # infra/im/telegram.py

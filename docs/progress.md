@@ -43,7 +43,8 @@
 - `M5.1` 已完成（`M5.1.1` ~ `M5.1.3`）。
 - `M5.2.1` 已完成（创建 Telegram 客户端）。
 - `M5.2.2` 已完成（实现消息处理）。
-- 当前起点：`M5.2.3`（实现 Markdown 转换）。
+- `M5.2.3` 已完成（实现 Markdown 转换）。
+- 当前起点：`M5.3.1`（实现统一消息格式）。
 
 ---
 
@@ -77,6 +78,9 @@
 - `M5.2.2`：为 Telegram 增加正式 `TelegramMessageEvent` 契约，并实现 `handle_update()`，将顶层 `message` update 规范化为与现有 Feishu 风格对齐的最小事件对象。
 - `M5.2.2`：补齐 Telegram 消息处理测试，覆盖文本消息规范化、unsupported update family 返回 `None`、非文本消息保留 IDs 且 `text=None`，以及坏 payload 抛出 `TelegramClientError`。
 - `M5.2.2`：根据代码评审补强 Telegram 客户端边界：`get_updates()` 现在会把传输层异常和非法响应 payload 统一映射为 `TelegramClientError`，并显式阻止尚未实现的 `send_message()` 调用，避免静默失败。
+- `M5.2.3`：为 Telegram 增加最小 `markdown_to_html()`，支持 HTML 转义、fenced code block、inline code、bold、italic 五类转换，其余 Markdown 语法继续按 plain text 保留。
+- `M5.2.3`：补齐 Telegram Markdown 转换测试，覆盖 HTML 转义、基础行内样式、code block 保护、不完整标记容错、unsupported link 保持原样，以及 review 驱动的 nested style / inline code 回归。
+- `M5.2.3`：根据代码评审将 Markdown 转换收紧为 placeholder + 保守 regex 组合，显式保护 code span、Markdown link 和不支持的 nested emphasis，避免生成无效 Telegram HTML。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -87,13 +91,14 @@
   - `5d6144e` `feat(im): complete M5.1.3 feishu send message`
   - `0a608ad` `docs(handoff): refresh progress and agents baseline`
   - `78e4a8f` `feat(im): complete M5.2.1 telegram client skeleton`
+  - `5611c88` `feat(im): complete M5.2.2 telegram message handling`
 
 ---
 
 ## 3. 最新验证证据
 
-- M5.2.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q` -> `24 passed in 0.15s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `247 passed, 48 warnings in 9.79s`
+- M5.2.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q` -> `32 passed in 0.24s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `255 passed, 48 warnings in 10.47s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
@@ -122,6 +127,8 @@
 - `M5.2.2` 当前 Telegram 侧已完成 `message` update 的最小规范化：`handle_update()` 只识别顶层 `message`，返回 `TelegramMessageEvent`；对 `callback_query`、`edited_message`、`channel_post` 等其他 update family 仍返回 `None`。
 - `M5.2.2` 当前 Telegram 非文本消息只保留最小 IDs 和 `message_type`，`text` 为空；图片下载、文件处理、路由接入、消息发送、Markdown -> HTML、长消息分片、重试/限流仍未开始。
 - `M5.2.2` 当前为兼容遗留 `IMClient` 协议，`TelegramClient.send_message()` 会显式抛出 `TelegramClientError("...not implemented yet")`；真正的 Telegram 发送能力仍留在后续阶段实现。
+- `M5.2.3` 当前 Telegram Markdown 转换只覆盖 HTML 转义、fenced code block、inline code、bold、italic；links、headings、lists、blockquote、完整 Markdown AST、长消息分片、发送 fallback 和 typing 仍未开始。
+- `M5.2.3` 当前不支持 nested/cross-overlapping emphasis；这类输入会保持为 escaped plain text，而不是尝试生成更复杂的 Telegram HTML。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -132,11 +139,11 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`infra/im/telegram.py`、`tests/infra/im/test_telegram.py`、`infra/im/feishu.py`
-2. 从 `M5.2.3` 开始：
-   - 在当前 `TelegramMessageEvent` 基础上实现最小 Markdown -> HTML 转换，不要顺手扩到消息发送或统一路由
-   - 延续当前边界：转换优先服务 Telegram 输出格式，不要提前引入长消息分片、typing、文件消息渲染或完整多平台格式层
+2. 从 `M5.3.1` 开始：
+   - 在当前 Feishu / Telegram 事件契约基础上设计最小 `UnifiedMessage`，不要跳过到完整路由或发送链
+   - 复用现有 `TelegramMessageEvent` / `FeishuMessageEvent` 的字段语义，优先做最小跨通道公共字段，不要提前扩成完整产品态消息模型
    - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
-   - Telegram 接入继续按 TODO 拆分推进：本步只做 Markdown 转换，不要一次性扩到消息发送、多平台抽象、统一路由或生产级重试/限流
+   - 消息路由继续按 TODO 拆分推进：本步只做统一消息格式，不要一次性扩到消息发送、多平台抽象、调度重试或生产级限流
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
@@ -145,4 +152,4 @@
 
 ## 5. 一句话版
 
-> `M5.2.2` 已完成，下一步进入 `M5.2.3` Telegram Markdown 转换。
+> `M5.2.3` 已完成，下一步进入 `M5.3.1` 统一消息格式。

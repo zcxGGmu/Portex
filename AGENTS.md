@@ -18,7 +18,8 @@
 - `M5.1` is complete (`M5.1.1` ~ `M5.1.3`).
 - `M5.2.1` is complete (Telegram client skeleton).
 - `M5.2.2` is complete (Telegram message handling).
-- Current starting point is `M5.2.3` (Telegram Markdown conversion).
+- `M5.2.3` is complete (Telegram Markdown conversion).
+- Current starting point is `M5.3.1` (Unified message format).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -40,7 +41,7 @@
 - If resuming after `M4.3.1`, also skim `services/scheduler.py`, `app/routes/tasks.py`, `domain/models/task.py`, `domain/schemas.py`, and `tests/services/test_scheduler.py` because `M4.3.2` task CRUD work now builds directly on the injected-executor scheduler core and the current `ScheduledTask` contract.
 - If resuming after `M4.4.4`, also skim `services/memory.py`, `container/agent-runner/src/tools/memory.py`, `tests/services/test_memory_service.py`, and `tests/container/agent_runner/test_memory_tools.py` because memory now spans both service-side files and runner-side tool wrappers.
 - If resuming after `M5.1.1`, also skim `infra/im/feishu.py`, `tests/infra/im/test_feishu.py`, and `infra/im/base.py` because Feishu auth, signature verification, decrypt helpers, event parsing, and send-message logic now all live in that slice.
-- If resuming after `M5.2.2`, also skim `infra/im/telegram.py`, `tests/infra/im/test_telegram.py`, and `infra/im/feishu.py` because `M5.2.3` now builds directly on the normalized Telegram message event contract and should stay aligned with the current Feishu event/client style.
+- If resuming after `M5.2.3`, also skim `infra/im/telegram.py`, `tests/infra/im/test_telegram.py`, `infra/im/feishu.py`, and `domain/schemas.py` because `M5.3.1` now builds directly on the current Telegram/Feishu event contracts and should reuse their normalized field semantics instead of inventing a disconnected message shape.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.

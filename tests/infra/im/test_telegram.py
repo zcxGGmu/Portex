@@ -279,3 +279,79 @@ def test_send_message_raises_until_telegram_send_support_exists() -> None:
 
     with pytest.raises(TelegramClientError, match="not implemented"):
         client.send_message("chat-id", "hello")
+
+
+def test_markdown_to_html_escapes_plain_text_html_characters() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert client.markdown_to_html("1 < 2 & 3 > 1") == "1 &lt; 2 &amp; 3 &gt; 1"
+
+
+def test_markdown_to_html_converts_basic_inline_formatting() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert (
+        client.markdown_to_html("**bold** *italic* `code <tag>`")
+        == "<b>bold</b> <i>italic</i> <code>code &lt;tag&gt;</code>"
+    )
+
+
+def test_markdown_to_html_converts_fenced_code_blocks_without_reformatting_inner_markdown() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert (
+        client.markdown_to_html("```\nif x < 1:\n  **still code**\n```")
+        == "<pre><code>if x &lt; 1:\n  **still code**\n</code></pre>"
+    )
+
+
+def test_markdown_to_html_keeps_incomplete_markers_as_plain_text() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert client.markdown_to_html("Use **bold and *italic") == "Use **bold and *italic"
+
+
+def test_markdown_to_html_leaves_unsupported_markdown_syntax_unchanged() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert (
+        client.markdown_to_html("[link](https://example.com) & more")
+        == "[link](https://example.com) &amp; more"
+    )
+
+
+def test_markdown_to_html_does_not_format_inside_unsupported_markdown_links() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert (
+        client.markdown_to_html("[**bold**](https://example.com?a=1&b=2)")
+        == "[**bold**](https://example.com?a=1&amp;b=2)"
+    )
+
+
+def test_markdown_to_html_does_not_convert_nested_styles() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert client.markdown_to_html("*italic **bold** inside*") == "*italic **bold** inside*"
+
+
+def test_markdown_to_html_does_not_format_inside_inline_code() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert client.markdown_to_html("`**x**` and `*y*`") == "<code>**x**</code> and <code>*y*</code>"

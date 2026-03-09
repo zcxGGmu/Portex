@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html import escape
+import re
+from uuid import uuid4
 
 import httpx
 
@@ -133,6 +136,53 @@ class TelegramClient(IMClient):
         """Guard the legacy IM protocol until Telegram send support exists."""
         _ = (channel, text)
         raise TelegramClientError("Telegram send_message is not implemented yet")
+
+    def markdown_to_html(self, text: str) -> str:
+        """Convert a narrow Markdown subset into Telegram-safe HTML."""
+        replacements: dict[str, str] = {}
+
+        def store_replacement(prefix: str, replacement: str) -> str:
+            token = f"@@PORTEX_{prefix}_{uuid4().hex}@@"
+            replacements[token] = replacement
+            return token
+
+        def replace_code_block(match: re.Match[str]) -> str:
+            content = match.group(1)
+            return store_replacement(
+                "CODE_BLOCK",
+                f"<pre><code>{escape(content)}</code></pre>",
+            )
+
+        def replace_markdown_link(match: re.Match[str]) -> str:
+            return store_replacement("MARKDOWN_LINK", escape(match.group(0)))
+
+        def replace_inline_code(match: re.Match[str]) -> str:
+            return store_replacement("INLINE_CODE", f"<code>{match.group(1)}</code>")
+
+        def replace_unsupported_emphasis(match: re.Match[str]) -> str:
+            return store_replacement("UNSUPPORTED", match.group(0))
+
+        rendered = re.sub(
+            r"```(?:[^\n`]*)\n?(.*?)```",
+            replace_code_block,
+            text,
+            flags=re.DOTALL,
+        )
+        rendered = re.sub(r"\[[^\]]+\]\([^)]+\)", replace_markdown_link, rendered)
+        rendered = escape(rendered)
+        rendered = re.sub(r"`([^`\n]+?)`", replace_inline_code, rendered)
+        for pattern in (
+            r"\*\*\*.*?\*\*\*",
+            r"\*[^*\n]*\*\*.*?\*\*[^*\n]*\*",
+            r"\*\*[^*\n]*\*.*?\*[^*\n]*\*\*",
+        ):
+            rendered = re.sub(pattern, replace_unsupported_emphasis, rendered)
+        rendered = re.sub(r"\*\*([^*\n]+)\*\*", r"<b>\1</b>", rendered)
+        rendered = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<i>\1</i>", rendered)
+
+        for token, replacement in replacements.items():
+            rendered = rendered.replace(token, replacement)
+        return rendered
 
 
 __all__ = ["TelegramClient", "TelegramClientError", "TelegramMessageEvent"]
