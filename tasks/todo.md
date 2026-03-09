@@ -142,3 +142,25 @@
 - Reused the existing Feishu, Telegram, `UnifiedMessage`, and `MessageRouter` test suite as the `M5` acceptance matrix, without extending the current IM runtime boundary.
 - Verification ran: `.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py tests/services/test_message_router.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Acceptance commit message for this milestone: `docs(acceptance): complete M5.4 milestone verification`.
+
+# Session Plan (2026-03-09) - M6.1.1 Unit Tests
+
+## Goal
+- Complete `M6.1.1` by aligning `tests/unit/` with the TODO layout and filling it with focused pure-logic unit tests.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current test layout, and pure-logic candidate modules
+- [x] Write `M6.1.1` design and implementation plan docs
+- [x] Add `tests/unit/test_auth.py`, `tests/unit/test_models.py`, and `tests/unit/test_services.py`
+- [x] Remove the legacy `tests/unit/test_auth_unit.py` filename
+- [x] Fix any focused/full-suite collection issues introduced by the new layout
+- [x] Run `tests/unit/ -v`, full backend regression, and `ruff`
+- [x] Update `docs/progress.md` with `M6.1.1` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-09-m6-1-1-unit-tests-design.md` and `docs/plans/2026-03-09-m6-1-1-unit-tests.md` to pin the unit-test scope before implementation.
+- Replaced `tests/unit/test_auth_unit.py` with `tests/unit/test_auth.py`, and added new `tests/unit/test_models.py` plus `tests/unit/test_services.py` so `tests/unit/` now matches the TODO layout.
+- Added `tests/unit/__init__.py` after full regression exposed a pytest import-name collision between `tests/unit/test_models.py` and `tests/domain/models/test_models.py`.
+- Verification ran: `.venv/bin/pytest tests/unit/test_auth.py -v`, `.venv/bin/pytest tests/unit/ -v`, `.venv/bin/pytest -o addopts='' -q`, and `.venv/bin/ruff check .`.
+- Commit message for this milestone: `test(unit): complete M6.1.1 unit test suite`.

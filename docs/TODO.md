@@ -1823,7 +1823,7 @@ async def route_message(message: UnifiedMessage):
 
 ### M6.1: 测试完善 [Week 1, Day 1-2]
 
-- [ ] **M6.1.1** 编写单元测试
+- [x] **M6.1.1** 编写单元测试
 
 ```bash
 # 目录结构
