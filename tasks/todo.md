@@ -103,3 +103,20 @@
 - Added `tests/domain/test_schemas.py` and expanded Feishu/Telegram tests to cover text/non-text conversion and timestamp extraction.
 - Verification passed: `.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`.
 - Commit completed in this session: `feat(messages): complete M5.3.1 unified message schema`.
+
+# Session Plan (2026-03-09) - M5.3.2 Message Routing
+
+## Goal
+- Complete `M5.3.2` by adding a minimal routing layer that dispatches `UnifiedMessage` instances to injected Feishu, Telegram, or Web handlers.
+
+## Checklist
+- [ ] Re-read `docs/progress.md`, `docs/TODO.md`, `domain/schemas.py`, and current IM/message service slices
+- [ ] Write `M5.3.2` design and implementation plan docs
+- [ ] Add message-router tests first and verify they fail
+- [ ] Implement `MessageRouter` plus `MessageRouterError`
+- [ ] Run focused tests, full backend regression, and lint
+- [ ] Update `docs/progress.md` with `M5.3.2` evidence and next step
+- [ ] Commit the milestone with a detailed message
+
+## Review
+- Pending
