@@ -110,13 +110,16 @@
 - Complete `M5.3.2` by adding a minimal routing layer that dispatches `UnifiedMessage` instances to injected Feishu, Telegram, or Web handlers.
 
 ## Checklist
-- [ ] Re-read `docs/progress.md`, `docs/TODO.md`, `domain/schemas.py`, and current IM/message service slices
-- [ ] Write `M5.3.2` design and implementation plan docs
-- [ ] Add message-router tests first and verify they fail
-- [ ] Implement `MessageRouter` plus `MessageRouterError`
-- [ ] Run focused tests, full backend regression, and lint
-- [ ] Update `docs/progress.md` with `M5.3.2` evidence and next step
-- [ ] Commit the milestone with a detailed message
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `domain/schemas.py`, and current IM/message service slices
+- [x] Write `M5.3.2` design and implementation plan docs
+- [x] Add message-router tests first and verify they fail
+- [x] Implement `MessageRouter` plus `MessageRouterError`
+- [x] Run focused tests, full backend regression, and lint
+- [x] Update `docs/progress.md` with `M5.3.2` evidence and next step
+- [x] Commit the milestone with a detailed message
 
 ## Review
-- Pending
+- Added `services/message_router.py` with minimal injected-channel routing and `MessageRouterError`, without wiring real send paths, API routes, or WebSocket flows.
+- Added `tests/services/test_message_router.py` covering Feishu/Telegram/Web dispatch, unknown-channel rejection, and downstream handler exception propagation.
+- Verification ran: `.venv/bin/pytest -o addopts='' tests/services/test_message_router.py -q`, `.venv/bin/pytest -o addopts='' tests/services/test_message_router.py tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, and `git diff --check`.
+- Code commit completed: `c91e7ee` `feat(messages): add minimal message router`.

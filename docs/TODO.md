@@ -1791,7 +1791,7 @@ class UnifiedMessage(BaseModel):
     timestamp: datetime
 ```
 
-- [ ] **M5.3.2** 实现消息路由逻辑
+- [x] **M5.3.2** 实现消息路由逻辑
 
 ```python
 # services/message_router.py
