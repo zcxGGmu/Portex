@@ -164,3 +164,27 @@
 - Added `tests/unit/__init__.py` after full regression exposed a pytest import-name collision between `tests/unit/test_models.py` and `tests/domain/models/test_models.py`.
 - Verification ran: `.venv/bin/pytest tests/unit/test_auth.py -v`, `.venv/bin/pytest tests/unit/ -v`, `.venv/bin/pytest -o addopts='' -q`, and `.venv/bin/ruff check .`.
 - Commit message for this milestone: `test(unit): complete M6.1.1 unit test suite`.
+
+# Session Plan (2026-03-09) - M6.1.2 Integration Tests
+
+## Goal
+- Complete `M6.1.2` by aligning `tests/integration/` with the TODO layout and adding the smallest meaningful API and WebSocket integration tests.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current app wiring, and existing route tests
+- [x] Write `M6.1.2` design and implementation plan docs
+- [x] Add `tests/integration/test_api.py`
+- [x] Add `tests/integration/test_websocket.py`
+- [x] Run focused integration verification
+- [x] Run spec review and code-quality review on the new integration slice
+- [x] Run full backend regression and `ruff`
+- [x] Update `docs/progress.md` with `M6.1.2` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-09-m6-1-2-integration-tests-design.md` and `docs/plans/2026-03-09-m6-1-2-integration-tests.md` to pin the integration-test scope before implementation.
+- Added `tests/integration/test_api.py` for `GET /health` plus `register -> login -> /users/me` through the real FastAPI app wiring.
+- Added `tests/integration/test_websocket.py` for the real `/ws/{group_folder}` route, covering a deterministic `run.started` event and same-socket cancel -> `run.failed` under fake runtime control.
+- Verification ran: `.venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q`, `.venv/bin/pytest -o addopts='' -q`, and `.venv/bin/ruff check .`.
+- Review agents reported `spec-compliant` and `no findings`; residual risk remains intentionally narrow API coverage plus fake-runtime-backed WebSocket integration.
+- Commit message for this milestone: `test(integration): complete M6.1.2 integration test suite`.

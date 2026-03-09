@@ -1839,7 +1839,7 @@ tests/
     └── test_chat.py
 ```
 
-- [ ] **M6.1.2** 编写集成测试
+- [x] **M6.1.2** 编写集成测试
 
 ```python
 # tests/integration/test_api.py
