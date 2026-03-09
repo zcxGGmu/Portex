@@ -51,7 +51,8 @@
 - `M6.1.1` 已完成（编写单元测试）。
 - `M6.1.2` 已完成（编写集成测试）。
 - `M6.1.3` 已完成（配置 CI/CD）。
-- 当前起点：`M6.2.1`（编写 README）。
+- `M6.2.1` 已完成（编写 README）。
+- 当前起点：`M6.2.2`（编写 API 文档）。
 
 ---
 
@@ -106,6 +107,9 @@
 - `M6.1.3`：新增 `docs/plans/2026-03-09-m6-1-3-ci-cd-design.md` 与 `docs/plans/2026-03-09-m6-1-3-ci-cd.md`，将 CI 范围固定为最小 GitHub Actions backend/frontend 验证，不扩到发布、部署或 secrets 管理。
 - `M6.1.3`：新增 `.github/workflows/test.yml`，配置 `push` / `pull_request` 触发的 backend/frontend 两个 job；backend 运行 `pytest tests/ -v --cov` 与 `ruff check .`，frontend 运行 `npm ci`、`npm run lint`、`npm run build`。
 - `M6.1.3`：在 `pyproject.toml` 中加入 `pytest-cov>=6.0.0`，并通过本地 workflow 等价命令验证后端覆盖率测试、lint 和前端构建均可执行。
+- `M6.2.1`：新增 `docs/plans/2026-03-10-m6-2-1-readme-design.md` 与 `docs/plans/2026-03-10-m6-2-1-readme.md`，将 README 固定为“项目定位 + 快速开始 + 开发命令 + 边界说明”的分层入口，不扩成完整文档站。
+- `M6.2.1`：重写根 `README.md`，补齐项目定位、当前状态、能力概览、快速开始、开发命令、目录结构、架构摘要、当前边界、文档索引与上游参考。
+- `M6.2.1`：完成 README spec review 与 code-quality review，并通过后端回归、`ruff`、前端 `lint/build` 验证 README 改写未引入仓库级回归。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -124,17 +128,17 @@
   - `b488264` `docs(acceptance): complete M5.4 milestone verification`
   - `8d6fc9c` `test(unit): complete M6.1.1 unit test suite`
   - `4943abd` `test(integration): complete M6.1.2 integration test suite`
+  - `a286a63` `build(ci): complete M6.1.3 workflow setup`
 
 ---
 
 ## 3. 最新验证证据
 
-- M6.1.3 依赖更新：`.venv/bin/python -m pip install -e ".[dev]"` -> `pytest-cov 7.0.0 installed`
-- M6.1.3 backend workflow 等价验证：`.venv/bin/pytest tests/ -v --cov` -> `282 passed, 1 warning in 6.74s`, `TOTAL 95%`
+- M6.2.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `282 passed, 1 warning in 7.42s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
-- Frontend dependency install：`cd web && npm ci` -> `added 240 packages`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
+- 最近一次 backend coverage 验证（M6.1.3）：`.venv/bin/pytest tests/ -v --cov` -> `282 passed, 1 warning`, `TOTAL 95%`
 - Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
 
@@ -176,6 +180,7 @@
 - `M6.1.2` 当前已建立 `tests/integration/` 的最小入口，但 API 侧仍只覆盖 `/health` 和 auth happy path，WebSocket 侧仍依赖 fake runtime monkeypatch；更广义的 API matrix、真实 runtime/provider 集成和 e2e 聊天链路继续留在后续阶段。
 - `M6.1.3` 当前只完成了最小 GitHub Actions 测试工作流配置；本地已跑通等价命令，但当前环境无法直接证明远端 GitHub Actions runner 的实际执行结果。
 - `M6.1.3` 当前 CI 仍不覆盖 Docker、真实 provider、发布/部署、或 secrets 注入；这些能力继续留待后续阶段单独设计。
+- `M6.2.1` 当前 README 已覆盖项目定位、启动、开发和边界说明，但 API 文档与部署文档仍未开始；更细的接口说明继续留给 `M6.2.2` / `M6.2.3`。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -186,9 +191,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/plans/2026-03-09-m6-1-3-ci-cd-design.md`、`docs/plans/2026-03-09-m6-1-3-ci-cd.md`、`tasks/todo.md` 中最新 `M6.1.3` 会话清单
-2. 从 `M6.2.1` 开始：
-   - 先补 README，围绕当前已实现的运行方式、测试命令、IM/路由/CI 边界做最小可交付文档，不要一上来扩成完整产品文档站
+   - 再读：`docs/plans/2026-03-10-m6-2-1-readme-design.md`、`docs/plans/2026-03-10-m6-2-1-readme.md`、`tasks/todo.md` 中最新 `M6.2.1` 会话清单
+2. 从 `M6.2.2` 开始：
+   - 先补 API 文档，优先复用 FastAPI 现有 `/docs` 能力与当前路由结构，不要一上来扩成完整外部开发者门户
+   - 继续保留 `M6.2.1` 当前边界：README 已完善，但 API 文档和部署文档仍未开始
    - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
    - 继续保留 `M6.1.2` 当前边界：integration 测试入口已建立，但 API matrix 仍窄、WebSocket 仍基于 fake runtime，不能把它误读成真实 provider/e2e 已打通
    - 继续保留 `M5.4` 当前边界：不要把阶段验收结论误读成真实 IM 运行链已打通；`app/routes/messages.py`、WebSocket 主链和真实发送编排仍未接上
@@ -201,4 +207,4 @@
 
 ## 5. 一句话版
 
-> `M6.1.3` 已完成，下一步进入 `M6.2.1` README 编写。
+> `M6.2.1` 已完成，下一步进入 `M6.2.2` API 文档。

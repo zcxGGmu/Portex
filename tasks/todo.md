@@ -212,3 +212,24 @@
 - Verification ran: `.venv/bin/python -m pip install -e ".[dev]"`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm ci`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Review agents reported `spec-compliant` and `no findings`; remaining risk is only that the workflow has been validated locally, not executed on a remote GitHub Actions runner in this environment.
 - Commit message for this milestone: `build(ci): complete M6.1.3 workflow setup`.
+
+# Session Plan (2026-03-10) - M6.2.1 README
+
+## Goal
+- Complete `M6.2.1` by replacing the placeholder root README with a practical project entrypoint for readers, operators, and contributors.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current repository commands, and the existing README
+- [x] Write `M6.2.1` design and implementation plan docs
+- [x] Rewrite `README.md` using the approved layered structure
+- [x] Run spec review and code-quality review on the README slice
+- [x] Run backend regression, `ruff`, and frontend lint/build
+- [x] Update `docs/progress.md` with `M6.2.1` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-10-m6-2-1-readme-design.md` and `docs/plans/2026-03-10-m6-2-1-readme.md` to pin the README scope before implementation.
+- Replaced the placeholder `README.md` with a layered project entrypoint covering positioning, current status, features, quick start, development commands, project structure, architecture, current boundaries, document links, and upstream reference.
+- Review agents reported `spec-compliant` and `no findings`; wording stays conservative around IM maturity, Docker verification, and GitHub Actions remote execution evidence.
+- Verification ran: `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Commit message for this milestone: `docs(readme): complete M6.2.1 project readme`.

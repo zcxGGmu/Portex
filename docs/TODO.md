@@ -1879,7 +1879,7 @@ jobs:
 
 ### M6.2: 文档完善 [Week 1, Day 2-3]
 
-- [ ] **M6.2.1** 编写 README
+- [x] **M6.2.1** 编写 README
 
 ```markdown
 # Portex
