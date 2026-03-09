@@ -1853,7 +1853,7 @@ async def test_health():
         assert response.status_code == 200
 ```
 
-- [ ] **M6.1.3** 配置 CI/CD
+- [x] **M6.1.3** 配置 CI/CD
 
 ```yaml
 # .github/workflows/test.yml

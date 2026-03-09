@@ -188,3 +188,27 @@
 - Verification ran: `.venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q`, `.venv/bin/pytest -o addopts='' -q`, and `.venv/bin/ruff check .`.
 - Review agents reported `spec-compliant` and `no findings`; residual risk remains intentionally narrow API coverage plus fake-runtime-backed WebSocket integration.
 - Commit message for this milestone: `test(integration): complete M6.1.2 integration test suite`.
+
+# Session Plan (2026-03-09) - M6.1.3 CI/CD
+
+## Goal
+- Complete `M6.1.3` by adding the minimal GitHub Actions workflow needed to run the current backend and frontend verification commands on push and pull_request.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current verification commands, and root/web dependency config
+- [x] Write `M6.1.3` design and implementation plan docs
+- [x] Add `.github/workflows/test.yml`
+- [x] Add `pytest-cov` to `pyproject.toml` dev dependencies
+- [x] Run spec review and code-quality review on the CI slice
+- [x] Install updated dev dependencies locally
+- [x] Run workflow-equivalent backend and frontend commands locally
+- [x] Update `docs/progress.md` with `M6.1.3` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-09-m6-1-3-ci-cd-design.md` and `docs/plans/2026-03-09-m6-1-3-ci-cd.md` to pin the CI scope before implementation.
+- Added `.github/workflows/test.yml` with two minimal jobs: backend (`pytest tests/ -v --cov`, `ruff check .`) and frontend (`npm ci`, `npm run lint`, `npm run build`).
+- Added `pytest-cov>=6.0.0` to `pyproject.toml` so the TODO-specified backend CI command is valid.
+- Verification ran: `.venv/bin/python -m pip install -e ".[dev]"`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm ci`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Review agents reported `spec-compliant` and `no findings`; remaining risk is only that the workflow has been validated locally, not executed on a remote GitHub Actions runner in this environment.
+- Commit message for this milestone: `build(ci): complete M6.1.3 workflow setup`.

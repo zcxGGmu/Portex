@@ -50,7 +50,8 @@
 - `M5` 已完成（`M5.1` ~ `M5.4`）。
 - `M6.1.1` 已完成（编写单元测试）。
 - `M6.1.2` 已完成（编写集成测试）。
-- 当前起点：`M6.1.3`（配置 CI/CD）。
+- `M6.1.3` 已完成（配置 CI/CD）。
+- 当前起点：`M6.2.1`（编写 README）。
 
 ---
 
@@ -102,6 +103,9 @@
 - `M6.1.2`：新增 `docs/plans/2026-03-09-m6-1-2-integration-tests-design.md` 与 `docs/plans/2026-03-09-m6-1-2-integration-tests.md`，将 `tests/integration/` 的最小范围固定为 API baseline 与 WebSocket run/cancel 闭环，不提前扩到 e2e 或 CI。
 - `M6.1.2`：新增 `tests/integration/test_api.py` 与 `tests/integration/test_websocket.py`，分别覆盖 `GET /health`、`register -> login -> /users/me` 真实 app 装配链路，以及受控 fake runtime 下的 WebSocket `run.started` / cancel -> `run.failed` 集成闭环。
 - `M6.1.2`：完成 focused integration、全量后端回归与 lint；spec review 确认新测试与设计一致，code-quality review 未发现阻塞问题，仅保留“当前 integration 仍刻意最小”的范围性风险。
+- `M6.1.3`：新增 `docs/plans/2026-03-09-m6-1-3-ci-cd-design.md` 与 `docs/plans/2026-03-09-m6-1-3-ci-cd.md`，将 CI 范围固定为最小 GitHub Actions backend/frontend 验证，不扩到发布、部署或 secrets 管理。
+- `M6.1.3`：新增 `.github/workflows/test.yml`，配置 `push` / `pull_request` 触发的 backend/frontend 两个 job；backend 运行 `pytest tests/ -v --cov` 与 `ruff check .`，frontend 运行 `npm ci`、`npm run lint`、`npm run build`。
+- `M6.1.3`：在 `pyproject.toml` 中加入 `pytest-cov>=6.0.0`，并通过本地 workflow 等价命令验证后端覆盖率测试、lint 和前端构建均可执行。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -119,15 +123,18 @@
   - `5335eab` `docs(handoff): record M5.3.2 completion`
   - `b488264` `docs(acceptance): complete M5.4 milestone verification`
   - `8d6fc9c` `test(unit): complete M6.1.1 unit test suite`
+  - `4943abd` `test(integration): complete M6.1.2 integration test suite`
 
 ---
 
 ## 3. 最新验证证据
 
-- M6.1.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q` -> `4 passed, 1 warning in 2.96s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `282 passed, 1 warning in 4.28s`
+- M6.1.3 依赖更新：`.venv/bin/python -m pip install -e ".[dev]"` -> `pytest-cov 7.0.0 installed`
+- M6.1.3 backend workflow 等价验证：`.venv/bin/pytest tests/ -v --cov` -> `282 passed, 1 warning in 6.74s`, `TOTAL 95%`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
-- 最近一次 frontend 验证（M5.4）：`cd web && npm run lint && npm run build` -> `passed on 2026-03-09`
+- Frontend dependency install：`cd web && npm ci` -> `added 240 packages`
+- Frontend lint：`cd web && npm run lint` -> `exit 0`
+- Frontend build：`cd web && npm run build` -> `vite build completed successfully`
 - Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
 
@@ -167,6 +174,8 @@
 - `M6.1.1` 当前已补齐 `tests/unit/` 的最小目录布局，但 `tests/integration/` 与 `tests/e2e/` 仍只有占位目录；`M6.1.2` 才开始实现真正的集成测试入口。
 - `M6.1.1` 当前通过 `tests/unit/__init__.py` 解决了 unit/domain 两个 `test_models.py` 的 pytest 收集冲突；后续若继续在不同子目录下沿用相同 basename，仍应保持 package 化或显式避免命名碰撞。
 - `M6.1.2` 当前已建立 `tests/integration/` 的最小入口，但 API 侧仍只覆盖 `/health` 和 auth happy path，WebSocket 侧仍依赖 fake runtime monkeypatch；更广义的 API matrix、真实 runtime/provider 集成和 e2e 聊天链路继续留在后续阶段。
+- `M6.1.3` 当前只完成了最小 GitHub Actions 测试工作流配置；本地已跑通等价命令，但当前环境无法直接证明远端 GitHub Actions runner 的实际执行结果。
+- `M6.1.3` 当前 CI 仍不覆盖 Docker、真实 provider、发布/部署、或 secrets 注入；这些能力继续留待后续阶段单独设计。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -177,9 +186,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/plans/2026-03-09-m6-1-2-integration-tests-design.md`、`docs/plans/2026-03-09-m6-1-2-integration-tests.md`、`tasks/todo.md` 中最新 `M6.1.2` 会话清单
-2. 从 `M6.1.3` 开始：
-   - 先为测试命令和依赖安装建立最小 CI/CD 配置，不要直接扩成发布流水线或部署系统
+   - 再读：`docs/plans/2026-03-09-m6-1-3-ci-cd-design.md`、`docs/plans/2026-03-09-m6-1-3-ci-cd.md`、`tasks/todo.md` 中最新 `M6.1.3` 会话清单
+2. 从 `M6.2.1` 开始：
+   - 先补 README，围绕当前已实现的运行方式、测试命令、IM/路由/CI 边界做最小可交付文档，不要一上来扩成完整产品文档站
+   - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
    - 继续保留 `M6.1.2` 当前边界：integration 测试入口已建立，但 API matrix 仍窄、WebSocket 仍基于 fake runtime，不能把它误读成真实 provider/e2e 已打通
    - 继续保留 `M5.4` 当前边界：不要把阶段验收结论误读成真实 IM 运行链已打通；`app/routes/messages.py`、WebSocket 主链和真实发送编排仍未接上
    - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
@@ -191,4 +201,4 @@
 
 ## 5. 一句话版
 
-> `M6.1.2` 已完成，下一步进入 `M6.1.3` CI/CD 配置。
+> `M6.1.3` 已完成，下一步进入 `M6.2.1` README 编写。
