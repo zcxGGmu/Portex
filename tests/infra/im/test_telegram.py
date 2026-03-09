@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+import httpx
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -11,21 +12,30 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 class _FakeResponse:
-    def __init__(self, payload: dict[str, object]) -> None:
+    def __init__(self, payload: object) -> None:
         self._payload = payload
 
-    def json(self) -> dict[str, object]:
+    def json(self) -> object:
         return self._payload
 
 
 class _FakeAsyncClient:
-    def __init__(self, payload: dict[str, object]) -> None:
+    def __init__(self, payload: object) -> None:
         self._payload = payload
         self.calls: list[tuple[str, dict[str, object]]] = []
 
     async def get(self, url: str, params: dict[str, object]) -> _FakeResponse:
         self.calls.append((url, params))
         return _FakeResponse(self._payload)
+
+
+class _RaisingAsyncClient:
+    def __init__(self, exc: Exception) -> None:
+        self._exc = exc
+
+    async def get(self, url: str, params: dict[str, object]) -> _FakeResponse:
+        _ = (url, params)
+        raise self._exc
 
 
 @pytest.mark.asyncio
@@ -120,3 +130,152 @@ async def test_get_updates_raises_for_missing_result_list() -> None:
 
     with pytest.raises(TelegramClientError, match="result"):
         await client.get_updates()
+
+
+@pytest.mark.asyncio
+async def test_get_updates_raises_for_non_dict_payload() -> None:
+    from infra.im.telegram import TelegramClient, TelegramClientError
+
+    client = TelegramClient(
+        bot_token="bot-token",
+        http_client=_FakeAsyncClient(["not", "a", "dict"]),
+    )
+
+    with pytest.raises(TelegramClientError, match="payload"):
+        await client.get_updates()
+
+
+@pytest.mark.asyncio
+async def test_get_updates_wraps_transport_errors() -> None:
+    from infra.im.telegram import TelegramClient, TelegramClientError
+
+    client = TelegramClient(
+        bot_token="bot-token",
+        http_client=_RaisingAsyncClient(httpx.ConnectTimeout("network down")),
+    )
+
+    with pytest.raises(TelegramClientError, match="network down"):
+        await client.get_updates()
+
+
+def test_handle_update_normalizes_text_message() -> None:
+    from infra.im.telegram import TelegramClient, TelegramMessageEvent
+
+    client = TelegramClient(bot_token="bot-token")
+
+    result = client.handle_update(
+        {
+            "update_id": 101,
+            "message": {
+                "message_id": 201,
+                "text": "hello telegram",
+                "chat": {"id": -3001, "type": "group"},
+                "from": {"id": 4001, "is_bot": False},
+            },
+        }
+    )
+
+    assert result == TelegramMessageEvent(
+        event_type="message",
+        chat_id="-3001",
+        message_id="201",
+        sender_id="4001",
+        message_type="text",
+        text="hello telegram",
+        raw_event={
+            "message_id": 201,
+            "text": "hello telegram",
+            "chat": {"id": -3001, "type": "group"},
+            "from": {"id": 4001, "is_bot": False},
+        },
+    )
+
+
+def test_handle_update_returns_none_for_unsupported_update_family() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    assert (
+        client.handle_update(
+            {
+                "update_id": 101,
+                "callback_query": {
+                    "id": "cbq_1",
+                },
+            }
+        )
+        is None
+    )
+
+
+def test_handle_update_keeps_ids_for_non_text_message() -> None:
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    result = client.handle_update(
+        {
+            "update_id": 101,
+            "message": {
+                "message_id": 201,
+                "photo": [{"file_id": "photo_1"}],
+                "chat": {"id": -3001, "type": "group"},
+                "from": {"id": 4001, "is_bot": False},
+            },
+        }
+    )
+
+    assert result is not None
+    assert result.chat_id == "-3001"
+    assert result.message_id == "201"
+    assert result.sender_id == "4001"
+    assert result.message_type == "photo"
+    assert result.text is None
+
+
+def test_handle_update_raises_for_invalid_message_payload() -> None:
+    from infra.im.telegram import TelegramClient, TelegramClientError
+
+    client = TelegramClient(bot_token="bot-token")
+
+    with pytest.raises(TelegramClientError, match="chat"):
+        client.handle_update(
+            {
+                "update_id": 101,
+                "message": {
+                    "message_id": 201,
+                    "text": "hello telegram",
+                    "chat": {},
+                    "from": {"id": 4001, "is_bot": False},
+                },
+            }
+        )
+
+
+def test_handle_update_rejects_boolean_identifiers() -> None:
+    from infra.im.telegram import TelegramClient, TelegramClientError
+
+    client = TelegramClient(bot_token="bot-token")
+
+    with pytest.raises(TelegramClientError, match="sender"):
+        client.handle_update(
+            {
+                "update_id": 101,
+                "message": {
+                    "message_id": 201,
+                    "text": "hello telegram",
+                    "chat": {"id": -3001, "type": "group"},
+                    "from": {"id": True, "is_bot": False},
+                },
+            }
+        )
+
+
+def test_send_message_raises_until_telegram_send_support_exists() -> None:
+    from infra.im.telegram import TelegramClient, TelegramClientError
+
+    client = TelegramClient(bot_token="bot-token")
+
+    with pytest.raises(TelegramClientError, match="not implemented"):
+        client.send_message("chat-id", "hello")

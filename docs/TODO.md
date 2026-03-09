@@ -1751,7 +1751,7 @@ class TelegramClient:
             return resp.json()["result"]
 ```
 
-- [ ] **M5.2.2** 实现消息处理
+- [x] **M5.2.2** 实现消息处理
 
 ```python
 # infra/im/telegram.py

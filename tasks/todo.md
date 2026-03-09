@@ -37,3 +37,25 @@
 - Verification passed: `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`.
 - Refreshed `.venv` with `.venv/bin/pip install -e ".[dev]"` before final regression because the environment was missing declared dependency `croniter`.
 - Commit completed in this session: `feat(im): complete M5.2.1 telegram client skeleton`.
+
+# Session Plan (2026-03-09) - M5.2.2 Telegram Message Handling
+
+## Goal
+- Complete `M5.2.2` by normalizing Telegram `message` updates into a minimal event object without expanding into routing, sending, or Markdown rendering.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `infra/im/telegram.py`, `tests/infra/im/test_telegram.py`, and `infra/im/feishu.py`
+- [x] Write `M5.2.2` design and implementation plan docs
+- [x] Add Telegram message-handling tests first and verify they fail
+- [x] Implement the minimal `TelegramMessageEvent` and `handle_update()`
+- [x] Run focused IM tests, full backend regression, and lint
+- [x] Update `docs/progress.md` with `M5.2.2` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-09-m5-2-2-telegram-message-handling-design.md` and `docs/plans/2026-03-09-m5-2-2-telegram-message-handling.md` before implementation to lock the milestone boundary.
+- Extended `infra/im/telegram.py` with `TelegramMessageEvent` and a pure `handle_update()` parser that only normalizes top-level `message` updates.
+- Expanded `tests/infra/im/test_telegram.py` to cover text normalization, unsupported update families returning `None`, non-text messages preserving IDs with `text=None`, and malformed message payload errors.
+- Addressed review findings by rejecting boolean identifiers, wrapping transport / malformed payload failures in `TelegramClientError`, and making unsupported `send_message()` calls fail explicitly instead of silently returning `None`.
+- Verification passed: `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`.
+- Commit completed in this session: `feat(im): complete M5.2.2 telegram message handling`.
