@@ -1,7 +1,7 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-09 (Asia/Shanghai)
-仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
+最后更新: 2026-03-10 (Asia/Shanghai)
+仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
 
 ---
@@ -129,6 +129,7 @@
   - `8d6fc9c` `test(unit): complete M6.1.1 unit test suite`
   - `4943abd` `test(integration): complete M6.1.2 integration test suite`
   - `a286a63` `build(ci): complete M6.1.3 workflow setup`
+  - `f284a38` `docs(readme): complete M6.2.1 project readme`
 
 ---
 

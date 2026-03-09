@@ -11,16 +11,16 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-09)
+## Current Baseline Snapshot (2026-03-10)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
 - `M3` is complete (`M3.1` ~ `M3.6`).
 - `M4` is complete (`M4.1` ~ `M4.5`).
-- `M5.1` is complete (`M5.1.1` ~ `M5.1.3`).
-- `M5.2.1` is complete (Telegram client skeleton).
-- `M5.2.2` is complete (Telegram message handling).
-- `M5.2.3` is complete (Telegram Markdown conversion).
-- `M5.3.1` is complete (Unified message format).
-- Current starting point is `M5.3.2` (Message routing).
+- `M5` is complete (`M5.1` ~ `M5.4`).
+- `M6.1.1` is complete (Unit tests).
+- `M6.1.2` is complete (Integration tests).
+- `M6.1.3` is complete (CI workflow setup).
+- `M6.2.1` is complete (Project README).
+- Current starting point is `M6.2.2` (API docs).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -43,6 +43,9 @@
 - If resuming after `M4.4.4`, also skim `services/memory.py`, `container/agent-runner/src/tools/memory.py`, `tests/services/test_memory_service.py`, and `tests/container/agent_runner/test_memory_tools.py` because memory now spans both service-side files and runner-side tool wrappers.
 - If resuming after `M5.1.1`, also skim `infra/im/feishu.py`, `tests/infra/im/test_feishu.py`, and `infra/im/base.py` because Feishu auth, signature verification, decrypt helpers, event parsing, and send-message logic now all live in that slice.
 - If resuming after `M5.3.1`, also skim `domain/schemas.py`, `infra/im/feishu.py`, `infra/im/telegram.py`, `tests/domain/test_schemas.py`, `docs/plans/2026-03-09-m5-3-2-message-routing-design.md`, and `docs/plans/2026-03-09-m5-3-2-message-routing.md` because `M5.3.2` now builds directly on the `UnifiedMessage` DTO, the current `chat_jid` semantics, and the already-written routing design/plan docs.
+- If resuming after `M6.1.2`, also skim `tests/integration/test_api.py` and `tests/integration/test_websocket.py` because the current integration boundary now spans both the HTTP baseline and the fake-runtime-backed WebSocket flow.
+- If resuming after `M6.1.3`, also skim `.github/workflows/test.yml`, `pyproject.toml`, and `web/package-lock.json` because CI now depends on `pytest-cov` plus the current npm lockfile and verified frontend commands.
+- If resuming after `M6.2.1`, also skim `README.md` because the root project entrypoint now carries the current quick-start, command set, and boundary wording that `M6.2.2` should stay aligned with.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -59,7 +62,10 @@
 - `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py -q`: run current Feishu client acceptance-focused tests.
 - `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`: run current IM client acceptance-focused tests.
 - `.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`: run current unified-message + IM acceptance-focused tests.
+- `.venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q`: run the current integration-focused API + WebSocket suite.
+- `.venv/bin/pytest tests/ -v --cov`: run the current backend CI-equivalent test command with coverage.
 - `.venv/bin/ruff check .`: lint.
+- `cd web && npm ci`: install frontend dependencies from the committed lockfile.
 - `cd web && npm run lint`: frontend lint.
 - `cd web && npm run build`: frontend production build.
 - `OPENAI_API_KEY=... OPENAI_BASE_URL=... OPENAI_DEFAULT_MODEL=gpt-5.1 OPENAI_AGENTS_DISABLE_TRACING=1 .venv/bin/python pocs/streaming/main.py --input "请只回复：测试通过"`: real provider streaming sanity check for OpenAI-compatible endpoints.
