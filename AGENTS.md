@@ -16,7 +16,8 @@
 - `M3` is complete (`M3.1` ~ `M3.6`).
 - `M4` is complete (`M4.1` ~ `M4.5`).
 - `M5.1` is complete (`M5.1.1` ~ `M5.1.3`).
-- Current starting point is `M5.2.1` (Telegram client skeleton).
+- `M5.2.1` is complete (Telegram client skeleton).
+- Current starting point is `M5.2.2` (Telegram message handling).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -38,7 +39,7 @@
 - If resuming after `M4.3.1`, also skim `services/scheduler.py`, `app/routes/tasks.py`, `domain/models/task.py`, `domain/schemas.py`, and `tests/services/test_scheduler.py` because `M4.3.2` task CRUD work now builds directly on the injected-executor scheduler core and the current `ScheduledTask` contract.
 - If resuming after `M4.4.4`, also skim `services/memory.py`, `container/agent-runner/src/tools/memory.py`, `tests/services/test_memory_service.py`, and `tests/container/agent_runner/test_memory_tools.py` because memory now spans both service-side files and runner-side tool wrappers.
 - If resuming after `M5.1.1`, also skim `infra/im/feishu.py`, `tests/infra/im/test_feishu.py`, and `infra/im/base.py` because Feishu auth, signature verification, decrypt helpers, event parsing, and send-message logic now all live in that slice.
-- If resuming at `M5.2.1`, also skim `infra/im/telegram.py`, `infra/im/base.py`, and `docs/progress.md`’s latest `M5.1` notes so the Telegram skeleton stays aligned with the now-complete Feishu baseline rather than re-solving shared IM concerns from scratch.
+- If resuming after `M5.2.1`, also skim `infra/im/telegram.py`, `tests/infra/im/test_telegram.py`, and `infra/im/feishu.py` because `M5.2.2` now builds directly on the raw Telegram polling contract and should stay aligned with the current Feishu event/client style.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -53,6 +54,7 @@
 - `.venv/bin/pytest tests/container/agent_runner -q`: run current Agent Runner containerization tests.
 - `.venv/bin/pytest tests/infra/exec/test_docker.py tests/infra/exec/test_security.py -q`: run current container mount / execution safety tests.
 - `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py -q`: run current Feishu client acceptance-focused tests.
+- `.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`: run current IM client acceptance-focused tests.
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm run lint`: frontend lint.
 - `cd web && npm run build`: frontend production build.

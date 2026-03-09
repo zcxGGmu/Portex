@@ -1731,7 +1731,7 @@ async def send_message(self, receive_id: str, content: dict):
 
 ### M5.2: Telegram 集成 [Week 1, Day 3-4]
 
-- [ ] **M5.2.1** 创建 Telegram 客户端
+- [x] **M5.2.1** 创建 Telegram 客户端
 
 ```python
 # infra/im/telegram.py
