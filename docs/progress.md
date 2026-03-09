@@ -46,7 +46,9 @@
 - `M5.2.3` 已完成（实现 Markdown 转换）。
 - `M5.3.1` 已完成（实现统一消息格式）。
 - `M5.3.2` 已完成（实现消息路由逻辑）。
-- 当前起点：`M5.4`（M5 阶段验收）。
+- `M5.4` 已完成（M5 阶段验收）。
+- `M5` 已完成（`M5.1` ~ `M5.4`）。
+- 当前起点：`M6.1.1`（编写单元测试）。
 
 ---
 
@@ -90,6 +92,8 @@
 - `M5.3.2`：新增最小 `services/message_router.py`，提供 `MessageRouter` / `MessageRouterError`，通过注入式 Feishu、Telegram、Web handler 在编排层按 `UnifiedMessage.channel` 做薄路由。
 - `M5.3.2`：补齐 `tests/services/test_message_router.py`，覆盖三条通道路由、未知通道错误，以及下游 handler 异常透传，保持 `M5.3.2` 只停留在路由选择而不接入真实发送链。
 - `M5.3.2`：完成消息路由聚焦回归、全量后端回归与 lint，确认最小路由层未影响既有 unified-message/IM 转换能力。
+- `M5.4`：完成 `M5.1` ~ `M5.3` 的阶段验收，围绕 Feishu、Telegram、`UnifiedMessage`、最小 `MessageRouter` 与现有 IM 回归证据执行 fresh 验证，未发现阻塞 `M6` 的缺口。
+- `M5.4`：确认 `M5` 当前边界清晰：飞书/Telegram/统一消息/最小路由能力均可验证，但 IM integration 仍以测试与契约层证据为主，真实运行态消息主链、发送编排和平台级交付策略仍留待后续阶段。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -104,14 +108,17 @@
   - `ec28089` `feat(im): complete M5.2.3 telegram markdown conversion`
   - `becdb12` `feat(messages): complete M5.3.1 unified message schema`
   - `c91e7ee` `feat(messages): add minimal message router`
+  - `5335eab` `docs(handoff): record M5.3.2 completion`
 
 ---
 
 ## 3. 最新验证证据
 
-- M5.3.2 聚焦验证：`.venv/bin/pytest -o addopts='' tests/services/test_message_router.py tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q` -> `43 passed in 0.40s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `266 passed, 1 warning in 5.31s`
-- Lint：`.venv/bin/ruff check .` -> `All checks passed!`
+- M5.4 聚焦验收：`.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py tests/services/test_message_router.py -q` -> `43 passed in 0.40s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `266 passed, 1 warning in 8.79s`
+- Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
+- Frontend lint：`cd web && npm run lint` -> `exit 0`
+- Frontend build：`cd web && npm run build` -> `vite build completed successfully`
 - Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
 
@@ -147,6 +154,7 @@
 - `M5.3.1` 当前 `UnifiedMessage` 预留了 `channel=\"web\"`，但 Web 入口尚未接入统一转换 helper；当前只完成 Feishu/Telegram 两端的统一化。
 - `M5.3.2` 当前已完成最小消息路由编排层：`MessageRouter.route_message()` 只按 `channel` 选择注入的下游 handler，未知通道抛 `MessageRouterError`，下游异常保持原样向上传播。
 - `M5.3.2` 当前仍未接入真实发送链、`app/routes/messages.py`、WebSocket 主链、重试/限流/日志、DB 查询或 `group_folder` 解析；这些能力继续留在后续阶段设计。
+- `M5.4` 验收结论：`M5` 已达成当前 TODO 定义的飞书通道、Telegram 通道、统一消息格式与最小消息路由目标，但这仍不是完整产品态；当前 IM 集成证据主要来自契约/转换/路由测试，而不是已经接通的运行态消息主链。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -157,10 +165,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/plans/2026-03-09-m5-3-2-message-routing-design.md`、`docs/plans/2026-03-09-m5-3-2-message-routing.md`、`tasks/todo.md` 中最新 `M5.3.2` 会话清单
-2. 从 `M5.4` 开始：
-   - 先做 `M5` 阶段验收，围绕 Feishu、Telegram、`UnifiedMessage`、最小 `MessageRouter` 与现有 IM 回归证据组织验收，不要直接跳到 `M6`
-   - 继续保留 `M5.3.2` 当前边界：不要在验收阶段顺手把路由器接进真实发送链、多平台运行态编排、API 路由或 WebSocket 主链
+   - 再读：`docs/plans/2026-03-09-m5-4-acceptance-design.md`、`docs/plans/2026-03-09-m5-4-acceptance.md`、`tasks/todo.md` 中最新 `M5.4` 会话清单
+2. 从 `M6.1.1` 开始：
+   - 先为 `M6` 的测试完善建立最小可执行范围，优先补齐 TODO 中要求的单元测试布局，不要一上来扩成新的运行态能力
+   - 继续保留 `M5.4` 当前边界：不要把阶段验收结论误读成真实 IM 运行链已打通；`app/routes/messages.py`、WebSocket 主链和真实发送编排仍未接上
    - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
@@ -170,4 +178,4 @@
 
 ## 5. 一句话版
 
-> `M5.3.2` 已完成，下一步进入 `M5.4` 阶段验收。
+> `M5.4` 已完成，下一步进入 `M6.1.1` 测试完善。

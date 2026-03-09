@@ -123,3 +123,22 @@
 - Added `tests/services/test_message_router.py` covering Feishu/Telegram/Web dispatch, unknown-channel rejection, and downstream handler exception propagation.
 - Verification ran: `.venv/bin/pytest -o addopts='' tests/services/test_message_router.py -q`, `.venv/bin/pytest -o addopts='' tests/services/test_message_router.py tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, and `git diff --check`.
 - Code commit completed: `c91e7ee` `feat(messages): add minimal message router`.
+
+# Session Plan (2026-03-09) - M5.4 Acceptance
+
+## Goal
+- Complete `M5.4` by verifying `M5.1` through `M5.3` against the acceptance checklist and updating the restart handoff to begin `M6.1.1`.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current IM/message slices, and prior acceptance patterns
+- [x] Write `M5.4` design and implementation plan docs
+- [x] Run focused `M5` acceptance verification
+- [x] Run full backend regression, `ruff`, and frontend lint/build
+- [x] Update `docs/progress.md` with `M5.4` evidence, conclusion, and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-09-m5-4-acceptance-design.md` and `docs/plans/2026-03-09-m5-4-acceptance.md` to pin the acceptance scope before execution.
+- Reused the existing Feishu, Telegram, `UnifiedMessage`, and `MessageRouter` test suite as the `M5` acceptance matrix, without extending the current IM runtime boundary.
+- Verification ran: `.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py tests/services/test_message_router.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Acceptance commit message for this milestone: `docs(acceptance): complete M5.4 milestone verification`.
