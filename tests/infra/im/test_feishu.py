@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -256,6 +257,73 @@ def test_handle_webhook_event_keeps_ids_when_text_content_is_not_plain_text() ->
     assert result.sender_id == "ou_sender"
     assert result.message_type == "image"
     assert result.text is None
+
+
+def test_feishu_message_event_converts_to_unified_message() -> None:
+    from domain.schemas import UnifiedMessage
+    from infra.im.feishu import FeishuClient
+
+    client = FeishuClient(app_id="app-id", app_secret="app-secret")
+
+    result = client.handle_webhook_event(
+        {
+            "header": {"event_type": "im.message.receive_v1"},
+            "event": {
+                "sender": {"sender_id": {"open_id": "ou_sender"}},
+                "message": {
+                    "chat_id": "oc_chat",
+                    "message_id": "om_message",
+                    "message_type": "text",
+                    "content": json.dumps({"text": "hello unified"}),
+                    "create_time": "1710000000000",
+                },
+            },
+        }
+    )
+
+    assert result is not None
+    assert result.timestamp == datetime.fromtimestamp(1710000000, tz=timezone.utc)
+    assert result.to_unified_message("team-alpha") == UnifiedMessage(
+        channel="feishu",
+        chat_jid="feishu:oc_chat",
+        sender_id="ou_sender",
+        group_folder="team-alpha",
+        content="hello unified",
+        message_id="om_message",
+        timestamp=datetime.fromtimestamp(1710000000, tz=timezone.utc),
+    )
+
+
+def test_feishu_non_text_event_converts_to_unified_message_with_empty_content() -> None:
+    from domain.schemas import UnifiedMessage
+    from infra.im.feishu import FeishuClient
+
+    client = FeishuClient(app_id="app-id", app_secret="app-secret")
+
+    result = client.handle_webhook_event(
+        {
+            "type": "im.message.receive_v1",
+            "sender": {"sender_id": {"open_id": "ou_sender"}},
+            "message": {
+                "chat_id": "oc_chat",
+                "message_id": "om_message",
+                "message_type": "image",
+                "content": '{"image_key":"img_123"}',
+                "create_time": "1710000000123",
+            },
+        }
+    )
+
+    assert result is not None
+    assert result.to_unified_message() == UnifiedMessage(
+        channel="feishu",
+        chat_jid="feishu:oc_chat",
+        sender_id="ou_sender",
+        group_folder=None,
+        content="",
+        message_id="om_message",
+        timestamp=datetime.fromtimestamp(1710000000.123, tz=timezone.utc),
+    )
 
 
 @pytest.mark.asyncio

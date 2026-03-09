@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
@@ -355,3 +356,66 @@ def test_markdown_to_html_does_not_format_inside_inline_code() -> None:
     client = TelegramClient(bot_token="bot-token")
 
     assert client.markdown_to_html("`**x**` and `*y*`") == "<code>**x**</code> and <code>*y*</code>"
+
+
+def test_telegram_message_event_converts_to_unified_message() -> None:
+    from domain.schemas import UnifiedMessage
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    result = client.handle_update(
+        {
+            "update_id": 101,
+            "message": {
+                "message_id": 201,
+                "text": "hello unified",
+                "date": 1710000000,
+                "chat": {"id": -3001, "type": "group"},
+                "from": {"id": 4001, "is_bot": False},
+            },
+        }
+    )
+
+    assert result is not None
+    assert result.timestamp == datetime.fromtimestamp(1710000000, tz=timezone.utc)
+    assert result.to_unified_message("team-alpha") == UnifiedMessage(
+        channel="telegram",
+        chat_jid="telegram:-3001",
+        sender_id="4001",
+        group_folder="team-alpha",
+        content="hello unified",
+        message_id="201",
+        timestamp=datetime.fromtimestamp(1710000000, tz=timezone.utc),
+    )
+
+
+def test_telegram_non_text_event_converts_to_unified_message_with_empty_content() -> None:
+    from domain.schemas import UnifiedMessage
+    from infra.im.telegram import TelegramClient
+
+    client = TelegramClient(bot_token="bot-token")
+
+    result = client.handle_update(
+        {
+            "update_id": 101,
+            "message": {
+                "message_id": 201,
+                "photo": [{"file_id": "photo_1"}],
+                "date": 1710000000,
+                "chat": {"id": -3001, "type": "group"},
+                "from": {"id": 4001, "is_bot": False},
+            },
+        }
+    )
+
+    assert result is not None
+    assert result.to_unified_message() == UnifiedMessage(
+        channel="telegram",
+        chat_jid="telegram:-3001",
+        sender_id="4001",
+        group_folder=None,
+        content="",
+        message_id="201",
+        timestamp=datetime.fromtimestamp(1710000000, tz=timezone.utc),
+    )

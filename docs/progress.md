@@ -44,7 +44,8 @@
 - `M5.2.1` 已完成（创建 Telegram 客户端）。
 - `M5.2.2` 已完成（实现消息处理）。
 - `M5.2.3` 已完成（实现 Markdown 转换）。
-- 当前起点：`M5.3.1`（实现统一消息格式）。
+- `M5.3.1` 已完成（实现统一消息格式）。
+- 当前起点：`M5.3.2`（实现消息路由逻辑）。
 
 ---
 
@@ -81,6 +82,9 @@
 - `M5.2.3`：为 Telegram 增加最小 `markdown_to_html()`，支持 HTML 转义、fenced code block、inline code、bold、italic 五类转换，其余 Markdown 语法继续按 plain text 保留。
 - `M5.2.3`：补齐 Telegram Markdown 转换测试，覆盖 HTML 转义、基础行内样式、code block 保护、不完整标记容错、unsupported link 保持原样，以及 review 驱动的 nested style / inline code 回归。
 - `M5.2.3`：根据代码评审将 Markdown 转换收紧为 placeholder + 保守 regex 组合，显式保护 code span、Markdown link 和不支持的 nested emphasis，避免生成无效 Telegram HTML。
+- `M5.3.1`：在 `domain/schemas.py` 中新增最小可路由 `UnifiedMessage` DTO，字段为 `channel/chat_jid/sender_id/group_folder/content/message_id/timestamp`，其中 `group_folder` 当前允许为空以兼容尚未接入的 chat-folder 映射链路。
+- `M5.3.1`：为 `FeishuMessageEvent` 和 `TelegramMessageEvent` 增加 `timestamp` 与 `to_unified_message()`，保持现有通道事件契约不变，只新增到统一 DTO 的薄转换层。
+- `M5.3.1`：新增 schema 测试并扩展 Feishu/Telegram 转换测试，覆盖文本/非文本统一消息转换、时间戳提取，以及 `group_folder=None` 的最小边界。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -92,13 +96,14 @@
   - `0a608ad` `docs(handoff): refresh progress and agents baseline`
   - `78e4a8f` `feat(im): complete M5.2.1 telegram client skeleton`
   - `5611c88` `feat(im): complete M5.2.2 telegram message handling`
+  - `ec28089` `feat(im): complete M5.2.3 telegram markdown conversion`
 
 ---
 
 ## 3. 最新验证证据
 
-- M5.2.3 聚焦验证：`.venv/bin/pytest -o addopts='' tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q` -> `32 passed in 0.24s`
-- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `255 passed, 48 warnings in 10.47s`
+- M5.3.1 聚焦验证：`.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q` -> `38 passed in 0.39s`
+- 全量后端回归：`.venv/bin/pytest -o addopts='' -q` -> `261 passed, 48 warnings in 11.15s`
 - Lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
@@ -129,6 +134,10 @@
 - `M5.2.2` 当前为兼容遗留 `IMClient` 协议，`TelegramClient.send_message()` 会显式抛出 `TelegramClientError("...not implemented yet")`；真正的 Telegram 发送能力仍留在后续阶段实现。
 - `M5.2.3` 当前 Telegram Markdown 转换只覆盖 HTML 转义、fenced code block、inline code、bold、italic；links、headings、lists、blockquote、完整 Markdown AST、长消息分片、发送 fallback 和 typing 仍未开始。
 - `M5.2.3` 当前不支持 nested/cross-overlapping emphasis；这类输入会保持为 escaped plain text，而不是尝试生成更复杂的 Telegram HTML。
+- `M5.3.1` 当前 `UnifiedMessage` 仍只是 schema + channel conversion helper：尚未接入 `services/message_service.py`、`app/routes/messages.py`、WebSocket 主链，`M5.3.2` 才开始真正的消息路由逻辑。
+- `M5.3.1` 当前 `UnifiedMessage.group_folder` 默认为 `None`，因为仓库里仍没有稳定的 `chat_jid -> group_folder` 映射源；后续若进入真实路由链，需要与 group registration/source-of-truth 一起设计。
+- `M5.3.1` 当前 `UnifiedMessage.timestamp` 优先读取平台消息时间，若旧测试夹具缺失该字段则回退为当前 UTC 时间；这是一条兼容当前最小事件夹具的临时边界，不代表最终产品态的时间契约。
+- `M5.3.1` 当前 `UnifiedMessage` 预留了 `channel=\"web\"`，但 Web 入口尚未接入统一转换 helper；当前只完成 Feishu/Telegram 两端的统一化。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -138,12 +147,12 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`infra/im/telegram.py`、`tests/infra/im/test_telegram.py`、`infra/im/feishu.py`
-2. 从 `M5.3.1` 开始：
-   - 在当前 Feishu / Telegram 事件契约基础上设计最小 `UnifiedMessage`，不要跳过到完整路由或发送链
-   - 复用现有 `TelegramMessageEvent` / `FeishuMessageEvent` 的字段语义，优先做最小跨通道公共字段，不要提前扩成完整产品态消息模型
+   - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
+2. 从 `M5.3.2` 开始：
+   - 基于当前 `UnifiedMessage` 和 Feishu/Telegram 转换 helper 实现最小消息路由逻辑，不要跳过到完整发送链或多平台运行态编排
+   - 优先复用现有 `chat_jid` 语义做通道路由目标，不要在 `M5.3.2` 顺手发明另一套会话标识
    - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
-   - 消息路由继续按 TODO 拆分推进：本步只做统一消息格式，不要一次性扩到消息发送、多平台抽象、调度重试或生产级限流
+   - 消息路由继续按 TODO 拆分推进：本步只做最小 route_message，不要一次性扩到消息发送、多平台抽象、调度重试或生产级限流
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
 3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
@@ -152,4 +161,4 @@
 
 ## 5. 一句话版
 
-> `M5.2.3` 已完成，下一步进入 `M5.3.1` 统一消息格式。
+> `M5.3.1` 已完成，下一步进入 `M5.3.2` 消息路由逻辑。

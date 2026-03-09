@@ -1778,7 +1778,7 @@ def markdown_to_html(self, text: str) -> str:
 
 ### M5.3: 消息路由 [Week 1, Day 4-5]
 
-- [ ] **M5.3.1** 实现统一消息格式
+- [x] **M5.3.1** 实现统一消息格式
 
 ```python
 # domain/schemas.py

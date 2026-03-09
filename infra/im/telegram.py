@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from html import escape
 import re
 from uuid import uuid4
 
 import httpx
 
+from domain.schemas import UnifiedMessage
 from .base import IMClient
 
 
 class TelegramClientError(RuntimeError):
     """Raised when the Telegram client cannot complete an operation."""
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 @dataclass(slots=True)
@@ -27,6 +33,19 @@ class TelegramMessageEvent:
     message_type: str
     text: str | None
     raw_event: dict[str, object]
+    timestamp: datetime = field(default_factory=_utcnow, compare=False)
+
+    def to_unified_message(self, group_folder: str | None = None) -> UnifiedMessage:
+        """Convert the Telegram event into the minimal cross-channel message DTO."""
+        return UnifiedMessage(
+            channel="telegram",
+            chat_jid=f"telegram:{self.chat_id}",
+            sender_id=self.sender_id,
+            group_folder=group_folder,
+            content=self.text or "",
+            message_id=self.message_id,
+            timestamp=self.timestamp,
+        )
 
 
 @dataclass(slots=True)
@@ -106,6 +125,7 @@ class TelegramClient(IMClient):
             message_type=self._extract_message_type(message),
             text=self._extract_text(message),
             raw_event=message,
+            timestamp=self._extract_timestamp(message),
         )
 
     def _extract_required_identifier(self, value: object, field_name: str) -> str:
@@ -183,6 +203,26 @@ class TelegramClient(IMClient):
         for token, replacement in replacements.items():
             rendered = rendered.replace(token, replacement)
         return rendered
+
+    def _extract_timestamp(self, message: dict[str, object]) -> datetime:
+        value = message.get("date")
+        if value is None:
+            return _utcnow()
+        if isinstance(value, bool):
+            raise TelegramClientError("invalid Telegram message timestamp")
+        if isinstance(value, str):
+            try:
+                numeric = float(value)
+            except ValueError as exc:
+                raise TelegramClientError("invalid Telegram message timestamp") from exc
+        elif isinstance(value, (int, float)):
+            numeric = float(value)
+        else:
+            raise TelegramClientError("invalid Telegram message timestamp")
+
+        if abs(numeric) >= 1_000_000_000_000:
+            numeric /= 1000.0
+        return datetime.fromtimestamp(numeric, tz=timezone.utc)
 
 
 __all__ = ["TelegramClient", "TelegramClientError", "TelegramMessageEvent"]

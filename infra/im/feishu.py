@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import httpx
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
+from domain.schemas import UnifiedMessage
 from .base import IMClient
 
 
 class FeishuClientError(RuntimeError):
     """Raised when the Feishu client cannot complete an operation."""
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 @dataclass(slots=True)
@@ -29,6 +35,19 @@ class FeishuMessageEvent:
     message_type: str
     text: str | None
     raw_event: dict[str, object]
+    timestamp: datetime = field(default_factory=_utcnow, compare=False)
+
+    def to_unified_message(self, group_folder: str | None = None) -> UnifiedMessage:
+        """Convert the Feishu event into the minimal cross-channel message DTO."""
+        return UnifiedMessage(
+            channel="feishu",
+            chat_jid=f"feishu:{self.chat_id}",
+            sender_id=self.sender_id,
+            group_folder=group_folder,
+            content=self.text or "",
+            message_id=self.message_id,
+            timestamp=self.timestamp,
+        )
 
 
 @dataclass(slots=True)
@@ -140,6 +159,7 @@ class FeishuClient(IMClient):
             message_type=message_type,
             text=self._extract_text(message.get("content")),
             raw_event=raw_event,
+            timestamp=self._extract_timestamp(raw_event, message),
         )
 
     async def send_message(
@@ -238,6 +258,34 @@ class FeishuClient(IMClient):
         if isinstance(content, dict):
             return json.dumps(content)
         raise FeishuClientError("invalid Feishu message content payload")
+
+    def _extract_timestamp(
+        self,
+        event: dict[str, object],
+        message: dict[str, object],
+    ) -> datetime:
+        for candidate in (message.get("create_time"), event.get("create_time")):
+            if candidate is None:
+                continue
+            return self._parse_platform_timestamp(candidate)
+        return _utcnow()
+
+    def _parse_platform_timestamp(self, value: object) -> datetime:
+        if isinstance(value, bool):
+            raise FeishuClientError("invalid Feishu message timestamp")
+        if isinstance(value, str):
+            try:
+                numeric = float(value)
+            except ValueError as exc:
+                raise FeishuClientError("invalid Feishu message timestamp") from exc
+        elif isinstance(value, (int, float)):
+            numeric = float(value)
+        else:
+            raise FeishuClientError("invalid Feishu message timestamp")
+
+        if abs(numeric) >= 1_000_000_000_000:
+            numeric /= 1000.0
+        return datetime.fromtimestamp(numeric, tz=timezone.utc)
 
 
 __all__ = ["FeishuClient", "FeishuClientError", "FeishuMessageEvent"]

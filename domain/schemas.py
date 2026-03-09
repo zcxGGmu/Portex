@@ -130,6 +130,23 @@ class SendMessageResponse(BaseModel):
     status: str
 
 
+class UnifiedMessage(BaseModel):
+    channel: Literal["web", "feishu", "telegram"]
+    chat_jid: str = Field(min_length=1)
+    sender_id: str = Field(min_length=1)
+    group_folder: str | None = None
+    content: str
+    message_id: str = Field(min_length=1)
+    timestamp: datetime
+
+    @field_validator("timestamp", mode="after")
+    @classmethod
+    def normalize_timestamp(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        assert normalized is not None
+        return normalized
+
+
 class CreateTaskRequest(BaseModel):
     group_folder: str = Field(min_length=1)
     chat_jid: str = Field(min_length=1)
@@ -216,6 +233,7 @@ __all__ = [
     "TaskRunLogResponse",
     "TaskResponse",
     "TokenResponse",
+    "UnifiedMessage",
     "UpdateUserRequest",
     "UserListResponse",
     "UserResponse",
