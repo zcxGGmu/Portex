@@ -52,7 +52,8 @@
 - `M6.1.2` 已完成（编写集成测试）。
 - `M6.1.3` 已完成（配置 CI/CD）。
 - `M6.2.1` 已完成（编写 README）。
-- 当前起点：`M6.2.2`（编写 API 文档）。
+- `M6.2.2` 已完成（编写 API 文档）。
+- 当前起点：`M6.2.3`（编写部署文档）。
 
 ---
 
@@ -110,6 +111,9 @@
 - `M6.2.1`：新增 `docs/plans/2026-03-10-m6-2-1-readme-design.md` 与 `docs/plans/2026-03-10-m6-2-1-readme.md`，将 README 固定为“项目定位 + 快速开始 + 开发命令 + 边界说明”的分层入口，不扩成完整文档站。
 - `M6.2.1`：重写根 `README.md`，补齐项目定位、当前状态、能力概览、快速开始、开发命令、目录结构、架构摘要、当前边界、文档索引与上游参考。
 - `M6.2.1`：完成 README spec review 与 code-quality review，并通过后端回归、`ruff`、前端 `lint/build` 验证 README 改写未引入仓库级回归。
+- `M6.2.2`：新增 `docs/plans/2026-03-10-m6-2-2-api-docs-design.md` 与 `docs/plans/2026-03-10-m6-2-2-api-docs.md`，将 API 文档边界固定为“增强 FastAPI `/docs` 的现有 HTTP API 文档”，不扩成独立文档站或单独 Markdown API 手册。
+- `M6.2.2`：新增 `app/openapi.py` 并扩展 `app/main.py`、`app/routes/*.py`、`domain/schemas.py`，补齐 OpenAPI 全局描述、tags、主要 HTTP 路由的 summary/description/error responses，以及关键请求/响应 DTO 的字段描述与示例。
+- `M6.2.2`：扩展 `tests/app/routes/test_api_routes.py`，对 `/openapi.json` 增加文档契约测试，覆盖全局描述、tag 描述、任务路由错误响应、消息占位说明、注册/任务 schema 描述，以及群成员删除接口的具体响应模型。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -135,7 +139,8 @@
 
 ## 3. 最新验证证据
 
-- M6.2.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `282 passed, 1 warning in 7.42s`
+- M6.2.2 API docs focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py -q` -> `43 passed, 26 warnings in 7.42s`
+- M6.2.2 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `284 passed, 48 warnings in 11.55s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
@@ -181,7 +186,8 @@
 - `M6.1.2` 当前已建立 `tests/integration/` 的最小入口，但 API 侧仍只覆盖 `/health` 和 auth happy path，WebSocket 侧仍依赖 fake runtime monkeypatch；更广义的 API matrix、真实 runtime/provider 集成和 e2e 聊天链路继续留在后续阶段。
 - `M6.1.3` 当前只完成了最小 GitHub Actions 测试工作流配置；本地已跑通等价命令，但当前环境无法直接证明远端 GitHub Actions runner 的实际执行结果。
 - `M6.1.3` 当前 CI 仍不覆盖 Docker、真实 provider、发布/部署、或 secrets 注入；这些能力继续留待后续阶段单独设计。
-- `M6.2.1` 当前 README 已覆盖项目定位、启动、开发和边界说明，但 API 文档与部署文档仍未开始；更细的接口说明继续留给 `M6.2.2` / `M6.2.3`。
+- `M6.2.2` 当前已补齐 FastAPI `/docs` 的 HTTP API 文档：OpenAPI 全局描述、tag 分组、关键请求/响应 schema 描述，以及主要错误响应都已在 `/openapi.json` 中可见。
+- `M6.2.2` 当前仍只覆盖 HTTP API 文档；`/ws/{group_folder}` WebSocket 契约不在 OpenAPI 内，仍需在后续文档工作中单独说明，不能误读为已被 Swagger 覆盖。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -192,10 +198,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/plans/2026-03-10-m6-2-1-readme-design.md`、`docs/plans/2026-03-10-m6-2-1-readme.md`、`tasks/todo.md` 中最新 `M6.2.1` 会话清单
-2. 从 `M6.2.2` 开始：
-   - 先补 API 文档，优先复用 FastAPI 现有 `/docs` 能力与当前路由结构，不要一上来扩成完整外部开发者门户
-   - 继续保留 `M6.2.1` 当前边界：README 已完善，但 API 文档和部署文档仍未开始
+   - 再读：`docs/plans/2026-03-10-m6-2-2-api-docs-design.md`、`docs/plans/2026-03-10-m6-2-2-api-docs.md`、`tasks/todo.md` 中最新 `M6.2.2` 会话清单
+2. 从 `M6.2.3` 开始：
+   - 先补部署文档，保持 README + `/docs` + 部署文档三层结构，不要一上来扩成完整文档站
+   - 继续保留 `M6.2.2` 当前边界：HTTP API 已在 FastAPI `/docs` 中补齐，但 WebSocket 契约仍不在 OpenAPI 内
    - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
    - 继续保留 `M6.1.2` 当前边界：integration 测试入口已建立，但 API matrix 仍窄、WebSocket 仍基于 fake runtime，不能把它误读成真实 provider/e2e 已打通
    - 继续保留 `M5.4` 当前边界：不要把阶段验收结论误读成真实 IM 运行链已打通；`app/routes/messages.py`、WebSocket 主链和真实发送编排仍未接上
@@ -208,4 +214,4 @@
 
 ## 5. 一句话版
 
-> `M6.2.1` 已完成，下一步进入 `M6.2.2` API 文档。
+> `M6.2.2` 已完成，下一步进入 `M6.2.3` 部署文档。

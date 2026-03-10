@@ -233,3 +233,26 @@
 - Review agents reported `spec-compliant` and `no findings`; wording stays conservative around IM maturity, Docker verification, and GitHub Actions remote execution evidence.
 - Verification ran: `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Commit message for this milestone: `docs(readme): complete M6.2.1 project readme`.
+
+# Session Plan (2026-03-10) - M6.2.2 API Docs
+
+## Goal
+- Complete `M6.2.2` by making the current FastAPI-generated `/docs` useful for the existing HTTP API surface without creating a separate API portal.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current FastAPI routes, and current schema/test coverage
+- [x] Write `M6.2.2` design and implementation plan docs
+- [x] Add OpenAPI-focused tests first and verify they fail
+- [x] Enrich app/route/schema OpenAPI metadata for the current HTTP API
+- [x] Run spec review and code-quality review on the API docs slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.2.2` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-10-m6-2-2-api-docs-design.md` and `docs/plans/2026-03-10-m6-2-2-api-docs.md` to pin the API-docs scope before implementation.
+- Added `app/openapi.py` plus app/route/schema metadata so `/docs` now exposes a real HTTP API description, stable tag groupings, documented error responses, and clearer DTO field semantics.
+- Added `/openapi.json` contract coverage to `tests/app/routes/test_api_routes.py`, covering global description, tag descriptions, route error responses, placeholder message semantics, key schema descriptions, and the concrete group-member delete response model.
+- Multi-agent exploration was used for scope discovery; two review-agent follow-ups timed out under interrupt, so the final spec/code-quality pass was completed with manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Commit message for this milestone: `docs(api): complete M6.2.2 api docs`.

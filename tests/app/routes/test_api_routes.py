@@ -960,3 +960,54 @@ def test_duplicate_username_does_not_consume_invite_code(api_client: TestClient)
     invite_payload = list_response.json()["invites"][0]
     assert invite_payload["used_by"] is None
     assert invite_payload["used_at"] is None
+
+
+def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> None:
+    response = api_client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+    assert "HTTP API" in schema["info"]["description"]
+    assert "/ws/{group_folder}" in schema["info"]["description"]
+
+    tags = {entry["name"]: entry["description"] for entry in schema["tags"]}
+    assert "auth" in tags
+    assert "tasks" in tags
+    assert "messages" in tags
+    assert "scheduled" in tags["tasks"].lower()
+
+
+def test_openapi_schema_documents_route_and_schema_details(api_client: TestClient) -> None:
+    response = api_client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+
+    register_operation = schema["paths"]["/auth/register"]["post"]
+    assert "400" in register_operation["responses"]
+    assert "409" in register_operation["responses"]
+
+    create_task_operation = schema["paths"]["/tasks"]["post"]
+    assert "UTC" in create_task_operation["description"]
+    assert "400" in create_task_operation["responses"]
+    assert "403" in create_task_operation["responses"]
+
+    send_message_operation = schema["paths"]["/messages"]["post"]
+    assert "queued" in send_message_operation["description"].lower()
+
+    delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
+    delete_member_schema = delete_member_operation["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    assert delete_member_schema["$ref"].endswith("/DeleteGroupMemberResponse")
+
+    register_schema = schema["components"]["schemas"]["RegisterRequest"]
+    assert (
+        register_schema["properties"]["invite_code"]["description"]
+        == "Optional invite code that applies the invited role on registration."
+    )
+
+    create_task_schema = schema["components"]["schemas"]["CreateTaskRequest"]
+    assert create_task_schema["properties"]["next_run"]["description"].startswith(
+        "Required for one-off tasks"
+    )

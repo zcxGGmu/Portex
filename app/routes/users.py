@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.middleware.auth import get_current_user, require_permission
+from app.openapi import openapi_error_responses
 from domain.schemas import (
     CreateInviteCodeRequest,
     InviteCodeListResponse,
@@ -32,12 +33,31 @@ def _to_invite_response(invite: AuthInviteCode) -> InviteCodeResponse:
     return InviteCodeResponse.model_validate(invite, from_attributes=True)
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get(
+    "/users/me",
+    response_model=UserResponse,
+    summary="Get the current user",
+    description="Return the authenticated user resolved from the current bearer token.",
+    responses=openapi_error_responses(status.HTTP_401_UNAUTHORIZED),
+)
 async def get_me(current_user: AuthUser = Depends(get_current_user)) -> UserResponse:
     return _to_user_response(current_user)
 
 
-@router.get("/admin/users", response_model=UserListResponse, tags=["admin"])
+@router.get(
+    "/admin/users",
+    response_model=UserListResponse,
+    tags=["admin"],
+    summary="List users",
+    description=(
+        "List users from the current in-memory auth service. Access requires the "
+        "`users:read` permission template."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    ),
+)
 async def list_users(
     current_user: AuthUser = Depends(require_permission("users", "read")),
     db: AsyncSession = Depends(get_db),
@@ -47,7 +67,21 @@ async def list_users(
     return UserListResponse(users=[_to_user_response(user) for user in auth_service.list_users()])
 
 
-@router.patch("/admin/users/{user_id}", response_model=UserResponse, tags=["admin"])
+@router.patch(
+    "/admin/users/{user_id}",
+    response_model=UserResponse,
+    tags=["admin"],
+    summary="Update a user",
+    description=(
+        "Update mutable fields on a user record in the current in-memory auth "
+        "service. Access requires the `users:write` permission template."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
 async def update_user(
     user_id: str,
     request: UpdateUserRequest,
@@ -69,7 +103,20 @@ async def update_user(
     return _to_user_response(updated_user)
 
 
-@router.get("/admin/invites", response_model=InviteCodeListResponse, tags=["admin"])
+@router.get(
+    "/admin/invites",
+    response_model=InviteCodeListResponse,
+    tags=["admin"],
+    summary="List invite codes",
+    description=(
+        "List invite codes from the current in-memory invite store. Each invite is "
+        "single-use and may optionally expire."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    ),
+)
 async def list_invite_codes(
     current_user: AuthUser = Depends(require_permission("users", "read")),
     db: AsyncSession = Depends(get_db),
@@ -81,7 +128,21 @@ async def list_invite_codes(
     )
 
 
-@router.post("/admin/invites", response_model=InviteCodeResponse, tags=["admin"])
+@router.post(
+    "/admin/invites",
+    response_model=InviteCodeResponse,
+    tags=["admin"],
+    summary="Create an invite code",
+    description=(
+        "Create a single-use invite code. The invite can assign a role, an optional "
+        "permission template, and an optional expiration timestamp."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_409_CONFLICT,
+    ),
+)
 async def create_invite_code(
     request: CreateInviteCodeRequest,
     current_user: AuthUser = Depends(require_permission("users", "write")),

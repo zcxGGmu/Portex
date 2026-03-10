@@ -3,9 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.middleware.auth import get_current_user, require_permission
+from app.openapi import openapi_error_responses
 from domain.models.group_member import GroupMember
 from domain.schemas import (
     CreateGroupMemberRequest,
+    DeleteGroupMemberResponse,
     GroupListResponse,
     GroupMemberListResponse,
     GroupMemberResponse,
@@ -63,7 +65,15 @@ def _ensure_owner_role_change_supported(
         )
 
 
-@router.get("", response_model=GroupListResponse)
+@router.get(
+    "",
+    response_model=GroupListResponse,
+    summary="List groups",
+    description=(
+        "Return the current minimal group list visible to the authenticated user."
+    ),
+    responses=openapi_error_responses(status.HTTP_401_UNAUTHORIZED),
+)
 async def list_groups(
     current_user: AuthUser = Depends(get_current_user),
 ) -> GroupListResponse:
@@ -73,7 +83,19 @@ async def list_groups(
     )
 
 
-@router.get("/{group_id}/members", response_model=GroupMemberListResponse)
+@router.get(
+    "/{group_id}/members",
+    response_model=GroupMemberListResponse,
+    summary="List group members",
+    description=(
+        "List members for a group. Group membership is required to read the current "
+        "member list."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    ),
+)
 async def list_group_members(
     group_id: str,
     current_user: AuthUser = Depends(require_permission("groups", "read")),
@@ -85,7 +107,21 @@ async def list_group_members(
     )
 
 
-@router.post("/{group_id}/members", response_model=GroupMemberResponse)
+@router.post(
+    "/{group_id}/members",
+    response_model=GroupMemberResponse,
+    summary="Add a group member",
+    description=(
+        "Add or update a group member. Only the group owner can write membership, "
+        "and owner-role transfer or demotion is not supported."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
 async def add_group_member(
     group_id: str,
     request: CreateGroupMemberRequest,
@@ -114,12 +150,26 @@ async def add_group_member(
     return _to_group_member_response(member)
 
 
-@router.delete("/{group_id}/members/{user_id}")
+@router.delete(
+    "/{group_id}/members/{user_id}",
+    response_model=DeleteGroupMemberResponse,
+    summary="Remove a group member",
+    description=(
+        "Remove a group member. Only the group owner can remove members, and the "
+        "owner cannot remove themself."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
 async def remove_group_member(
     group_id: str,
     user_id: str,
     current_user: AuthUser = Depends(require_permission("groups", "write")),
-) -> dict[str, str]:
+) -> DeleteGroupMemberResponse:
     _require_group_owner(group_id, current_user)
 
     if user_id == current_user.id:
@@ -134,7 +184,7 @@ async def remove_group_member(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group member not found",
         )
-    return {"status": "removed"}
+    return DeleteGroupMemberResponse(status="removed")
 
 
 __all__ = ["router"]

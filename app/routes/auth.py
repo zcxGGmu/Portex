@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
+from app.openapi import openapi_error_responses
 from domain.schemas import (
     LoginRequest,
     RegisterRequest,
@@ -21,7 +22,20 @@ def _user_attr(user: Any, field: str) -> Any:
     return getattr(user, field, None)
 
 
-@router.post("/register", response_model=RegisterResponse)
+@router.post(
+    "/register",
+    response_model=RegisterResponse,
+    summary="Register a user",
+    description=(
+        "Create a new user in the current in-memory auth service. If `invite_code` "
+        "is provided and valid, the invited role and permission template are applied "
+        "during registration."
+    ),
+    responses=openapi_error_responses(
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_409_CONFLICT,
+    ),
+)
 async def register(request: RegisterRequest) -> RegisterResponse:
     try:
         user = auth_service.register_user(
@@ -43,7 +57,16 @@ async def register(request: RegisterRequest) -> RegisterResponse:
     return RegisterResponse(user_id=_user_attr(user, "id"))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    summary="Login with username and password",
+    description=(
+        "Exchange username and password credentials for a bearer token that can be "
+        "used on the authenticated HTTP routes."
+    ),
+    responses=openapi_error_responses(status.HTTP_401_UNAUTHORIZED),
+)
 async def login(request: LoginRequest) -> TokenResponse:
     user = auth_service.authenticate_user(
         username=request.username,

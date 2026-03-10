@@ -4,12 +4,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import setup_logging
+from app.openapi import OPENAPI_DESCRIPTION, OPENAPI_TAGS
 from app.routes import auth, groups, health, messages, tasks, users, websocket
 
 
 setup_logging()
 
-app = FastAPI(title="Portex", version="0.1.0")
+app = FastAPI(
+    title="Portex",
+    version="0.1.0",
+    description=OPENAPI_DESCRIPTION,
+    openapi_tags=OPENAPI_TAGS,
+)
 
 app.add_middleware(
     CORSMiddleware,

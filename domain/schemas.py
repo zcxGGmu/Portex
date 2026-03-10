@@ -20,23 +20,53 @@ class HealthResponse(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(min_length=1)
-    password: str = Field(min_length=1)
-    invite_code: str | None = None
+    username: str = Field(
+        min_length=1,
+        description="Unique username for the new Portex account.",
+        examples=["alice"],
+    )
+    password: str = Field(
+        min_length=1,
+        description="Plain-text password that will be hashed by the auth service.",
+        examples=["secret"],
+    )
+    invite_code: str | None = Field(
+        default=None,
+        description="Optional invite code that applies the invited role on registration.",
+        examples=["owner-lite-2026"],
+    )
 
 
 class RegisterResponse(BaseModel):
-    user_id: str
+    user_id: str = Field(
+        description="Identifier assigned to the newly created user.",
+        examples=["user-1234567890ab"],
+    )
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=1)
-    password: str = Field(min_length=1)
+    username: str = Field(
+        min_length=1,
+        description="Existing username to authenticate.",
+        examples=["alice"],
+    )
+    password: str = Field(
+        min_length=1,
+        description="Plain-text password for the requested user.",
+        examples=["secret"],
+    )
 
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    access_token: str = Field(
+        description="Bearer token used on authenticated HTTP routes.",
+        examples=["eyJhbGciOi..."],
+    )
+    token_type: str = Field(
+        default="bearer",
+        description="Token scheme expected by the HTTP API.",
+        examples=["bearer"],
+    )
 
 
 class UserResponse(BaseModel):
@@ -73,10 +103,28 @@ class UpdateUserRequest(BaseModel):
 
 
 class CreateInviteCodeRequest(BaseModel):
-    code: str | None = Field(default=None, min_length=1)
-    role: str = Field(default="member", min_length=1)
-    permission_template: str | None = None
-    expires_at: datetime | None = None
+    code: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Optional fixed invite code. When omitted, the service generates one.",
+        examples=["owner-lite-2026"],
+    )
+    role: str = Field(
+        default="member",
+        min_length=1,
+        description="Role applied to the invited user when the code is redeemed.",
+        examples=["member"],
+    )
+    permission_template: str | None = Field(
+        default=None,
+        description="Optional permission template granted in addition to the role.",
+        examples=["owner-lite"],
+    )
+    expires_at: datetime | None = Field(
+        default=None,
+        description="Optional UTC expiration timestamp for the invite.",
+        examples=["2026-03-10T12:00:00Z"],
+    )
 
 
 class InviteCodeResponse(BaseModel):
@@ -105,8 +153,17 @@ class GroupListResponse(BaseModel):
 
 
 class CreateGroupMemberRequest(BaseModel):
-    user_id: str = Field(min_length=1)
-    role: str = Field(default="member", min_length=1)
+    user_id: str = Field(
+        min_length=1,
+        description="Existing user identifier to add to the group.",
+        examples=["user-1234567890ab"],
+    )
+    role: str = Field(
+        default="member",
+        min_length=1,
+        description="Group-scoped role for the member. Owner-role transfer is not supported.",
+        examples=["member"],
+    )
 
 
 class GroupMemberResponse(BaseModel):
@@ -120,14 +177,34 @@ class GroupMemberListResponse(BaseModel):
     members: list[GroupMemberResponse]
 
 
+class DeleteGroupMemberResponse(BaseModel):
+    status: str = Field(
+        description="Removal result for the group-member delete operation.",
+        examples=["removed"],
+    )
+
+
 class SendMessageRequest(BaseModel):
-    group_id: str
-    content: str = Field(min_length=1)
+    group_id: str = Field(
+        description="Target group identifier for the message request.",
+        examples=["group-demo"],
+    )
+    content: str = Field(
+        min_length=1,
+        description="Message content to enqueue through the current HTTP placeholder endpoint.",
+        examples=["hello from HTTP"],
+    )
 
 
 class SendMessageResponse(BaseModel):
-    message_id: str
-    status: str
+    message_id: str = Field(
+        description="Generated identifier for the queued message acknowledgement.",
+        examples=["msg-abcdef123456"],
+    )
+    status: str = Field(
+        description="Current message enqueue status.",
+        examples=["queued"],
+    )
 
 
 class UnifiedMessage(BaseModel):
@@ -148,12 +225,37 @@ class UnifiedMessage(BaseModel):
 
 
 class CreateTaskRequest(BaseModel):
-    group_folder: str = Field(min_length=1)
-    chat_jid: str = Field(min_length=1)
-    prompt: str = Field(min_length=1)
-    schedule_type: Literal["cron", "interval", "once"]
-    schedule_value: str | None = None
-    next_run: datetime | None = None
+    group_folder: str = Field(
+        min_length=1,
+        description="Group workspace folder used by the scheduler and runner.",
+        examples=["group-demo"],
+    )
+    chat_jid: str = Field(
+        min_length=1,
+        description="Chat identifier associated with the scheduled task.",
+        examples=["group-demo"],
+    )
+    prompt: str = Field(
+        min_length=1,
+        description="Prompt that will be sent to the agent when the task runs.",
+        examples=["send scheduled prompt"],
+    )
+    schedule_type: Literal["cron", "interval", "once"] = Field(
+        description="Scheduling mode for the task.",
+        examples=["once"],
+    )
+    schedule_value: str | None = Field(
+        default=None,
+        description="Required for `cron` and `interval` tasks; omitted for `once`.",
+        examples=["0 * * * *"],
+    )
+    next_run: datetime | None = Field(
+        default=None,
+        description=(
+            "Required for one-off tasks and interpreted in UTC in the public API."
+        ),
+        examples=["2026-03-10T12:00:00Z"],
+    )
 
     @field_validator("next_run", mode="after")
     @classmethod
@@ -164,15 +266,41 @@ class CreateTaskRequest(BaseModel):
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    group_folder: str
-    chat_jid: str
-    prompt: str
-    schedule_type: Literal["cron", "interval", "once"]
-    schedule_value: str | None = None
-    next_run: datetime | None = None
-    status: str
-    created_at: datetime
+    id: str = Field(description="Unique task identifier.", examples=["task-1234567890ab"])
+    group_folder: str = Field(
+        description="Group workspace folder associated with the task.",
+        examples=["group-demo"],
+    )
+    chat_jid: str = Field(
+        description="Chat identifier associated with the task.",
+        examples=["group-demo"],
+    )
+    prompt: str = Field(
+        description="Prompt executed when the task runs.",
+        examples=["send scheduled prompt"],
+    )
+    schedule_type: Literal["cron", "interval", "once"] = Field(
+        description="Scheduling mode for the task.",
+        examples=["once"],
+    )
+    schedule_value: str | None = Field(
+        default=None,
+        description="Schedule expression or interval value when applicable.",
+        examples=["0 * * * *"],
+    )
+    next_run: datetime | None = Field(
+        default=None,
+        description="Next scheduled run time returned in UTC.",
+        examples=["2026-03-10T12:00:00Z"],
+    )
+    status: str = Field(
+        description="Current task status in the scheduler.",
+        examples=["active"],
+    )
+    created_at: datetime = Field(
+        description="Task creation time returned in UTC.",
+        examples=["2026-03-10T11:55:00Z"],
+    )
 
     @field_validator("next_run", "created_at", mode="after")
     @classmethod
@@ -214,6 +342,7 @@ class TaskRunLogListResponse(BaseModel):
 __all__ = [
     "CreateGroupMemberRequest",
     "DeleteTaskResponse",
+    "DeleteGroupMemberResponse",
     "GroupListResponse",
     "GroupMemberListResponse",
     "GroupMemberResponse",
