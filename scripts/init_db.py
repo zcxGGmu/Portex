@@ -15,6 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from sqlalchemy import MetaData
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from domain.models import Base
@@ -24,6 +25,12 @@ from infra.db.database import engine as default_engine
 def get_model_metadata() -> MetaData:
     """Return the unified model metadata."""
     return Base.metadata
+
+
+def _create_missing_indexes(connection: Connection, metadata: MetaData) -> None:
+    for table in metadata.sorted_tables:
+        for index in table.indexes:
+            index.create(bind=connection, checkfirst=True)
 
 
 async def init_db(database_url: str | None = None) -> None:
@@ -39,6 +46,7 @@ async def init_db(database_url: str | None = None) -> None:
     try:
         async with db_engine.begin() as connection:
             await connection.run_sync(metadata.create_all)
+            await connection.run_sync(lambda sync_connection: _create_missing_indexes(sync_connection, metadata))
     finally:
         if should_dispose:
             await db_engine.dispose()

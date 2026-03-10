@@ -123,6 +123,7 @@
 - `M6.3.1`：新增 `docs/plans/2026-03-10-m6-3-1-db-indexes-design.md` 与 `docs/plans/2026-03-10-m6-3-1-db-indexes.md`，将范围固定为 TODO 要求的三个索引，不扩到迁移系统或性能基准。
 - `M6.3.1`：在 `domain/models/message.py` 上补齐 `idx_messages_chat_jid`、`idx_messages_timestamp`，并在 `domain/models/task.py` 上补齐 `idx_tasks_next_run`。
 - `M6.3.1`：扩展 `tests/domain/models/test_models.py` 与 `tests/scripts/test_init_db.py`，分别覆盖 SQLAlchemy metadata 索引声明与 fresh SQLite 初始化后实际创建的索引名/列。
+- `M6.3.1` 跟进修正：`scripts/init_db.py` 现在会在 `create_all()` 之后按 metadata 回填缺失索引，因此已有 SQLite 表再次执行初始化脚本后也会补齐这三个索引。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -151,8 +152,8 @@
 - M6.2.2 API docs focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py -q` -> `43 passed, 26 warnings in 7.42s`
 - M6.2.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py` -> `47 passed, 26 warnings in 7.20s`
 - M6.2.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `286 passed, 48 warnings in 12.07s`
-- M6.3.1 focused 验证：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q` -> `12 passed in 1.97s`
-- M6.3.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `288 passed, 48 warnings in 10.80s`
+- M6.3.1 focused 验证：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q` -> `13 passed in 3.42s`
+- M6.3.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `289 passed, 48 warnings in 12.83s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
@@ -205,7 +206,7 @@
 - `M6.2.2` 当前仍只覆盖 HTTP API 文档；`/ws/{group_folder}` WebSocket 契约不在 OpenAPI 内，仍需在后续文档工作中单独说明，不能误读为已被 Swagger 覆盖。
 - `M6.2.3` 当前已补齐部署文档，并对当前仓库的本地进程部署链路做了 fresh 烟测；但 Docker Compose 仍只是明确标注为未验证的草案，不能误读成已验证部署方案。
 - `M6.2.3` 当前 `scripts/init_db.py` 已可按文档直接执行；部署文档仍不覆盖反向代理、TLS、systemd、Kubernetes 或正式静态资源托管方案。
-- `M6.3.1` 当前索引只在 fresh schema 初始化路径中可验证；仓库仍未引入迁移机制，因此已有历史数据库不会自动补齐这些索引。
+- `M6.3.1` 当前通过 `scripts/init_db.py` 可为已有 SQLite 表回填这三个索引；但仓库仍未引入通用 migration/backfill 机制，因此后续更复杂的 schema 变更仍不能误读成已具备正式迁移能力。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。

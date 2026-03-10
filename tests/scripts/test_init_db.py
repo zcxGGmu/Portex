@@ -117,3 +117,63 @@ def test_init_db_creates_todo_defined_indexes(tmp_path: Path) -> None:
     assert message_chat_jid_columns == ["chat_jid"]
     assert message_timestamp_columns == ["timestamp"]
     assert task_next_run_columns == ["next_run"]
+
+
+def test_init_db_backfills_missing_indexes_for_existing_tables(tmp_path: Path) -> None:
+    from scripts import init_db
+
+    database_path = tmp_path / "portex-existing.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE messages (
+                id VARCHAR PRIMARY KEY,
+                chat_jid VARCHAR NOT NULL,
+                sender VARCHAR NOT NULL,
+                content TEXT,
+                timestamp DATETIME NOT NULL,
+                is_from_me BOOLEAN NOT NULL,
+                attachments TEXT
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE scheduled_tasks (
+                id VARCHAR PRIMARY KEY,
+                group_folder VARCHAR NOT NULL,
+                chat_jid VARCHAR NOT NULL,
+                prompt TEXT NOT NULL,
+                schedule_type VARCHAR,
+                schedule_value VARCHAR,
+                next_run DATETIME,
+                status VARCHAR NOT NULL,
+                created_at DATETIME NOT NULL
+            )
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    exit_code = init_db.main(["--database-url", database_url])
+
+    assert exit_code == 0
+
+    connection = sqlite3.connect(database_path)
+    try:
+        message_indexes = {
+            row[1] for row in connection.execute("PRAGMA index_list('messages')").fetchall()
+        }
+        task_indexes = {
+            row[1] for row in connection.execute("PRAGMA index_list('scheduled_tasks')").fetchall()
+        }
+    finally:
+        connection.close()
+
+    assert "idx_messages_chat_jid" in message_indexes
+    assert "idx_messages_timestamp" in message_indexes
+    assert "idx_tasks_next_run" in task_indexes

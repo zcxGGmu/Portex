@@ -303,5 +303,6 @@
 - Added `docs/plans/2026-03-10-m6-3-1-db-indexes-design.md` and `docs/plans/2026-03-10-m6-3-1-db-indexes.md` to pin the index scope before implementation.
 - Added the three TODO-defined indexes at the model layer: `idx_messages_chat_jid`, `idx_messages_timestamp`, and `idx_tasks_next_run`.
 - Extended `tests/domain/models/test_models.py` to assert the new SQLAlchemy metadata indexes and `tests/scripts/test_init_db.py` to verify fresh SQLite initialization creates the named indexes on the expected columns.
-- Multi-agent spec review returned `spec-compliant`; the code-quality reviewer timed out under interrupt, so the final quality pass was completed with manual diff review plus fresh verification evidence.
+- Multi-agent spec review returned `spec-compliant`; a later code-quality review correctly identified that existing SQLite tables were not backfilling the new indexes, so `scripts/init_db.py` was updated and a regression test was added for the existing-table upgrade path.
 - Verification ran: `.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Commit message for this milestone: `perf(db): complete M6.3.1 indexes`.
