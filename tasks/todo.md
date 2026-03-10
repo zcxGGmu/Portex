@@ -329,3 +329,27 @@
 - Multi-agent review was used for scope discovery and code review. The first review round found the missing in-memory URL variants and checklist/doc alignment gap; after that fix, follow-up quick reviewers timed out, so the final pass used manual diff review plus fresh verification evidence.
 - Verification ran: `.venv/bin/pytest tests/infra/db/test_database.py tests/scripts/test_init_db.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Commit message for this milestone: `perf(db): complete M6.3.2 connection pool`.
+
+# Session Plan (2026-03-10) - M6.3.3 User Memory Cache
+
+## Goal
+- Complete `M6.3.3` by adding the smallest justified cache layer: a process-local read cache for user-global `AGENTS.md` memory.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current memory-service code, and current cache-related repository boundaries
+- [x] Brainstorm scope and alternatives for `M6.3.3`
+- [x] Write `M6.3.3` design and implementation plan docs
+- [x] Add failing tests for user-memory cache miss, hit, and write-through behavior
+- [x] Implement the minimal `MemoryService` cache
+- [x] Run multi-agent spec/code-quality review on the memory-cache slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.3.3` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md` and `docs/plans/2026-03-10-m6-3-3-user-memory-cache.md` to pin the milestone boundary before implementation.
+- Extended `tests/services/test_memory_service.py` with a red-green cycle for three cache behaviors: missing-file cache miss, existing-file cache hit, and `update_user_memory()` write-through refresh. These tests first failed for the intended reasons before the implementation was added.
+- Updated `services/memory.py` with a private `_user_memory_cache` so `get_user_memory()` now acts as a read-through cache and `update_user_memory()` refreshes the cache after a successful file write; `append_daily_memory()` and `search_memory()` remain unchanged.
+- Multi-agent implementation/review was used for Task 1 red tests and Task 2 spec review. Several quality-review agents timed out, so the final quality pass was completed with manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/services/test_memory_service.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Commit message for this milestone: `perf(memory): complete M6.3.3 user memory cache`.

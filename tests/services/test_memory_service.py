@@ -57,6 +57,64 @@ async def test_get_user_memory_returns_empty_string_when_agents_file_missing(
 
 
 @pytest.mark.asyncio
+async def test_get_user_memory_caches_missing_agents_file_lookup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _data_dir = _build_service(tmp_path)
+
+    class _MissingMemoryPath:
+        def __init__(self) -> None:
+            self.exists_calls = 0
+
+        def exists(self) -> bool:
+            self.exists_calls += 1
+            return False
+
+        def read_text(self, *, encoding: str) -> str:
+            raise AssertionError("read_text should not be called for a missing file")
+
+    memory_path = _MissingMemoryPath()
+    monkeypatch.setattr(service, "_get_user_memory_path", lambda user_id: memory_path)
+
+    first = await service.get_user_memory("user-1")
+    second = await service.get_user_memory("user-1")
+
+    assert first == ""
+    assert second == ""
+    assert memory_path.exists_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_user_memory_caches_existing_agents_file_content(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _data_dir = _build_service(tmp_path)
+
+    class _ExistingMemoryPath:
+        def __init__(self) -> None:
+            self.read_text_calls = 0
+
+        def exists(self) -> bool:
+            return True
+
+        def read_text(self, *, encoding: str) -> str:
+            self.read_text_calls += 1
+            return "remember this"
+
+    memory_path = _ExistingMemoryPath()
+    monkeypatch.setattr(service, "_get_user_memory_path", lambda user_id: memory_path)
+
+    first = await service.get_user_memory("user-1")
+    second = await service.get_user_memory("user-1")
+
+    assert first == "remember this"
+    assert second == "remember this"
+    assert memory_path.read_text_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_update_user_memory_creates_agents_file_in_user_global_directory(
     tmp_path: Path,
 ) -> None:
@@ -67,6 +125,23 @@ async def test_update_user_memory_creates_agents_file_in_user_global_directory(
     memory_path = _agents_path(data_dir, "user-1")
     assert memory_path.exists()
     assert memory_path.read_text(encoding="utf-8") == "first memory entry"
+
+
+@pytest.mark.asyncio
+async def test_update_user_memory_refreshes_cached_content_after_external_stale_write(
+    tmp_path: Path,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    memory_path = _agents_path(data_dir, "user-1")
+    memory_path.parent.mkdir(parents=True, exist_ok=True)
+    memory_path.write_text("old", encoding="utf-8")
+
+    assert await service.get_user_memory("user-1") == "old"
+
+    await service.update_user_memory("user-1", "new")
+    memory_path.write_text("stale", encoding="utf-8")
+
+    assert await service.get_user_memory("user-1") == "new"
 
 
 @pytest.mark.asyncio

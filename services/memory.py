@@ -25,17 +25,26 @@ class MemoryService:
             data_dir = DATA_DIR
         self._data_dir = Path(data_dir)
         self._today_func = today_func or (lambda: datetime.utcnow().date())
+        self._user_memory_cache: dict[str, str] = {}
 
     async def get_user_memory(self, user_id: str) -> str:
+        if user_id in self._user_memory_cache:
+            return self._user_memory_cache[user_id]
+
         memory_path = self._get_user_memory_path(user_id)
         if not memory_path.exists():
+            self._user_memory_cache[user_id] = ""
             return ""
-        return await asyncio.to_thread(memory_path.read_text, encoding="utf-8")
+
+        content = await asyncio.to_thread(memory_path.read_text, encoding="utf-8")
+        self._user_memory_cache[user_id] = content
+        return content
 
     async def update_user_memory(self, user_id: str, content: str) -> None:
         memory_path = self._get_user_memory_path(user_id)
         await asyncio.to_thread(memory_path.parent.mkdir, parents=True, exist_ok=True)
         await asyncio.to_thread(memory_path.write_text, content, encoding="utf-8")
+        self._user_memory_cache[user_id] = content
 
     async def append_daily_memory(self, group_folder: str, content: str) -> None:
         daily_memory_path = self._get_daily_memory_path(group_folder)
