@@ -306,3 +306,26 @@
 - Multi-agent spec review returned `spec-compliant`; a later code-quality review correctly identified that existing SQLite tables were not backfilling the new indexes, so `scripts/init_db.py` was updated and a regression test was added for the existing-table upgrade path.
 - Verification ran: `.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Commit message for this milestone: `perf(db): complete M6.3.1 indexes`.
+
+# Session Plan (2026-03-10) - M6.3.2 Connection Pool
+
+## Goal
+- Complete `M6.3.2` by making the async SQLAlchemy engine use an explicit, valid connection-pool configuration for the current SQLite-first repository setup.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current DB engine/session files, and the latest DB milestone notes
+- [x] Write `M6.3.2` design and implementation plan docs
+- [x] Add failing tests for the default file-backed SQLite pool contract and in-memory SQLite behavior
+- [x] Implement the minimal engine-construction helper and reuse it for override engines
+- [x] Run multi-agent spec/code-quality review on the DB pool slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.3.2` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-10-m6-3-2-connection-pool-design.md` and `docs/plans/2026-03-10-m6-3-2-connection-pool.md` to pin the milestone boundary before implementation.
+- Extended `tests/infra/db/test_database.py` with a red-green cycle for the default file-backed SQLite pool contract plus four in-memory SQLite URL variants; the first green pass exposed a review-found gap around `sqlite+aiosqlite://` and `file:...mode=memory`, which was then locked with a second red-green cycle.
+- Added `create_database_engine()` in `infra/db/database.py` so the repository now uses explicit `20/10` queue-pool sizing for file-backed SQLite while keeping in-memory SQLite variants on `StaticPool`; `scripts/init_db.py` now reuses the same helper for override engines.
+- Multi-agent review was used for scope discovery and code review. The first review round found the missing in-memory URL variants and checklist/doc alignment gap; after that fix, follow-up quick reviewers timed out, so the final pass used manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/infra/db/test_database.py tests/scripts/test_init_db.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Commit message for this milestone: `perf(db): complete M6.3.2 connection pool`.

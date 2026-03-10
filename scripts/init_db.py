@@ -16,10 +16,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from sqlalchemy import MetaData
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from domain.models import Base
-from infra.db.database import engine as default_engine
+from infra.db.database import create_database_engine, engine as default_engine
 
 
 def get_model_metadata() -> MetaData:
@@ -37,7 +37,7 @@ async def init_db(database_url: str | None = None) -> None:
     """Create all tables defined in the unified metadata."""
     metadata = get_model_metadata()
     if database_url:
-        db_engine: AsyncEngine = create_async_engine(database_url)
+        db_engine: AsyncEngine = create_database_engine(database_url)
         should_dispose = True
     else:
         db_engine = default_engine

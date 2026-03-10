@@ -55,7 +55,8 @@
 - `M6.2.2` 已完成（编写 API 文档）。
 - `M6.2.3` 已完成（编写部署文档）。
 - `M6.3.1` 已完成（添加数据库索引）。
-- 当前起点：`M6.3.2`（实现连接池）。
+- `M6.3.2` 已完成（实现连接池）。
+- 当前起点：`M6.3.3`（添加缓存层，如需要）。
 
 ---
 
@@ -124,6 +125,9 @@
 - `M6.3.1`：在 `domain/models/message.py` 上补齐 `idx_messages_chat_jid`、`idx_messages_timestamp`，并在 `domain/models/task.py` 上补齐 `idx_tasks_next_run`。
 - `M6.3.1`：扩展 `tests/domain/models/test_models.py` 与 `tests/scripts/test_init_db.py`，分别覆盖 SQLAlchemy metadata 索引声明与 fresh SQLite 初始化后实际创建的索引名/列。
 - `M6.3.1` 跟进修正：`scripts/init_db.py` 现在会在 `create_all()` 之后按 metadata 回填缺失索引，因此已有 SQLite 表再次执行初始化脚本后也会补齐这三个索引。
+- `M6.3.2`：新增 `docs/plans/2026-03-10-m6-3-2-connection-pool-design.md` 与 `docs/plans/2026-03-10-m6-3-2-connection-pool.md`，将范围固定为“显式化当前数据库连接池配置”，不扩到缓存层、迁移系统或性能基准。
+- `M6.3.2`：在 `infra/db/database.py` 中新增可复用的 `create_database_engine()`；默认文件型 SQLite 现在显式使用 `pool_size=20`、`max_overflow=10` 的 `AsyncAdaptedQueuePool`，而 `sqlite+aiosqlite://`、`:memory:`、`file::memory:`、`file:...mode=memory` 等内存 SQLite 变体继续使用 `StaticPool`。
+- `M6.3.2`：扩展 `tests/infra/db/test_database.py`，覆盖默认文件 SQLite 的连接池参数和四类内存 SQLite URL；`scripts/init_db.py` 的 override engine 路径也复用了同一 helper，现有脚本回归继续通过。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -152,8 +156,8 @@
 - M6.2.2 API docs focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py -q` -> `43 passed, 26 warnings in 7.42s`
 - M6.2.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py` -> `47 passed, 26 warnings in 7.20s`
 - M6.2.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `286 passed, 48 warnings in 12.07s`
-- M6.3.1 focused 验证：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q` -> `13 passed in 3.42s`
-- M6.3.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `289 passed, 48 warnings in 12.83s`
+- M6.3.2 focused 验证：`.venv/bin/pytest tests/infra/db/test_database.py tests/scripts/test_init_db.py` -> `11 passed in 2.66s`
+- M6.3.2 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `293 passed, 48 warnings in 13.40s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
@@ -207,6 +211,7 @@
 - `M6.2.3` 当前已补齐部署文档，并对当前仓库的本地进程部署链路做了 fresh 烟测；但 Docker Compose 仍只是明确标注为未验证的草案，不能误读成已验证部署方案。
 - `M6.2.3` 当前 `scripts/init_db.py` 已可按文档直接执行；部署文档仍不覆盖反向代理、TLS、systemd、Kubernetes 或正式静态资源托管方案。
 - `M6.3.1` 当前通过 `scripts/init_db.py` 可为已有 SQLite 表回填这三个索引；但仓库仍未引入通用 migration/backfill 机制，因此后续更复杂的 schema 变更仍不能误读成已具备正式迁移能力。
+- `M6.3.2` 当前已将默认文件型 SQLite 连接显式配置为 `pool_size=20`、`max_overflow=10` 的队列池，并保持所有内存 SQLite 变体走 `StaticPool`；但仓库仍未做性能压测、也未引入更细粒度的连接池环境变量。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -216,10 +221,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/plans/2026-03-10-m6-3-1-db-indexes-design.md`、`docs/plans/2026-03-10-m6-3-1-db-indexes.md`、`tasks/todo.md` 中最新 `M6.3.1` 会话清单
-2. 从 `M6.3.2` 开始：
-   - 先补连接池，保持范围收敛在数据库引擎配置，不要顺手扩到缓存层或数据库迁移
+   - 建议顺手再看：`infra/db/database.py`、`scripts/init_db.py`、`tests/infra/db/test_database.py`、`tasks/todo.md`
+   - 再读：`docs/plans/2026-03-10-m6-3-2-connection-pool-design.md`、`docs/plans/2026-03-10-m6-3-2-connection-pool.md`、`tasks/todo.md` 中最新 `M6.3.2` 会话清单
+2. 从 `M6.3.3` 开始：
+   - 先判断“缓存层”是否真的需要，保持范围收敛在最小缓存方案，不要无证据引入 Redis 或完整性能工程
+   - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
    - 继续保留 `M6.2.3` 当前边界：本地进程部署链路已做 fresh 烟测，但 Docker Compose 仍只是未验证草案
    - 继续保留 `M6.2.2` 当前边界：HTTP API 已在 FastAPI `/docs` 中补齐，但 WebSocket 契约仍不在 OpenAPI 内
@@ -235,4 +241,4 @@
 
 ## 5. 一句话版
 
-> `M6.3.1` 已完成，下一步进入 `M6.3.2` 连接池。
+> `M6.3.2` 已完成，下一步评估并进入 `M6.3.3` 缓存层（如需要）。
