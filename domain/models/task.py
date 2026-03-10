@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import DateTime, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from domain.models.base import Base
@@ -12,6 +12,7 @@ class ScheduledTask(Base):
     """Scheduled prompt execution task."""
 
     __tablename__ = "scheduled_tasks"
+    __table_args__ = (Index("idx_tasks_next_run", "next_run"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     group_folder: Mapped[str] = mapped_column(String, nullable=False)

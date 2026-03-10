@@ -54,7 +54,8 @@
 - `M6.2.1` 已完成（编写 README）。
 - `M6.2.2` 已完成（编写 API 文档）。
 - `M6.2.3` 已完成（编写部署文档）。
-- 当前起点：`M6.3.1`（添加数据库索引）。
+- `M6.3.1` 已完成（添加数据库索引）。
+- 当前起点：`M6.3.2`（实现连接池）。
 
 ---
 
@@ -119,6 +120,9 @@
 - `M6.2.3`：新增 `docs/deployment.md`，补齐前置条件、环境变量、SQLite/数据目录说明、本地进程启动步骤、健康检查、FastAPI `/docs` 入口，以及带风险声明的 Docker Compose 草案。
 - `M6.2.3`：修正邀请 `expires_at` 的 API 文档描述，明确当前实现会保留传入时区偏移，不承诺 UTC 归一化；同时修复 `scripts/init_db.py`，让文档里的直接执行命令可从仓库根目录实际运行。
 - `M6.2.3`：扩展 `tests/app/routes/test_api_routes.py` 与 `tests/scripts/test_init_db.py`，分别锁定 invite `expires_at` 文档契约与 `scripts/init_db.py` 直接执行路径。
+- `M6.3.1`：新增 `docs/plans/2026-03-10-m6-3-1-db-indexes-design.md` 与 `docs/plans/2026-03-10-m6-3-1-db-indexes.md`，将范围固定为 TODO 要求的三个索引，不扩到迁移系统或性能基准。
+- `M6.3.1`：在 `domain/models/message.py` 上补齐 `idx_messages_chat_jid`、`idx_messages_timestamp`，并在 `domain/models/task.py` 上补齐 `idx_tasks_next_run`。
+- `M6.3.1`：扩展 `tests/domain/models/test_models.py` 与 `tests/scripts/test_init_db.py`，分别覆盖 SQLAlchemy metadata 索引声明与 fresh SQLite 初始化后实际创建的索引名/列。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -147,6 +151,8 @@
 - M6.2.2 API docs focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py -q` -> `43 passed, 26 warnings in 7.42s`
 - M6.2.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py` -> `47 passed, 26 warnings in 7.20s`
 - M6.2.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `286 passed, 48 warnings in 12.07s`
+- M6.3.1 focused 验证：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q` -> `12 passed in 1.97s`
+- M6.3.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `288 passed, 48 warnings in 10.80s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
@@ -199,6 +205,7 @@
 - `M6.2.2` 当前仍只覆盖 HTTP API 文档；`/ws/{group_folder}` WebSocket 契约不在 OpenAPI 内，仍需在后续文档工作中单独说明，不能误读为已被 Swagger 覆盖。
 - `M6.2.3` 当前已补齐部署文档，并对当前仓库的本地进程部署链路做了 fresh 烟测；但 Docker Compose 仍只是明确标注为未验证的草案，不能误读成已验证部署方案。
 - `M6.2.3` 当前 `scripts/init_db.py` 已可按文档直接执行；部署文档仍不覆盖反向代理、TLS、systemd、Kubernetes 或正式静态资源托管方案。
+- `M6.3.1` 当前索引只在 fresh schema 初始化路径中可验证；仓库仍未引入迁移机制，因此已有历史数据库不会自动补齐这些索引。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -209,9 +216,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/deployment.md`、`docs/plans/2026-03-10-m6-2-3-deployment-docs-design.md`、`docs/plans/2026-03-10-m6-2-3-deployment-docs.md`、`tasks/todo.md` 中最新 `M6.2.3` 会话清单
-2. 从 `M6.3.1` 开始：
-   - 先补数据库索引，保持范围收敛在 TODO 里的 `messages.chat_jid`、`messages.timestamp`、`scheduled_tasks.next_run`
+   - 再读：`docs/plans/2026-03-10-m6-3-1-db-indexes-design.md`、`docs/plans/2026-03-10-m6-3-1-db-indexes.md`、`tasks/todo.md` 中最新 `M6.3.1` 会话清单
+2. 从 `M6.3.2` 开始：
+   - 先补连接池，保持范围收敛在数据库引擎配置，不要顺手扩到缓存层或数据库迁移
+   - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
    - 继续保留 `M6.2.3` 当前边界：本地进程部署链路已做 fresh 烟测，但 Docker Compose 仍只是未验证草案
    - 继续保留 `M6.2.2` 当前边界：HTTP API 已在 FastAPI `/docs` 中补齐，但 WebSocket 契约仍不在 OpenAPI 内
    - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
@@ -226,4 +234,4 @@
 
 ## 5. 一句话版
 
-> `M6.2.3` 已完成，下一步进入 `M6.3.1` 数据库索引。
+> `M6.3.1` 已完成，下一步进入 `M6.3.2` 连接池。

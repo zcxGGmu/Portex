@@ -154,3 +154,12 @@ def test_shared_metadata_contains_all_tables() -> None:
     assert RegisteredGroup.metadata is Base.metadata
     assert ScheduledTask.metadata is Base.metadata
     assert task_run_log.metadata is Base.metadata
+
+
+def test_message_and_scheduled_task_indexes_are_declared() -> None:
+    message_indexes = {index.name for index in Message.__table__.indexes}
+    scheduled_task_indexes = {index.name for index in ScheduledTask.__table__.indexes}
+
+    assert "idx_messages_chat_jid" in message_indexes
+    assert "idx_messages_timestamp" in message_indexes
+    assert "idx_tasks_next_run" in scheduled_task_indexes

@@ -283,3 +283,25 @@
 - Multi-agent scope/spec review returned `spec-compliant`; the code-quality reviewer timed out under interrupt, so the final quality pass was completed with manual diff review plus fresh verification evidence.
 - Verification ran: `.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, `.venv/bin/python scripts/init_db.py`, backend `/health` smoke against live `uvicorn`, frontend `/` smoke against `npm run preview`, and `git diff --check`.
 - Commit message for this milestone: `docs(deploy): complete M6.2.3 deployment guide`.
+
+# Session Plan (2026-03-10) - M6.3.1 Database Indexes
+
+## Goal
+- Complete `M6.3.1` by adding the three TODO-defined database indexes and verifying that fresh SQLite initialization creates them.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, current model definitions, and DB init tests
+- [x] Write `M6.3.1` design and implementation plan docs
+- [x] Add failing tests for model metadata indexes and SQLite-created indexes
+- [x] Implement the minimal model-level index declarations
+- [x] Run multi-agent spec/code-quality review on the index slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.3.1` evidence and next step
+- [ ] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-10-m6-3-1-db-indexes-design.md` and `docs/plans/2026-03-10-m6-3-1-db-indexes.md` to pin the index scope before implementation.
+- Added the three TODO-defined indexes at the model layer: `idx_messages_chat_jid`, `idx_messages_timestamp`, and `idx_tasks_next_run`.
+- Extended `tests/domain/models/test_models.py` to assert the new SQLAlchemy metadata indexes and `tests/scripts/test_init_db.py` to verify fresh SQLite initialization creates the named indexes on the expected columns.
+- Multi-agent spec review returned `spec-compliant`; the code-quality reviewer timed out under interrupt, so the final quality pass was completed with manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
