@@ -4,7 +4,7 @@ Portex is a multi-user remote AI agent service built with Python and the OpenAI 
 
 ## Current Status
 
-Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, and `M6.2.1` README work. The current next step is `M6.2.2` API documentation.
+Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, `M6.2.1` README work, `M6.2.2` API documentation, and `M6.2.3` deployment documentation. The current next step is `M6.3` performance optimization.
 
 Implemented and verified slices include:
 
@@ -126,6 +126,7 @@ Portex is not yet a full production-ready system. Important current boundaries:
 - [`docs/TODO.md`](docs/TODO.md): task-by-task implementation checklist
 - [`docs/progress.md`](docs/progress.md): restart-oriented current status and next step
 - [`docs/PORTEX_PLAN.md`](docs/PORTEX_PLAN.md): broader project planning context
+- [`docs/deployment.md`](docs/deployment.md): current deployment guide for verified local process setup plus draft Compose notes
 - [`AGENTS.md`](AGENTS.md): repository workflow and operator constraints for Codex sessions
 
 ## Upstream Reference

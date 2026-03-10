@@ -122,7 +122,10 @@ class CreateInviteCodeRequest(BaseModel):
     )
     expires_at: datetime | None = Field(
         default=None,
-        description="Optional UTC expiration timestamp for the invite.",
+        description=(
+            "Optional timezone-aware expiration timestamp. Portex preserves the "
+            "provided offset."
+        ),
         examples=["2026-03-10T12:00:00Z"],
     )
 
@@ -134,7 +137,11 @@ class InviteCodeResponse(BaseModel):
     created_by: str
     role: str
     permission_template: str | None = None
-    expires_at: datetime | None = None
+    expires_at: datetime | None = Field(
+        default=None,
+        description="Optional expiration timestamp returned with its stored timezone information.",
+        examples=["2026-03-10T12:00:00+08:00"],
+    )
     used_by: str | None = None
     used_at: datetime | None = None
 

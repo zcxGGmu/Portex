@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 
 from sqlalchemy import Column, Integer, MetaData, Table
@@ -53,3 +54,24 @@ def test_main_creates_database_and_table(
         connection.close()
 
     assert row is not None
+
+
+def test_script_runs_successfully_when_executed_directly(tmp_path: Path) -> None:
+    database_path = tmp_path / "portex-direct-script.db"
+    project_root = Path(__file__).resolve().parents[2]
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/init_db.py",
+            "--database-url",
+            f"sqlite+aiosqlite:///{database_path}",
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert database_path.exists()

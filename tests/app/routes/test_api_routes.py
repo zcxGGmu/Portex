@@ -1011,3 +1011,24 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert create_task_schema["properties"]["next_run"]["description"].startswith(
         "Required for one-off tasks"
     )
+
+
+def test_openapi_schema_describes_invite_expiration_without_promising_utc(
+    api_client: TestClient,
+) -> None:
+    response = api_client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+
+    create_invite_schema = schema["components"]["schemas"]["CreateInviteCodeRequest"]
+    assert (
+        create_invite_schema["properties"]["expires_at"]["description"]
+        == "Optional timezone-aware expiration timestamp. Portex preserves the provided offset."
+    )
+
+    invite_response_schema = schema["components"]["schemas"]["InviteCodeResponse"]
+    assert (
+        invite_response_schema["properties"]["expires_at"]["description"]
+        == "Optional expiration timestamp returned with its stored timezone information."
+    )

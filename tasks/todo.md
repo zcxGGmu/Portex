@@ -256,3 +256,30 @@
 - Multi-agent exploration was used for scope discovery; two review-agent follow-ups timed out under interrupt, so the final spec/code-quality pass was completed with manual diff review plus fresh verification evidence.
 - Verification ran: `.venv/bin/pytest tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Commit message for this milestone: `docs(api): complete M6.2.2 api docs`.
+
+# Session Plan (2026-03-10) - M6.2.3 Deployment Docs
+
+## Goal
+- Complete `M6.2.3` by adding a deployment guide for the currently verified local process setup, while clearly marking Docker Compose as an unverified draft.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `README.md`, and the current runtime/config entrypoints
+- [x] Write `M6.2.3` design and implementation plan docs
+- [x] Add a failing test for the invite `expires_at` doc-accuracy fix
+- [x] Add a failing test for direct `scripts/init_db.py` execution
+- [x] Correct the invite `expires_at` API-doc wording to match current behavior
+- [x] Fix `scripts/init_db.py` so the documented direct command works
+- [x] Write the deployment guide and update README links/status wording as needed
+- [x] Run multi-agent spec/code-quality review on the deployment-doc slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.2.3` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-10-m6-2-3-deployment-docs-design.md` and `docs/plans/2026-03-10-m6-2-3-deployment-docs.md` to pin the deployment-doc scope before implementation, then re-planned once deployment smoke verification exposed that `scripts/init_db.py` was not directly executable as documented.
+- Added `docs/deployment.md` covering prerequisites, runtime environment variables, verified local process deployment steps, smoke verification, data/persistence notes, and an explicitly unverified Docker Compose draft.
+- Corrected the invite `expires_at` API-doc wording in `domain/schemas.py` and locked it with an OpenAPI test in `tests/app/routes/test_api_routes.py`.
+- Fixed `scripts/init_db.py` so the documented direct command works from the repository root and added a subprocess-level regression test in `tests/scripts/test_init_db.py`.
+- Multi-agent scope/spec review returned `spec-compliant`; the code-quality reviewer timed out under interrupt, so the final quality pass was completed with manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, `.venv/bin/python scripts/init_db.py`, backend `/health` smoke against live `uvicorn`, frontend `/` smoke against `npm run preview`, and `git diff --check`.
+- Commit message for this milestone: `docs(deploy): complete M6.2.3 deployment guide`.

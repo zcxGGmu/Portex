@@ -53,7 +53,8 @@
 - `M6.1.3` 已完成（配置 CI/CD）。
 - `M6.2.1` 已完成（编写 README）。
 - `M6.2.2` 已完成（编写 API 文档）。
-- 当前起点：`M6.2.3`（编写部署文档）。
+- `M6.2.3` 已完成（编写部署文档）。
+- 当前起点：`M6.3.1`（添加数据库索引）。
 
 ---
 
@@ -114,6 +115,10 @@
 - `M6.2.2`：新增 `docs/plans/2026-03-10-m6-2-2-api-docs-design.md` 与 `docs/plans/2026-03-10-m6-2-2-api-docs.md`，将 API 文档边界固定为“增强 FastAPI `/docs` 的现有 HTTP API 文档”，不扩成独立文档站或单独 Markdown API 手册。
 - `M6.2.2`：新增 `app/openapi.py` 并扩展 `app/main.py`、`app/routes/*.py`、`domain/schemas.py`，补齐 OpenAPI 全局描述、tags、主要 HTTP 路由的 summary/description/error responses，以及关键请求/响应 DTO 的字段描述与示例。
 - `M6.2.2`：扩展 `tests/app/routes/test_api_routes.py`，对 `/openapi.json` 增加文档契约测试，覆盖全局描述、tag 描述、任务路由错误响应、消息占位说明、注册/任务 schema 描述，以及群成员删除接口的具体响应模型。
+- `M6.2.3`：新增 `docs/plans/2026-03-10-m6-2-3-deployment-docs-design.md` 与 `docs/plans/2026-03-10-m6-2-3-deployment-docs.md`，将部署文档边界固定为“已验证的本地进程部署 + 明确标注未验证的 Compose 草案”，不扩成完整运维手册。
+- `M6.2.3`：新增 `docs/deployment.md`，补齐前置条件、环境变量、SQLite/数据目录说明、本地进程启动步骤、健康检查、FastAPI `/docs` 入口，以及带风险声明的 Docker Compose 草案。
+- `M6.2.3`：修正邀请 `expires_at` 的 API 文档描述，明确当前实现会保留传入时区偏移，不承诺 UTC 归一化；同时修复 `scripts/init_db.py`，让文档里的直接执行命令可从仓库根目录实际运行。
+- `M6.2.3`：扩展 `tests/app/routes/test_api_routes.py` 与 `tests/scripts/test_init_db.py`，分别锁定 invite `expires_at` 文档契约与 `scripts/init_db.py` 直接执行路径。
 - 最近阶段提交：
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -140,10 +145,14 @@
 ## 3. 最新验证证据
 
 - M6.2.2 API docs focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py -q` -> `43 passed, 26 warnings in 7.42s`
-- M6.2.2 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `284 passed, 48 warnings in 11.55s`
+- M6.2.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py` -> `47 passed, 26 warnings in 7.20s`
+- M6.2.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `286 passed, 48 warnings in 12.07s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
+- DB init smoke：`.venv/bin/python scripts/init_db.py` -> `exit 0`
+- Backend smoke：`uvicorn app.main:app --host 127.0.0.1 --port 8011` + `curl /health` -> `{"status":"ok","version":"0.1.0"}`
+- Frontend smoke：`cd web && npm run preview -- --host 127.0.0.1 --port 4175` + `curl /` -> served `<!doctype html>`
 - 最近一次 backend coverage 验证（M6.1.3）：`.venv/bin/pytest tests/ -v --cov` -> `282 passed, 1 warning`, `TOTAL 95%`
 - Docker CLI 环境：`docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `docker: command not found`
 - Docker SDK 直连：`.venv/bin/python -c 'import docker; docker.from_env().ping()'` -> `DockerException: ... FileNotFoundError(2, 'No such file or directory')`
@@ -188,6 +197,8 @@
 - `M6.1.3` 当前 CI 仍不覆盖 Docker、真实 provider、发布/部署、或 secrets 注入；这些能力继续留待后续阶段单独设计。
 - `M6.2.2` 当前已补齐 FastAPI `/docs` 的 HTTP API 文档：OpenAPI 全局描述、tag 分组、关键请求/响应 schema 描述，以及主要错误响应都已在 `/openapi.json` 中可见。
 - `M6.2.2` 当前仍只覆盖 HTTP API 文档；`/ws/{group_folder}` WebSocket 契约不在 OpenAPI 内，仍需在后续文档工作中单独说明，不能误读为已被 Swagger 覆盖。
+- `M6.2.3` 当前已补齐部署文档，并对当前仓库的本地进程部署链路做了 fresh 烟测；但 Docker Compose 仍只是明确标注为未验证的草案，不能误读成已验证部署方案。
+- `M6.2.3` 当前 `scripts/init_db.py` 已可按文档直接执行；部署文档仍不覆盖反向代理、TLS、systemd、Kubernetes 或正式静态资源托管方案。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -198,9 +209,10 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`domain/schemas.py`、`infra/im/feishu.py`、`infra/im/telegram.py`、`tests/domain/test_schemas.py`
-   - 再读：`docs/plans/2026-03-10-m6-2-2-api-docs-design.md`、`docs/plans/2026-03-10-m6-2-2-api-docs.md`、`tasks/todo.md` 中最新 `M6.2.2` 会话清单
-2. 从 `M6.2.3` 开始：
-   - 先补部署文档，保持 README + `/docs` + 部署文档三层结构，不要一上来扩成完整文档站
+   - 再读：`docs/deployment.md`、`docs/plans/2026-03-10-m6-2-3-deployment-docs-design.md`、`docs/plans/2026-03-10-m6-2-3-deployment-docs.md`、`tasks/todo.md` 中最新 `M6.2.3` 会话清单
+2. 从 `M6.3.1` 开始：
+   - 先补数据库索引，保持范围收敛在 TODO 里的 `messages.chat_jid`、`messages.timestamp`、`scheduled_tasks.next_run`
+   - 继续保留 `M6.2.3` 当前边界：本地进程部署链路已做 fresh 烟测，但 Docker Compose 仍只是未验证草案
    - 继续保留 `M6.2.2` 当前边界：HTTP API 已在 FastAPI `/docs` 中补齐，但 WebSocket 契约仍不在 OpenAPI 内
    - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
    - 继续保留 `M6.1.2` 当前边界：integration 测试入口已建立，但 API matrix 仍窄、WebSocket 仍基于 fake runtime，不能把它误读成真实 provider/e2e 已打通
@@ -214,4 +226,4 @@
 
 ## 5. 一句话版
 
-> `M6.2.2` 已完成，下一步进入 `M6.2.3` 部署文档。
+> `M6.2.3` 已完成，下一步进入 `M6.3.1` 数据库索引。
