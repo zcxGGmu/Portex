@@ -1,7 +1,7 @@
 # Portex 开发进度上下文（重启续做入口）
 
 最后更新: 2026-03-10 (Asia/Shanghai)
-仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
+仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
 
 ---
@@ -133,6 +133,7 @@
 - `M6.3.3`：在 `services/memory.py` 中新增私有 `_user_memory_cache`；`get_user_memory()` 现在是 read-through cache，缺失文件会缓存空字符串，`update_user_memory()` 会在写盘成功后同步刷新缓存。
 - `M6.3.3`：扩展 `tests/services/test_memory_service.py`，覆盖缺失文件 cache miss、已有文件 cache hit，以及 `update_user_memory()` 的 write-through 刷新行为；daily memory 和 search 路径保持未缓存。
 - 最近阶段提交：
+  - `058f950` `perf(memory): complete M6.3.3 user memory cache`
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
   - `e8c48f7` `feat(memory): complete M4.4.4 runner memory tools`
@@ -161,7 +162,7 @@
 - M6.2.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py` -> `47 passed, 26 warnings in 7.20s`
 - M6.2.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `286 passed, 48 warnings in 12.07s`
 - M6.3.3 focused 验证：`.venv/bin/pytest tests/services/test_memory_service.py` -> `17 passed in 0.12s`
-- M6.3.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `296 passed, 48 warnings in 12.04s`
+- M6.3.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `296 passed, 48 warnings in 10.66s`
 - Backend lint：`.venv/bin/ruff check .` -> `All checks passed!`
 - Frontend lint：`cd web && npm run lint` -> `exit 0`
 - Frontend build：`cd web && npm run build` -> `vite build completed successfully`
@@ -216,7 +217,7 @@
 - `M6.2.3` 当前 `scripts/init_db.py` 已可按文档直接执行；部署文档仍不覆盖反向代理、TLS、systemd、Kubernetes 或正式静态资源托管方案。
 - `M6.3.1` 当前通过 `scripts/init_db.py` 可为已有 SQLite 表回填这三个索引；但仓库仍未引入通用 migration/backfill 机制，因此后续更复杂的 schema 变更仍不能误读成已具备正式迁移能力。
 - `M6.3.2` 当前已将默认文件型 SQLite 连接显式配置为 `pool_size=20`、`max_overflow=10` 的队列池，并保持所有内存 SQLite 变体走 `StaticPool`；但仓库仍未做性能压测、也未引入更细粒度的连接池环境变量。
-- `M6.3.3` 当前缓存层只覆盖 `MemoryService.get_user_memory()` / `update_user_memory()` 的单进程一致性；group daily memory、memory search、runner memory tools 和任何跨进程失效仍未缓存。
+- `M6.3.3` 当前缓存层只覆盖 `MemoryService.get_user_memory()` / `update_user_memory()` 的单进程 service-owned 读写路径；group daily memory、memory search、runner memory tools、外部文件改动和任何跨进程失效仍未缓存或协调。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。

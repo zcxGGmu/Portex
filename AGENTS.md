@@ -20,7 +20,12 @@
 - `M6.1.2` is complete (Integration tests).
 - `M6.1.3` is complete (CI workflow setup).
 - `M6.2.1` is complete (Project README).
-- Current starting point is `M6.2.2` (API docs).
+- `M6.2.2` is complete (API docs).
+- `M6.2.3` is complete (Deployment docs).
+- `M6.3.1` is complete (Database indexes).
+- `M6.3.2` is complete (Connection pool).
+- `M6.3.3` is complete (User memory cache).
+- Current starting point is `M6.4.1` (Security scanning).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -46,6 +51,7 @@
 - If resuming after `M6.1.2`, also skim `tests/integration/test_api.py` and `tests/integration/test_websocket.py` because the current integration boundary now spans both the HTTP baseline and the fake-runtime-backed WebSocket flow.
 - If resuming after `M6.1.3`, also skim `.github/workflows/test.yml`, `pyproject.toml`, and `web/package-lock.json` because CI now depends on `pytest-cov` plus the current npm lockfile and verified frontend commands.
 - If resuming after `M6.2.1`, also skim `README.md` because the root project entrypoint now carries the current quick-start, command set, and boundary wording that `M6.2.2` should stay aligned with.
+- If resuming after `M6.3.3`, also skim `services/memory.py`, `tests/services/test_memory_service.py`, `docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md`, and `docs/plans/2026-03-10-m6-3-3-user-memory-cache.md` because the current minimal cache boundary now lives in the memory service and the next phase must not overread it as a general cache layer.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -54,6 +60,7 @@
 - `.venv/bin/pytest tests/unit/ -v`: run M1 acceptance unit test command.
 - `.venv/bin/pytest tests/app/routes/test_websocket_routes.py -q`: run current WS send/cancel acceptance-focused backend test.
 - `.venv/bin/pytest tests/services/test_message_service.py tests/services/test_agent_trigger.py -q`: run message + runtime pipeline feature tests.
+- `.venv/bin/pytest tests/services/test_memory_service.py -q`: run the current memory-service acceptance-focused suite.
 - `.venv/bin/pytest -o addopts='' tests/services/test_scheduler.py -q`: run current scheduler-focused backend test.
 - `.venv/bin/pytest -o addopts='' tests/domain/models/test_models.py tests/services/test_auth_service.py tests/app/routes/test_api_routes.py -q`: run current user / auth / invite acceptance-focused backend tests.
 - `.venv/bin/pytest -o addopts='' tests/domain/test_permissions.py -q`: run current RBAC permission-template focused test.
