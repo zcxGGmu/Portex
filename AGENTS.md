@@ -32,7 +32,8 @@
 - `M6.5.2` is complete (Release tag creation).
 - Current starting point is `M6.5.3` (Release artifact building).
 - First release tag is `v1.0.0`; package/runtime version intentionally remains `0.1.0` until `M6.5.3+`.
-- The repository-root release-image build path now exists (`Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`), but `M6.5.3` is still blocked on fresh Docker-runtime verification because the current environment has no `docker` command.
+- The repository-root release-image build path now exists (`Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`), but `M6.5.3` is still blocked on fresh Docker-runtime verification because the current host still has no installed Docker CLI/daemon.
+- Latest blocker detail: Codex cannot self-install Docker in this environment because non-interactive `sudo` still requires a password, and the machine also lacks the documented rootless prerequisites (`newuidmap/newgidmap`, `/etc/subuid`, `/etc/subgid`, `slirp4netns`/`rootlesskit`/`fuse-overlayfs`).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -62,7 +63,8 @@
 - If resuming after `M6.4.1`, also skim `scripts/security_scan.py`, `tests/scripts/test_security_scan.py`, and `.github/workflows/test.yml` because `M6.4.2` should build on the current repo-local static scan chain instead of replacing it accidentally.
 - If resuming after `M6.4.2`, also skim `scripts/dependency_audit.py`, `tests/scripts/test_dependency_audit.py`, `pyproject.toml`, and `.github/workflows/test.yml` because `M6.4.3` should preserve both the current `pip-audit` chain and the explicit `ecdsa/CVE-2024-23342` ignore rationale.
 - If resuming after `M6.4.3`, also skim `app/middleware/security.py`, `app/main.py`, `tests/app/routes/test_api_routes.py`, and `tests/integration/test_api.py` because the current HTTP security-header contract now lives in those files and later phases should not regress it accidentally.
-- If resuming during `M6.5.3`, also skim `docs/plans/2026-03-11-m6-5-1-version-planning-design.md`, `docs/plans/2026-03-11-m6-5-1-version-planning.md`, `docs/plans/2026-03-11-m6-5-2-release-tag-design.md`, `docs/plans/2026-03-11-m6-5-2-release-tag.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`, `Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`, `docs/deployment.md`, `tests/scripts/test_build_docker.py`, and `tests/container/agent_runner/test_container_files.py` because the first release tag is `v1.0.0`, the repository-root image build path now exists, and the remaining blocker is fresh Docker verification on a machine with `docker`.
+- If resuming during `M6.5.3`, also skim `docs/plans/2026-03-11-m6-5-1-version-planning-design.md`, `docs/plans/2026-03-11-m6-5-1-version-planning.md`, `docs/plans/2026-03-11-m6-5-2-release-tag-design.md`, `docs/plans/2026-03-11-m6-5-2-release-tag.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`, `Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`, `docs/deployment.md`, `tests/scripts/test_build_docker.py`, and `tests/container/agent_runner/test_container_files.py` because the first release tag is `v1.0.0`, the repository-root image build path now exists, and the remaining blocker is still fresh Docker verification on a machine with Docker actually available.
+- If resuming during `M6.5.3`, check `docs/progress.md` for the latest environment notes before attempting installation work; the current blocker is not just “missing `docker`”, but also the inability to use non-interactive `sudo` plus missing rootless Docker prerequisites on this host.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.

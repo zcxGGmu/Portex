@@ -163,7 +163,11 @@
 - README logo redesign：新增 `docs/plans/2026-03-11-portex-logo-redesign-design.md` 与 `docs/plans/2026-03-11-portex-logo-redesign.md`，把这次 README logo 改版固定为“参考图风格的横向 crab mascot + PORTEX wordmark lockup”，仍复用同一个共享 SVG 资源路径。
 - README logo redesign：将 `assets/portex-crab-logo.svg` 从 `512x512` 几何 portal crab 重绘为横向 `PORTEX` lockup，双语 README 顶部图片宽度同步更新为 `560`，共享资源路径保持 `assets/portex-crab-logo.svg` 不变。
 - README logo redesign：沿用 `tests/container/agent_runner/test_container_files.py` 锁定新的 README/logo 合同（`width="560"`、`viewBox="0 0 1800 420"`），并确认 redesign focused 验证、`M6.5.3` focused tests、全量后端回归与 `ruff` 全部恢复绿色。
+- M6.5.3 handoff follow-up：补记当前 Docker unblock 的环境事实，确认本机仍未安装 Docker 包，Codex 也不能复用交互式 `sudo` 缓存；当前 `M6.5.3` 依旧停留在“release build path 已就位，但真实容器构建验收仍受宿主环境阻塞”的状态。
+- M6.5.3 handoff follow-up：确认 rootless Docker 也不是现成退路，当前机器缺少 `newuidmap/newgidmap`、`/etc/subuid`、`/etc/subgid`、`slirp4netns/rootlesskit/fuse-overlayfs` 等官方前置条件。
 - 最近阶段提交：
+  - `ccb9197` `docs(handoff): record docker install blocker details`
+  - `7213f68` `docs(handoff): record Portex logo redesign`
   - `90af55b` `docs(readme): redesign Portex logo lockup`
   - `a4ce545` `docs(readme): add Portex logo redesign plan`
   - `24404d8` `docs(readme): add refresh design`
@@ -206,14 +210,15 @@
 - M6.5.3 Docker 安装排查：`cat /etc/os-release` -> `Ubuntu 22.04.5 LTS (Jammy)`；`sudo -n true` -> `sudo: a password is required`；`dpkg -l | rg 'docker|containerd|runc'` -> `no installed packages`
 - M6.5.3 rootless Docker 前置检查：`command -v newuidmap/newgidmap/slirp4netns/rootlesskit/fuse-overlayfs` -> `no output`；`grep '^$(whoami):' /etc/subuid /etc/subgid` -> `no output`
 - M6.5.3 官方文档对照：Docker Docs 仍支持 Ubuntu Jammy 22.04 的 apt 安装；rootless mode 明确要求 `newuidmap/newgidmap` 与 `/etc/subuid`、`/etc/subgid`，当前机器不满足，所以“无 sudo 直接 rootless 安装”目前也被环境挡住
+- M6.5.3 非交互提权验证：`sudo -n apt-get update` -> `sudo: a password is required`，说明 Codex 当前工具调用无法复用用户交互式 shell 中的 `sudo -v` 时间戳缓存
 - README icon follow-up 资源接线检查：`rg -n "assets/portex-crab-logo\\.svg|Portex project logo" README.md README.zh-CN.md` -> both README files now reference the shared asset at line 4
 - README icon follow-up focused 验证：`.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v` -> `6 passed in 0.06s`; `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py` -> `All checks passed!`; `git diff --check` -> `exit 0`
 - README icon follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 48 warnings in 12.72s`; `.venv/bin/ruff check .` -> `All checks passed!`
 - README follow-up 文档检查：`rg -n "M[0-9]" README.md README.zh-CN.md` -> `no output`; `git diff --check` -> `exit 0`
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
-- 当前仓库状态：`git status --short --branch` -> `## main...origin/main [ahead 1]`
-- 当前 HEAD：`git log --oneline --decorate -1` -> `e5e12d9 (HEAD -> main) build(release): add root artifact build path`
+- 最近一次仓库状态采样：本地 `main` 仍有未推送的 handoff-only 提交；开始下一轮前以实时 `git status --short --branch` 为准
+- 最近一次 handoff 记录提交：`ccb9197` `docs(handoff): record docker install blocker details`
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -311,7 +316,7 @@
 - `M6.5.2` 当前正式 release baseline 仍以 `v1.0.0 -> dba45f3` 为准；后续 handoff / release-artifact 构建入口提交已经进入当前 `main`，但不改变首个 release tag 锚点。
 - `M6.5.3` 当前已补齐仓库根的 release image 构建入口：`Dockerfile`、`.dockerignore`、`scripts/build_docker.py`、`Makefile build-release-image` 均已到位，前端产物路径继续是 `web/dist/`。
 - `M6.5.3` 当前仍未完成严格验收，因为这台机器没有 `docker` 命令；目前只能证明“仓库已可静态验证，且 build wrapper 会在缺失 Docker 时显式返回 127”，不能伪称 `docker build -t portex:v1.0.0 .` 已在本机通过。
-- `M6.5.3` 当前 release-artifact baseline 仍是 `e5e12d9`（`build(release): add root artifact build path`）；其上已经继续追加 README/logo 相关提交，是否需要共享这些增量以实时 `git status --short --branch` 为准。
+- `M6.5.3` 当前 release-artifact baseline 仍是 `e5e12d9`（`build(release): add root artifact build path`）；其上已继续追加 README/logo 与 handoff-only 提交，是否完全同步以实时 `git status --short --branch` 为准。
 - `M6.5.3` 当前额外确认了两层环境阻塞：一是本机 `sudo` 需要人工输入密码，所以 Codex 不能直接走官方 apt 安装；二是 rootless Docker 所需的 `uidmap/subuid/subgid/slirp4netns` 等前置条件也缺失，暂时不能绕过 sudo 直接启用用户态 daemon。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
@@ -329,7 +334,7 @@
 2. 从 `M6.5.3` 开始：
    - 先确认本机是否已经有可用的 `docker` CLI / daemon；如果有，优先 fresh 运行 `docker build -t portex:v1.0.0 .` 和 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`，再决定是否把 `M6.5.3` 标记完成
    - 如果 Docker 仍不可用，继续把 `M6.5.3` 视为“构建入口已完成、运行时验证受环境阻塞”的中间态，不要谎报阶段完成
-   - 如果要在这台 Ubuntu 22.04 机器上继续 unblock，优先让用户/管理员按 Docker 官方 Jammy 安装文档执行 apt 安装；当前 Codex 无法无交互使用 `sudo`
+   - 如果要在这台 Ubuntu 22.04 机器上继续 unblock，优先让用户/管理员按 Docker 官方 Jammy 安装文档在交互式 shell 里执行 apt 安装；当前 Codex 的非交互工具调用无法复用 `sudo -v` 缓存
    - 不要把 rootless Docker 当成现成退路：当前机器缺少 `newuidmap/newgidmap`、`/etc/subuid`、`/etc/subgid`、`slirp4netns/rootlesskit/fuse-overlayfs`，所以 rootless 方案也需要先补系统前置
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
    - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
