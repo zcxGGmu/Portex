@@ -4,7 +4,7 @@ Portex is a multi-user remote AI agent service built with Python and the OpenAI 
 
 ## Current Status
 
-Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, `M6.2.1` README work, `M6.2.2` API documentation, and `M6.2.3` deployment documentation. The current next step is `M6.3` performance optimization.
+Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, `M6.2.1` README work, `M6.2.2` API documentation, `M6.2.3` deployment documentation, `M6.3.1` database indexes, `M6.3.2` connection pooling, `M6.3.3` user-memory caching, and `M6.4.1` security scanning. The current next step is `M6.4.2` dependency audit.
 
 Implemented and verified slices include:
 
@@ -17,6 +17,7 @@ Implemented and verified slices include:
 - file-backed memory management and runner memory tools
 - Feishu and Telegram client foundations
 - unified message schema and minimal message router
+- repository-local backend security scan wired into CI
 - unit, integration, backend regression, frontend build/lint, and local CI workflow commands
 
 ## Features
@@ -69,6 +70,9 @@ Common commands:
 
 # focused integration suite
 .venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q
+
+# backend security scan
+.venv/bin/python scripts/security_scan.py
 
 # backend lint
 .venv/bin/ruff check .

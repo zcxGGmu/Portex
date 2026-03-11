@@ -227,7 +227,8 @@ class UnifiedMessage(BaseModel):
     @classmethod
     def normalize_timestamp(cls, value: datetime) -> datetime:
         normalized = _normalize_utc_datetime(value)
-        assert normalized is not None
+        if normalized is None:
+            raise ValueError("UnifiedMessage.timestamp normalization returned None")
         return normalized
 
 
@@ -338,7 +339,8 @@ class TaskRunLogResponse(BaseModel):
     @classmethod
     def normalize_run_at(cls, value: datetime) -> datetime:
         normalized = _normalize_utc_datetime(value)
-        assert normalized is not None
+        if normalized is None:
+            raise ValueError("TaskRunLogResponse.run_at normalization returned None")
         return normalized
 
 

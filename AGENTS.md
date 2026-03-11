@@ -11,7 +11,7 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-10)
+## Current Baseline Snapshot (2026-03-11)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
 - `M3` is complete (`M3.1` ~ `M3.6`).
 - `M4` is complete (`M4.1` ~ `M4.5`).
@@ -25,7 +25,8 @@
 - `M6.3.1` is complete (Database indexes).
 - `M6.3.2` is complete (Connection pool).
 - `M6.3.3` is complete (User memory cache).
-- Current starting point is `M6.4.1` (Security scanning).
+- `M6.4.1` is complete (Security scanning).
+- Current starting point is `M6.4.2` (Dependency audit).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -52,6 +53,7 @@
 - If resuming after `M6.1.3`, also skim `.github/workflows/test.yml`, `pyproject.toml`, and `web/package-lock.json` because CI now depends on `pytest-cov` plus the current npm lockfile and verified frontend commands.
 - If resuming after `M6.2.1`, also skim `README.md` because the root project entrypoint now carries the current quick-start, command set, and boundary wording that `M6.2.2` should stay aligned with.
 - If resuming after `M6.3.3`, also skim `services/memory.py`, `tests/services/test_memory_service.py`, `docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md`, and `docs/plans/2026-03-10-m6-3-3-user-memory-cache.md` because the current minimal cache boundary now lives in the memory service and the next phase must not overread it as a general cache layer.
+- If resuming after `M6.4.1`, also skim `scripts/security_scan.py`, `tests/scripts/test_security_scan.py`, and `.github/workflows/test.yml` because `M6.4.2` should build on the current repo-local static scan chain instead of replacing it accidentally.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -71,6 +73,7 @@
 - `.venv/bin/pytest -o addopts='' tests/domain/test_schemas.py tests/infra/im/test_feishu.py tests/infra/im/test_telegram.py -q`: run current unified-message + IM acceptance-focused tests.
 - `.venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q`: run the current integration-focused API + WebSocket suite.
 - `.venv/bin/pytest tests/ -v --cov`: run the current backend CI-equivalent test command with coverage.
+- `.venv/bin/python scripts/security_scan.py`: run the repository-local backend security scan (Ruff `S` rules on runtime code).
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm ci`: install frontend dependencies from the committed lockfile.
 - `cd web && npm run lint`: frontend lint.

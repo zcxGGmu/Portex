@@ -1,6 +1,6 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-10 (Asia/Shanghai)
+最后更新: 2026-03-11 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
 
@@ -57,7 +57,8 @@
 - `M6.3.1` 已完成（添加数据库索引）。
 - `M6.3.2` 已完成（实现连接池）。
 - `M6.3.3` 已完成（添加最小缓存层）。
-- 当前起点：`M6.4.1`（安全扫描）。
+- `M6.4.1` 已完成（安全扫描）。
+- 当前起点：`M6.4.2`（依赖审计）。
 
 ---
 
@@ -132,6 +133,9 @@
 - `M6.3.3`：新增 `docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md` 与 `docs/plans/2026-03-10-m6-3-3-user-memory-cache.md`，将范围固定为“只给 user-global `AGENTS.md` 读路径加最小进程内缓存”，不扩到 Redis、通用 cache abstraction 或 group memory search。
 - `M6.3.3`：在 `services/memory.py` 中新增私有 `_user_memory_cache`；`get_user_memory()` 现在是 read-through cache，缺失文件会缓存空字符串，`update_user_memory()` 会在写盘成功后同步刷新缓存。
 - `M6.3.3`：扩展 `tests/services/test_memory_service.py`，覆盖缺失文件 cache miss、已有文件 cache hit，以及 `update_user_memory()` 的 write-through 刷新行为；daily memory 和 search 路径保持未缓存。
+- `M6.4.1`：新增 `docs/plans/2026-03-11-m6-4-1-security-scanning-design.md` 与 `docs/plans/2026-03-11-m6-4-1-security-scanning.md`，将范围固定为“仓库内可执行、可验证的最小安全扫描工具链”，不提前扩到 `pip-audit`、安全头或更大的安全治理。
+- `M6.4.1`：新增 `scripts/security_scan.py` 与 `tests/scripts/test_security_scan.py`，用仓库内 Python 入口执行 Ruff `S` 规则，扫描 `app/domain/infra/services/scripts/pocs/portex/container/agent-runner/src` 这些运行时代码目录；同时把该命令接入 `.github/workflows/test.yml` 的 backend job，并在 `README.md` / `AGENTS.md` 暴露本地命令入口。
+- `M6.4.1`：将 `domain/schemas.py` 中两处 `assert` 防御改为显式 `ValueError`，并为 `EventType.TOKEN_DELTA` 添加精确 inline suppression，收敛当前运行时代码上的 3 个 Ruff `S` 规则结果，使 repo-local 安全扫描可直接通过。
 - 最近阶段提交：
   - `058f950` `perf(memory): complete M6.3.3 user memory cache`
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
@@ -158,6 +162,11 @@
 
 ## 3. 最新验证证据
 
+- M6.4.1 focused 验证：`.venv/bin/pytest tests/scripts/test_security_scan.py tests/domain/test_schemas.py -v` -> `6 passed in 0.18s`
+- M6.4.1 安全扫描：`.venv/bin/python scripts/security_scan.py` -> `All checks passed!`
+- M6.4.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `300 passed, 48 warnings in 12.69s`
+- M6.4.1 coverage 命令前 dev 依赖刷新：`.venv/bin/python -m pip install -e ".[dev]"` -> `exit 0`
+- M6.4.1 backend coverage 验证：`.venv/bin/pytest tests/ -v --cov` -> `300 passed, 48 warnings in 16.43s`, `TOTAL 95%`
 - M6.2.2 API docs focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py -q` -> `43 passed, 26 warnings in 7.42s`
 - M6.2.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/scripts/test_init_db.py` -> `47 passed, 26 warnings in 7.20s`
 - M6.2.3 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `286 passed, 48 warnings in 12.07s`
@@ -218,6 +227,8 @@
 - `M6.3.1` 当前通过 `scripts/init_db.py` 可为已有 SQLite 表回填这三个索引；但仓库仍未引入通用 migration/backfill 机制，因此后续更复杂的 schema 变更仍不能误读成已具备正式迁移能力。
 - `M6.3.2` 当前已将默认文件型 SQLite 连接显式配置为 `pool_size=20`、`max_overflow=10` 的队列池，并保持所有内存 SQLite 变体走 `StaticPool`；但仓库仍未做性能压测、也未引入更细粒度的连接池环境变量。
 - `M6.3.3` 当前缓存层只覆盖 `MemoryService.get_user_memory()` / `update_user_memory()` 的单进程 service-owned 读写路径；group daily memory、memory search、runner memory tools、外部文件改动和任何跨进程失效仍未缓存或协调。
+- `M6.4.1` 当前只完成仓库内的 Python 静态安全扫描入口：`scripts/security_scan.py` 通过 Ruff `S` 规则扫描运行时代码目录，刻意不扫描 `tests/`，以避免 pytest `assert` 主导结果信号。
+- `M6.4.1` 当前不包含依赖漏洞审计、前端包审计、secret scanning、CodeQL、Dependabot 或安全头；这些能力仍留给 `M6.4.2`、`M6.4.3` 或后续阶段单独设计。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -227,10 +238,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`services/memory.py`、`tests/services/test_memory_service.py`、`tasks/todo.md`
-   - 再读：`docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md`、`docs/plans/2026-03-10-m6-3-3-user-memory-cache.md`、`tasks/todo.md` 中最新 `M6.3.3` 会话清单
-2. 从 `M6.4.1` 开始：
-   - 先把安全扫描范围收敛在仓库内可执行、可验证的最小工具链，不要顺手扩成完整安全治理计划
+   - 建议顺手再看：`scripts/security_scan.py`、`tests/scripts/test_security_scan.py`、`.github/workflows/test.yml`、`tasks/todo.md`
+   - 再读：`docs/plans/2026-03-11-m6-4-1-security-scanning-design.md`、`docs/plans/2026-03-11-m6-4-1-security-scanning.md`
+2. 从 `M6.4.2` 开始：
+   - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成依赖审计、前端审计或更广义的安全治理已经完成
+   - 在 `M6.4.2` 中补依赖漏洞审计时，尽量复用当前 backend workflow / 本地命令习惯，不要把已通过的静态扫描链意外替换掉
    - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
    - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
@@ -248,4 +260,4 @@
 
 ## 5. 一句话版
 
-> `M6.3.3` 已完成，下一步进入 `M6.4.1` 安全扫描。
+> `M6.4.1` 已完成，下一步进入 `M6.4.2` 依赖审计。

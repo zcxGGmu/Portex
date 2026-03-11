@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 class EventType(str, Enum):
     RUN_STARTED = "run.started"
-    TOKEN_DELTA = "run.token.delta"
+    TOKEN_DELTA = "run.token.delta"  # noqa: S105
     TOOL_STARTED = "run.tool.started"
     TOOL_COMPLETED = "run.tool.completed"
     RUN_TIMEOUT = "run.timeout"

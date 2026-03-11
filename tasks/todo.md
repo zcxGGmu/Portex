@@ -353,3 +353,28 @@
 - Multi-agent implementation/review was used for Task 1 red tests and Task 2 spec review. Several quality-review agents timed out, so the final quality pass was completed with manual diff review plus fresh verification evidence.
 - Verification ran: `.venv/bin/pytest tests/services/test_memory_service.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Commit message for this milestone: `perf(memory): complete M6.3.3 user memory cache`.
+
+# Session Plan (2026-03-11) - M6.4.1 Security Scan
+
+## Goal
+- Complete `M6.4.1` by adding the smallest repository-local security scanning workflow that is executable in the current environment and wired into the existing verification flow.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, and `docs/TODO.md`
+- [x] Brainstorm the `M6.4.1` scope and confirm the minimal approach with the user
+- [x] Write `M6.4.1` design and implementation plan docs
+- [x] Add failing tests for the security-scan entrypoint
+- [x] Implement the minimal scan script and current finding cleanup
+- [x] Run multi-agent spec/code-quality review on the security-scan slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.4.1` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-11-m6-4-1-security-scanning-design.md` and `docs/plans/2026-03-11-m6-4-1-security-scanning.md` to pin the milestone boundary before implementation.
+- Added `tests/scripts/test_security_scan.py` and `scripts/security_scan.py` so the repository now has a local Python entrypoint for Ruff `S`-rule scanning of runtime-oriented code directories.
+- Updated `.github/workflows/test.yml`, `README.md`, and `AGENTS.md` so backend CI and local operator docs all point at the same `scripts/security_scan.py` command.
+- Replaced two `assert`-based schema guards in `domain/schemas.py` with explicit `ValueError` checks, and added a narrow inline suppression for the `EventType.TOKEN_DELTA` false positive in `portex/contracts/events.py`.
+- Multi-agent implementation and review were used for the scan-entrypoint and runtime-finding slices. Two broader review agents timed out under interrupt; a follow-up quick review reported no blocking findings, and the final quality pass was completed with manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/scripts/test_security_scan.py tests/domain/test_schemas.py -v`, `.venv/bin/python scripts/security_scan.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/python -m pip install -e ".[dev]"`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Commit message for this milestone: `build(security): complete M6.4.1 security scan`.
