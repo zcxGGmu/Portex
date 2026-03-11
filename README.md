@@ -4,7 +4,7 @@ Portex is a multi-user remote AI agent service built with Python and the OpenAI 
 
 ## Current Status
 
-Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, `M6.2.1` README work, `M6.2.2` API documentation, `M6.2.3` deployment documentation, `M6.3.1` database indexes, `M6.3.2` connection pooling, `M6.3.3` user-memory caching, `M6.4.1` security scanning, `M6.4.2` dependency audit, and `M6.4.3` security headers. The current next step is `M6.5.1` version planning.
+Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, `M6.2.1` README work, `M6.2.2` API documentation, `M6.2.3` deployment documentation, `M6.3.1` database indexes, `M6.3.2` connection pooling, `M6.3.3` user-memory caching, `M6.4.1` security scanning, `M6.4.2` dependency audit, `M6.4.3` security headers, and `M6.5.1` version planning. The current next step is `M6.5.2` release tag creation.
 
 Implemented and verified slices include:
 
@@ -130,6 +130,7 @@ Portex is not yet a full production-ready system. Important current boundaries:
 - Docker lifecycle code exists, but the current local environment has not provided Docker daemon smoke-test evidence
 - the Python dependency audit currently ignores `CVE-2024-23342` for `ecdsa` because `0.19.1` is still the newest published version; that exception must be revisited when the dependency graph or upstream releases change
 - the current security-header layer is intentionally minimal and stops before CSP, HSTS, TLS, or reverse-proxy hardening
+- the planned first formal release is `v1.0.0`, but the repository/package/runtime version strings still remain `0.1.0` until the later tag/release execution phases
 - the GitHub Actions workflow has been configured and validated with local equivalent commands, but not observed running on a remote GitHub-hosted runner from this environment
 
 ## Documents

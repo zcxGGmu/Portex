@@ -427,3 +427,24 @@
 - Spec review returned `spec-compliant`; the broader code-review subagent timed out under interrupt, so the final quality pass used manual diff review plus fresh verification evidence.
 - Verification ran: `.venv/bin/pytest tests/app/routes/test_api_routes.py tests/integration/test_api.py -q`, `.venv/bin/python scripts/security_scan.py`, `.venv/bin/python scripts/dependency_audit.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Commit message for this milestone: `feat(security): complete M6.4.3 security headers`.
+
+# Session Plan (2026-03-11) - M6.5.1 Version Planning
+
+## Goal
+- Complete `M6.5.1` by documenting the first release-version strategy without creating tags, changing package/runtime version strings, or building release artifacts.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `README.md`, and current version metadata
+- [x] Brainstorm the `M6.5.1` scope and confirm the planning-only approach with the user
+- [x] Write `M6.5.1` design and implementation plan docs
+- [x] Update repo-facing docs with the chosen version strategy
+- [x] Run review plus repository verification
+- [x] Update `docs/progress.md` with `M6.5.1` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-11-m6-5-1-version-planning-design.md` and `docs/plans/2026-03-11-m6-5-1-version-planning.md` to pin the milestone boundary before implementation.
+- Kept `pyproject.toml` and runtime version strings unchanged at `0.1.0`, and documented the planning decision that the first formal release tag target is `v1.0.0`.
+- Updated `README.md`, `AGENTS.md`, and `docs/progress.md` so restart-oriented docs now distinguish planned release tag `v1.0.0` from current package/runtime version `0.1.0`, and move the next starting point to `M6.5.2`.
+- Verification ran: `rg -n "M6\\.5\\.1|M6\\.5\\.2|v1\\.0\\.0|0\\.1\\.0" README.md AGENTS.md docs/progress.md`, `git diff --check`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Commit message for this milestone: `docs(release): complete M6.5.1 version planning`.
