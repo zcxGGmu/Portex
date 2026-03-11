@@ -1,7 +1,7 @@
 # Portex
 
 <p align="center">
-  <img src="assets/portex-crab-logo.svg" alt="Portex project logo" width="200" />
+  <img src="assets/portex-crab-logo.svg" alt="Portex project logo" width="560" />
 </p>
 
 **中文** | [English](README.md)

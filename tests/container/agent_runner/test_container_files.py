@@ -88,6 +88,7 @@ def test_readmes_reference_shared_portex_logo_asset() -> None:
 
         assert 'src="assets/portex-crab-logo.svg"' in content
         assert 'alt="Portex project logo"' in content
+        assert 'width="560"' in content
 
 
 def test_portex_logo_asset_exists_and_is_valid_svg() -> None:
@@ -96,4 +97,4 @@ def test_portex_logo_asset_exists_and_is_valid_svg() -> None:
     root = ET.fromstring(LOGO_PATH.read_text(encoding="utf-8"))
 
     assert root.tag.endswith("svg")
-    assert root.attrib["viewBox"] == "0 0 512 512"
+    assert root.attrib["viewBox"] == "0 0 1800 420"
