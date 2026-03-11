@@ -160,7 +160,12 @@
 - README icon follow-up：新增 `docs/plans/2026-03-11-portex-project-icon-design.md` 与 `docs/plans/2026-03-11-portex-project-icon.md`，把这次 README 项目标识补充固定为“单一 SVG 主 logo + 双语 README 共用资产”，不扩到 favicon、PNG 导出或 `web/` 图标接入。
 - README icon follow-up：新增根级 `assets/portex-crab-logo.svg`，以 `Portal Crab` 方向交付深海军蓝 + 蓝青配色的技术感卡通螃蟹，并在 `README.md` / `README.zh-CN.md` 顶部加入共享 logo 展示块，同时把新的 `assets/` 目录补入仓库结构说明。
 - README icon follow-up：扩展 `tests/container/agent_runner/test_container_files.py`，把 README/logo 静态契约与 SVG 文件存在性/`viewBox` 校验纳入现有仓库根文件合同测试，避免把文档资源检查误放到 `tests/scripts/`。
+- README logo redesign：新增 `docs/plans/2026-03-11-portex-logo-redesign-design.md` 与 `docs/plans/2026-03-11-portex-logo-redesign.md`，把这次 README logo 改版固定为“参考图风格的横向 crab mascot + PORTEX wordmark lockup”，仍复用同一个共享 SVG 资源路径。
+- README logo redesign：将 `assets/portex-crab-logo.svg` 从 `512x512` 几何 portal crab 重绘为横向 `PORTEX` lockup，双语 README 顶部图片宽度同步更新为 `560`，共享资源路径保持 `assets/portex-crab-logo.svg` 不变。
+- README logo redesign：沿用 `tests/container/agent_runner/test_container_files.py` 锁定新的 README/logo 合同（`width="560"`、`viewBox="0 0 1800 420"`），并确认 redesign focused 验证、`M6.5.3` focused tests、全量后端回归与 `ruff` 全部恢复绿色。
 - 最近阶段提交：
+  - `90af55b` `docs(readme): redesign Portex logo lockup`
+  - `a4ce545` `docs(readme): add Portex logo redesign plan`
   - `24404d8` `docs(readme): add refresh design`
   - `e5e12d9` `build(release): add root artifact build path`
   - `b5665ee` `docs(release): complete M6.5.2 release tag`
@@ -195,6 +200,9 @@
 
 ## 3. 最新验证证据
 
+- README logo redesign focused 验证：`.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v` -> `6 passed in 0.03s`; `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py` -> `All checks passed!`; `git diff --check` -> `exit 0`
+- README logo redesign + M6.5.3 focused：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `10 passed in 0.37s`; `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `[Errno 2] No such file or directory: 'docker'`, `exit 127`; `docker build -t portex:v1.0.0 .` -> `zsh:1: command not found: docker`; `docker image inspect portex:v1.0.0 --format '{{.Id}}'` -> `zsh:1: command not found: docker`
+- README logo redesign 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 1 warning in 10.42s`; `.venv/bin/ruff check .` -> `All checks passed!`
 - README icon follow-up 资源接线检查：`rg -n "assets/portex-crab-logo\\.svg|Portex project logo" README.md README.zh-CN.md` -> both README files now reference the shared asset at line 4
 - README icon follow-up focused 验证：`.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v` -> `6 passed in 0.06s`; `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py` -> `All checks passed!`; `git diff --check` -> `exit 0`
 - README icon follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 48 warnings in 12.72s`; `.venv/bin/ruff check .` -> `All checks passed!`
@@ -300,7 +308,8 @@
 - `M6.5.2` 当前正式 release baseline 仍以 `v1.0.0 -> dba45f3` 为准；后续 handoff / release-artifact 构建入口提交已经进入当前 `main`，但不改变首个 release tag 锚点。
 - `M6.5.3` 当前已补齐仓库根的 release image 构建入口：`Dockerfile`、`.dockerignore`、`scripts/build_docker.py`、`Makefile build-release-image` 均已到位，前端产物路径继续是 `web/dist/`。
 - `M6.5.3` 当前仍未完成严格验收，因为这台机器没有 `docker` 命令；目前只能证明“仓库已可静态验证，且 build wrapper 会在缺失 Docker 时显式返回 127”，不能伪称 `docker build -t portex:v1.0.0 .` 已在本机通过。
-- `M6.5.3` 当前最新仓库提交是 `e5e12d9`，且本地 `main` 相对 `origin/main` 超前 1 个 commit；如果下一个会话需要共享这次 release-artifact 改动，先决定是否推送分支。
+- `M6.5.3` 当前 release-artifact baseline 仍是 `e5e12d9`（`build(release): add root artifact build path`）；其上已经继续追加 README/logo 相关提交，是否需要共享这些增量以实时 `git status --short --branch` 为准。
+- README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -312,6 +321,7 @@
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`pyproject.toml`、`README.md`、`docs/progress.md`、`tasks/todo.md`
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
+   - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
 2. 从 `M6.5.3` 开始：
    - 先确认本机是否已经有可用的 `docker` CLI / daemon；如果有，优先 fresh 运行 `docker build -t portex:v1.0.0 .` 和 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`，再决定是否把 `M6.5.3` 标记完成
    - 如果 Docker 仍不可用，继续把 `M6.5.3` 视为“构建入口已完成、运行时验证受环境阻塞”的中间态，不要谎报阶段完成
