@@ -28,6 +28,9 @@ def test_health_check_endpoint(api_client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "0.1.0"}
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
 
 
 def test_register_login_and_get_current_user_flow(api_client: TestClient) -> None:

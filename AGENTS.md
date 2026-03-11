@@ -27,7 +27,8 @@
 - `M6.3.3` is complete (User memory cache).
 - `M6.4.1` is complete (Security scanning).
 - `M6.4.2` is complete (Dependency audit).
-- Current starting point is `M6.4.3` (Security headers).
+- `M6.4.3` is complete (Security headers).
+- Current starting point is `M6.5.1` (Version planning).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -56,6 +57,7 @@
 - If resuming after `M6.3.3`, also skim `services/memory.py`, `tests/services/test_memory_service.py`, `docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md`, and `docs/plans/2026-03-10-m6-3-3-user-memory-cache.md` because the current minimal cache boundary now lives in the memory service and the next phase must not overread it as a general cache layer.
 - If resuming after `M6.4.1`, also skim `scripts/security_scan.py`, `tests/scripts/test_security_scan.py`, and `.github/workflows/test.yml` because `M6.4.2` should build on the current repo-local static scan chain instead of replacing it accidentally.
 - If resuming after `M6.4.2`, also skim `scripts/dependency_audit.py`, `tests/scripts/test_dependency_audit.py`, `pyproject.toml`, and `.github/workflows/test.yml` because `M6.4.3` should preserve both the current `pip-audit` chain and the explicit `ecdsa/CVE-2024-23342` ignore rationale.
+- If resuming after `M6.4.3`, also skim `app/middleware/security.py`, `app/main.py`, `tests/app/routes/test_api_routes.py`, and `tests/integration/test_api.py` because the current HTTP security-header contract now lives in those files and later phases should not regress it accidentally.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.

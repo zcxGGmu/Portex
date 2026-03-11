@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import setup_logging
+from app.middleware import SecurityHeadersMiddleware
 from app.openapi import OPENAPI_DESCRIPTION, OPENAPI_TAGS
 from app.routes import auth, groups, health, messages, tasks, users, websocket
 
@@ -24,6 +25,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(health.router)
 app.include_router(auth.router)

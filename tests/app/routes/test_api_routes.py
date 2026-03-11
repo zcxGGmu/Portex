@@ -60,6 +60,14 @@ def test_health_check_endpoint(api_client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "0.1.0"}
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert (
+        response.headers["permissions-policy"]
+        == "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+        "magnetometer=(), microphone=(), payment=(), usb=()"
+    )
 
 
 def test_cors_preflight_allows_localhost_5173(api_client: TestClient) -> None:
@@ -75,6 +83,9 @@ def test_cors_preflight_allows_localhost_5173(api_client: TestClient) -> None:
     assert response.status_code == 200
     assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert "POST" in response.headers.get("access-control-allow-methods", "")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
 
 
 def test_register_login_and_get_current_user_flow(api_client: TestClient) -> None:

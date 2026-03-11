@@ -403,3 +403,27 @@
 - Multi-agent review returned `spec-compliant` and `no findings`; the only recorded residual risk is the explicit `ecdsa/CVE-2024-23342` ignore, which is now documented for future revisit.
 - Verification ran: `.venv/bin/pytest tests/scripts/test_dependency_audit.py -v`, `.venv/bin/python scripts/dependency_audit.py`, `.venv/bin/python scripts/security_scan.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Commit message for this milestone: `build(security): complete M6.4.2 dependency audit`.
+
+# Session Plan (2026-03-11) - M6.4.3 Security Headers
+
+## Goal
+- Complete `M6.4.3` by adding the smallest useful HTTP security-header middleware to the current FastAPI app without expanding into CSP or broader browser policy work.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and the latest security milestone docs
+- [x] Brainstorm the `M6.4.3` scope and confirm the minimal-header approach with the user
+- [x] Write `M6.4.3` design and implementation plan docs
+- [x] Add failing tests for the header contract
+- [x] Implement the minimal security-header middleware and app wiring
+- [x] Run multi-agent spec/code-quality review on the security-header slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.4.3` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-11-m6-4-3-security-headers-design.md` and `docs/plans/2026-03-11-m6-4-3-security-headers.md` to pin the milestone boundary before implementation.
+- Extended `tests/app/routes/test_api_routes.py` and `tests/integration/test_api.py` with a red-green cycle that locked the new security-header contract on `/health` plus CORS preflight responses.
+- Added `app/middleware/security.py` with a lightweight ASGI `SecurityHeadersMiddleware`, exported it via `app/middleware/__init__.py`, and registered it in `app/main.py` outside the current CORS layer so preflight responses inherit the same headers.
+- Spec review returned `spec-compliant`; the broader code-review subagent timed out under interrupt, so the final quality pass used manual diff review plus fresh verification evidence.
+- Verification ran: `.venv/bin/pytest tests/app/routes/test_api_routes.py tests/integration/test_api.py -q`, `.venv/bin/python scripts/security_scan.py`, `.venv/bin/python scripts/dependency_audit.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Commit message for this milestone: `feat(security): complete M6.4.3 security headers`.
