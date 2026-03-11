@@ -448,3 +448,21 @@
 - Updated `README.md`, `AGENTS.md`, and `docs/progress.md` so restart-oriented docs now distinguish planned release tag `v1.0.0` from current package/runtime version `0.1.0`, and move the next starting point to `M6.5.2`.
 - Verification ran: `rg -n "M6\\.5\\.1|M6\\.5\\.2|v1\\.0\\.0|0\\.1\\.0" README.md AGENTS.md docs/progress.md`, `git diff --check`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Commit message for this milestone: `docs(release): complete M6.5.1 version planning`.
+
+# Session Plan (2026-03-11) - M6.5.2 Release Tag
+
+## Goal
+- Complete `M6.5.2` by updating milestone handoff docs, creating the annotated release tag `v1.0.0`, and moving the next starting point to `M6.5.3` without starting artifact-building work.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, release-planning docs, and current git/tag state
+- [x] Write `M6.5.2` design and implementation plan docs
+- [x] Update repo-facing docs and session tracking for post-`M6.5.2` state
+- [x] Run repository verification and create the `M6.5.2` completion commit
+- [ ] Create and verify local annotated tag `v1.0.0`
+- [ ] Push and verify remote tag `v1.0.0`
+- [ ] Update `docs/progress.md` with `M6.5.2` evidence and next step
+- [ ] Commit the milestone with a detailed message
+
+## Review
+- Pending.
