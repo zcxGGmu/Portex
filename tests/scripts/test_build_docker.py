@@ -92,22 +92,3 @@ def test_main_returns_127_when_docker_command_is_missing(monkeypatch) -> None:
 
     assert exit_code == 127
     assert "docker command not found" in stderr.getvalue()
-
-
-def test_main_returns_127_when_docker_command_is_missing(
-    monkeypatch,
-    capsys,
-) -> None:
-    from scripts import build_docker
-
-    def fake_run(command, *, cwd, check):
-        _ = (command, cwd, check)
-        raise FileNotFoundError("docker")
-
-    monkeypatch.setattr(build_docker.subprocess, "run", fake_run)
-
-    exit_code = build_docker.main([])
-
-    captured = capsys.readouterr()
-    assert exit_code == 127
-    assert captured.err.strip() == "docker command not found"

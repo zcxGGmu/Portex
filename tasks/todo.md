@@ -506,11 +506,18 @@
 - [x] Re-read `README.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and the runtime/message slices that determine the current public architecture story
 - [x] Brainstorm the README refresh direction and get approval on the layered bilingual approach
 - [x] Write the README refresh design doc
-- [ ] Write the README refresh implementation plan doc
-- [ ] Rewrite `README.md` with the naming story, public capability matrix, public todo list, and Mermaid diagrams
-- [ ] Add `README.zh-CN.md` as a near-parity Chinese counterpart with language switch links
-- [ ] Run review plus repository verification for the documentation slice
-- [ ] Update `docs/progress.md` and this session review
-- [ ] Commit the documentation refresh with a detailed message
+- [x] Write the README refresh implementation plan doc
+- [x] Rewrite `README.md` with the naming story, public capability matrix, public todo list, and Mermaid diagrams
+- [x] Add `README.zh-CN.md` as a near-parity Chinese counterpart with language switch links
+- [x] Run review plus repository verification for the documentation slice
+- [x] Update `docs/progress.md` and this session review
+- [x] Commit the documentation refresh with a detailed message
 
 ## Review
+- Added `docs/plans/2026-03-11-readme-refresh-design.md` and `docs/plans/2026-03-11-readme-refresh.md` to lock the public README refresh scope before editing.
+- Rewrote `README.md` around `Portex = Portal + Codex`, public-facing support and todo lists, and three Mermaid diagrams that reflect the current web runtime and IM normalization boundary.
+- Added `README.zh-CN.md` as a near-parity Chinese counterpart with language switch links and the same overall information architecture.
+- Review outcome: one doc-quality reviewer found no blocking issues; one technical reviewer caught two Mermaid overstatements, and both were corrected before final verification.
+- Fresh repository verification exposed a pre-existing duplicate test definition in `tests/scripts/test_build_docker.py`; removed the stale duplicate so both `pytest` and `ruff` returned to green.
+- Verification ran: `rg -n "M[0-9]" README.md README.zh-CN.md`, `git diff --check`, `.venv/bin/pytest tests/scripts/test_build_docker.py -q`, `.venv/bin/ruff check tests/scripts/test_build_docker.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
+- Commit message: `docs(readme): refresh public project entrypoint`

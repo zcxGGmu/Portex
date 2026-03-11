@@ -153,7 +153,12 @@
 - `M6.5.3`（进行中）：新增 `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md` 与 `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`，将范围固定为“根级 release image 构建入口 + 前端现有产物链复用”，不扩成 GitHub Release、镜像推送或版本字符串同步。
 - `M6.5.3`（进行中）：新增根级 `Dockerfile`、`.dockerignore`，把 `scripts/build_docker.py` 从 placeholder 改为真实 `docker build` wrapper，并让 `Makefile` 同时支持 root release image 与 runner image 两条构建路径。
 - `M6.5.3`（进行中）：新增 `tests/scripts/test_build_docker.py`，并扩展 `tests/container/agent_runner/test_container_files.py`，把 root release-image path、`.dockerignore` 和 runner/root Docker scaffold 都锁进静态契约；当前 focused tests、全量后端回归、`ruff`、前端 `lint/build` 均已通过。
+- README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
+- README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
+- README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
+- README follow-up：fresh repo verification 额外暴露 `tests/scripts/test_build_docker.py` 里遗留的重复同名测试；已删除过时重复定义，使 `pytest` 与 `ruff` 恢复全绿。
 - 最近阶段提交：
+  - `24404d8` `docs(readme): add refresh design`
   - `e5e12d9` `build(release): add root artifact build path`
   - `b5665ee` `docs(release): complete M6.5.2 release tag`
   - `dba45f3` `docs(release): complete M6.5.2 release tag`
@@ -187,6 +192,9 @@
 
 ## 3. 最新验证证据
 
+- README follow-up 文档检查：`rg -n "M[0-9]" README.md README.zh-CN.md` -> `no output`; `git diff --check` -> `exit 0`
+- README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
+- README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 当前仓库状态：`git status --short --branch` -> `## main...origin/main [ahead 1]`
 - 当前 HEAD：`git log --oneline --decorate -1` -> `e5e12d9 (HEAD -> main) build(release): add root artifact build path`
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`

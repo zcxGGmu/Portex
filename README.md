@@ -1,38 +1,113 @@
 # Portex
 
-Portex is a multi-user remote AI agent service built with Python and the OpenAI Agents SDK.
+[中文](README.zh-CN.md) | **English**
 
-## Current Status
+Portex is a remote, multi-user agent gateway built with Python, FastAPI, React, and the OpenAI Agents SDK.
 
-Portex has completed `M0` through `M5`, plus `M6.1.1` unit tests, `M6.1.2` integration tests, `M6.1.3` CI workflow setup, `M6.2.1` README work, `M6.2.2` API documentation, `M6.2.3` deployment documentation, `M6.3.1` database indexes, `M6.3.2` connection pooling, `M6.3.3` user-memory caching, `M6.4.1` security scanning, `M6.4.2` dependency audit, `M6.4.3` security headers, `M6.5.1` version planning, and `M6.5.2` release tag creation. The current next step is `M6.5.3` release artifact building.
+`Portex = Portal + Codex.` The project aims to become a portal to Codex: a shared entrypoint where teams can trigger, observe, and manage Codex-style agent workflows from the web today and from chat platforms over time.
 
-Implemented and verified slices include:
+## Why Portex
 
-- FastAPI backend and React/Vite frontend skeleton
-- streamed run / cancel flow over WebSocket
-- OpenAI Agents runtime integration and agent-runner container slices
-- container and host execution mode selection
-- multi-user auth, RBAC, invite codes, group membership
-- task scheduling, task CRUD, and in-memory task run logs
-- file-backed memory management and runner memory tools
-- Feishu and Telegram client foundations
-- unified message schema and minimal message router
-- repository-local backend security scan wired into CI
-- repository-local backend dependency audit wired into CI
-- minimal HTTP security headers on API responses and CORS preflight responses
-- unit, integration, backend regression, frontend build/lint, and local CI workflow commands
+- Turn agent execution into a shared service instead of a single-user local workflow.
+- Provide a web entrypoint now, with clear Feishu and Telegram integration boundaries already in place.
+- Keep orchestration explicit: auth, groups, tasks, memory, and routing live outside the core agent loop.
+- Leave room for isolated execution slices such as container-backed runners and runner-side tools.
 
-## Features
+## What Works Today
 
-- Web and WebSocket entrypoints for agent interaction
-- OpenAI Agents SDK-based runtime integration
-- Container and host execution modes
-- Multi-user auth and RBAC
-- Task scheduling and execution logging
-- User-global and group-scoped memory files
-- Feishu and Telegram integration foundations
-- Unified message format and minimal cross-channel routing
-- GitHub Actions test workflow for backend and frontend verification
+- [x] React web UI plus FastAPI backend entrypoints
+- [x] WebSocket run / stream / cancel flow for browser chat
+- [x] Multi-user auth, invite codes, group membership, and RBAC
+- [x] Task scheduling, CRUD APIs, and in-memory run logs
+- [x] File-backed user/group memory plus runner-side memory tools
+- [x] Feishu foundations: auth, webhook verification/decrypt, normalization, and a minimal send contract
+- [x] Telegram foundations: polling, normalization, and Markdown conversion
+- [x] Unified message DTO and a minimal cross-channel routing boundary
+- [x] Local CI workflow, regression tests, security scan, dependency audit, and baseline HTTP security headers
+
+## What's Next
+
+- [ ] End-to-end IM delivery: inbound message -> agent run -> outbound response
+- [ ] Stronger persistence for users, tasks, logs, and memory beyond the current minimal stores
+- [ ] Verified Docker runtime and release-image build on a machine with Docker available
+- [ ] Production hardening for deployment, reverse proxy, secret handling, and browser security policy
+- [ ] Richer operational visibility and administration flows for long-running team use
+
+## Architecture
+
+### System Overview
+
+```mermaid
+flowchart LR
+    Web["React Web App<br/>login / register / chat / settings"] --> API["FastAPI App<br/>HTTP routes + /ws/{group_folder}"]
+
+    API --> Services["Services<br/>auth / groups / tasks / memory / routing"]
+    API --> Trigger["services/agent_trigger.py"]
+
+    Services --> DB["SQLite + SQLAlchemy"]
+    Services --> Files["File-backed memory<br/>data/memory/**"]
+
+    Trigger --> Runtime["OpenAIAgentsRuntime"]
+    Runtime --> SDK["OpenAI Agents SDK<br/>Runner.run_streamed(...)"]
+
+    Feishu["Feishu client"] --> Unified["UnifiedMessage"]
+    Telegram["Telegram client"] --> Unified
+    Unified --> Router["MessageRouter"]
+
+    Runner["container/agent-runner<br/>separate execution slice<br/>not on the current web happy path"]
+```
+
+### Web Run / Stream / Cancel Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Web as Web Chat UI
+    participant WS as /ws/{group_folder}
+    participant Trigger as trigger_agent_execution
+    participant Runtime as OpenAIAgentsRuntime
+    participant SDK as OpenAI Agents Runner
+    participant Room as Other room clients
+
+    User->>Web: submit prompt
+    Web->>WS: text frame
+    WS->>Trigger: trigger_agent_execution(...)
+    Trigger->>Runtime: run_streamed(RunRequest)
+    Runtime->>SDK: Runner.run_streamed(...)
+    SDK-->>Runtime: streaming SDK events
+    Runtime-->>Trigger: mapped run.* events
+    Trigger-->>WS: serialized event stream
+    Note over WS,Web: run.started goes to the origin socket first
+    WS-->>Web: run.started
+    WS-->>Web: non-start events return through the room broadcaster
+    WS-->>Room: the same non-start events may fan out to the room
+    Web-->>User: render streamed progress and final output
+
+    alt cancel
+        User->>Web: cancel run
+        Web->>WS: {"type":"cancel","run_id":"..."}
+        WS->>Runtime: cancel(run_id)
+        WS-->>Web: run.failed {status: "cancelled"}
+    end
+```
+
+### Current IM Normalization Boundary
+
+```mermaid
+flowchart LR
+    FRaw["Feishu webhook payload"] --> FEvent["FeishuMessageEvent"]
+    TRaw["Telegram update"] --> TEvent["TelegramMessageEvent"]
+
+    FEvent --> UMsg["UnifiedMessage"]
+    TEvent --> UMsg
+
+    UMsg --> Router["MessageRouter"]
+    Router --> WebHandler["web handler"]
+    Router --> FeishuHandler["feishu handler"]
+    Router --> TelegramHandler["telegram handler"]
+
+    Placeholder["/messages HTTP route<br/>queued acknowledgement only"]
+```
 
 ## Quick Start
 
@@ -58,89 +133,60 @@ After startup:
 
 - backend: `http://127.0.0.1:8000`
 - frontend: `http://127.0.0.1:5173`
+- API docs: `http://127.0.0.1:8000/docs`
 
-## Development
+For deployment-oriented setup, see [`docs/deployment.md`](docs/deployment.md).
 
-Common commands:
+## Developer Workflow
 
 ```bash
 # full backend regression
 .venv/bin/pytest -o addopts='' -q
 
-# focused unit suite
-.venv/bin/pytest tests/unit/ -v
-
-# focused integration suite
+# focused integration slice
 .venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q
 
-# backend security scan
+# security checks
 .venv/bin/python scripts/security_scan.py
-
-# backend dependency audit
 .venv/bin/python scripts/dependency_audit.py
-
-# release image build entrypoint
-.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
 
 # backend lint
 .venv/bin/ruff check .
 
-# frontend lint and build
+# frontend checks
 cd web && npm run lint
 cd web && npm run build
+
+# release-image build entrypoint
+.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
 ```
 
-Real provider sanity check for OpenAI-compatible endpoints:
+## Repository Map
 
-```bash
-OPENAI_API_KEY=... \
-OPENAI_BASE_URL=... \
-OPENAI_DEFAULT_MODEL=gpt-5.1 \
-OPENAI_AGENTS_DISABLE_TRACING=1 \
-.venv/bin/python pocs/streaming/main.py --input "请只回复：测试通过"
-```
-
-## Project Structure
-
-- `app/`: FastAPI app, routes, middleware, WebSocket entrypoints
+- `app/`: FastAPI app, HTTP routes, middleware, and WebSocket entrypoints
 - `domain/`: schemas, permissions, and SQLAlchemy models
-- `infra/`: database, runtime adapters, execution backends, IM clients
+- `infra/`: database wiring, runtime adapters, execution backends, and IM clients
 - `services/`: auth, scheduling, memory, routing, and orchestration services
 - `container/agent-runner/`: runner-side execution and tool wrappers
 - `web/`: React + Vite frontend
-- `tests/`: app, domain, service, unit, integration, and runner tests
-- `docs/`: plans, TODOs, progress, and restart handoff notes
-- `scripts/`: helper scripts such as DB initialization and commit flow
-
-## Architecture
-
-At a high level, Portex is split into a FastAPI backend, a React frontend, and a Python agent-runner container slice. The backend handles HTTP/WebSocket traffic, user/auth flows, task and memory orchestration, and IM/web routing boundaries. The runner and execution layers host the actual agent tooling and isolate execution via container or host-mode adapters.
-
-The current message and runtime flow is intentionally incremental:
-
-- WebSocket requests enter through `app/routes/websocket.py`
-- runtime events are forwarded through `services/agent_trigger.py`
-- Feishu and Telegram currently normalize platform payloads into shared DTOs
-- `UnifiedMessage` and `MessageRouter` provide a minimal routing boundary, not a complete production delivery chain
+- `tests/`: backend, integration, runner, and frontend-adjacent verification
+- `docs/`: deployment notes, plans, and contributor handoff material
+- `scripts/`: DB initialization, security checks, release helpers, and project utilities
 
 ## Current Boundaries
 
-Portex is not yet a full production-ready system. Important current boundaries:
+- Persistence: several user, task, log, and memory paths still rely on minimal in-memory or file-backed implementations.
+- IM runtime: Feishu and Telegram foundations exist, but the full inbound-to-agent-to-outbound delivery chain is not wired end to end.
+- Message routing: `UnifiedMessage` and `MessageRouter` define the current routing boundary, while `/messages` still returns a queued acknowledgement only.
+- Execution: the repo contains a separate `container/agent-runner` slice, but the current browser WebSocket happy path runs through `OpenAIAgentsRuntime`.
+- Docker verification: the root release-image build path exists, but a fresh `docker build` still needs to be verified on a machine where Docker is available.
+- Security and deployment: baseline scans, dependency audit, and HTTP security headers are in place, but this is not yet a fully hardened production deployment story.
 
-- many user, task, log, and memory capabilities still use in-memory or file-backed minimal implementations
-- Feishu and Telegram slices cover auth/parsing/conversion/minimal send contracts, but the full production IM runtime chain is not yet wired end-to-end
-- `app/routes/messages.py` and the WebSocket message flow do not yet represent a fully connected cross-platform delivery pipeline
-- Docker lifecycle code exists, but the current local environment has not provided Docker daemon smoke-test evidence
-- the repository now includes a root release-image build entrypoint (`Dockerfile` + `scripts/build_docker.py`), but this environment still lacks Docker runtime verification evidence for `docker build -t portex:v1.0.0 .`
-- the Python dependency audit currently ignores `CVE-2024-23342` for `ecdsa` because `0.19.1` is still the newest published version; that exception must be revisited when the dependency graph or upstream releases change
-- the current security-header layer is intentionally minimal and stops before CSP, HSTS, TLS, or reverse-proxy hardening
-- the first formal release tag is `v1.0.0`, but the repository/package/runtime version strings still remain `0.1.0` until the later release-execution phases
-- the GitHub Actions workflow has been configured and validated with local equivalent commands, but not observed running on a remote GitHub-hosted runner from this environment
+## Documentation
 
-## Documents
-
-- [`docs/TODO.md`](docs/TODO.md): task-by-task implementation checklist
-- [`docs/progress.md`](docs/progress.md): restart-oriented current status and next step
-- [`docs/PORTEX_PLAN.md`](docs/PORTEX_PLAN.md): broader project planning context
-- [`docs/deployment.md`](docs/deployment.md): current deployment guide for verified local process setup plus draft Compose notes
-- [`AGENTS.md`](AGENTS.md): repository workflow and operator constraints for Codex sessions
+- [`README.zh-CN.md`](README.zh-CN.md): Chinese counterpart of this README
+- [`docs/deployment.md`](docs/deployment.md): current deployment guide and environment notes
+- FastAPI API docs: available locally at `http://127.0.0.1:8000/docs`
+- [`docs/progress.md`](docs/progress.md): restart-oriented current implementation status for contributors
+- [`docs/TODO.md`](docs/TODO.md): internal implementation checklist and milestone planning
+- [`AGENTS.md`](AGENTS.md): repository workflow constraints for Codex sessions
