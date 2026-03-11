@@ -470,3 +470,29 @@
 - Verification ran: `git diff --check`, `git rev-parse --verify refs/tags/v1.0.0` (before creation), `git ls-remote --tags origin v1.0.0 v1.0.0^{}` (before and after push), `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git show --stat --oneline v1.0.0`.
 - Local annotated tag `v1.0.0` currently points to `dba45f3` (`docs(release): complete M6.5.2 release tag`), and `origin` now exposes `refs/tags/v1.0.0` plus `refs/tags/v1.0.0^{}` for the same commit.
 - Note: the release tag was pushed first so `v1.0.0` stays anchored on `dba45f3`; any later `main` commits in this slice are handoff-only follow-ups.
+
+# Session Plan (2026-03-11) - M6.5.3 Release Artifacts
+
+## Goal
+- Advance `M6.5.3` by adding a repository-root release-image build path, preserving the frontend `web/dist/` artifact flow, and recording any remaining Docker-runtime blocker explicitly.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, release docs, and current git/runtime environment
+- [x] Brainstorm the `M6.5.3` scope and choose the minimal root-image approach under the current no-Docker environment
+- [x] Write `M6.5.3` design and implementation plan docs
+- [x] Add failing tests for the root Docker build path and build wrapper
+- [x] Implement the root Docker artifact path (`Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`)
+- [x] Update release/deployment docs for the new artifact boundary
+- [x] Run static verification, full regression, and frontend artifact checks
+- [x] Attempt real Docker verification and record blocker or success
+- [x] Update `docs/progress.md` with `M6.5.3` evidence and next step
+- [x] Commit the phase result with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md` and `docs/plans/2026-03-11-m6-5-3-release-artifacts.md` to pin the milestone boundary before implementation.
+- Added `tests/scripts/test_build_docker.py` and extended `tests/container/agent_runner/test_container_files.py` so the root release-image path, `.dockerignore`, and wrapper CLI contract are all statically locked.
+- Added a root `Dockerfile` and `.dockerignore`, replaced the placeholder `scripts/build_docker.py` with a real wrapper, and updated `Makefile` to expose both `build-release-image` and runner-specific image builds.
+- Updated `README.md`, `AGENTS.md`, and `docs/deployment.md` so operator docs now point at the new release-image build entrypoint and explicitly state that real Docker verification still depends on local Docker availability.
+- Verification ran: `git diff --check`, `.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, `test -f web/dist/index.html`, `docker version --format '{{.Client.Version}}|{{.Server.Version}}'`, `docker build -t portex:v1.0.0 .`, and `docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
+- Review gates: spec review returned `no blocking spec findings`; the quality-review subagent timed out, so the final quality pass used manual diff review plus focused/full verification evidence, with no blocking issues found.
+- Current blocker: the repository-root image build path is implemented, but this environment still lacks the `docker` command, so `docker build -t portex:v1.0.0 .` and image inspection remain unverified and `M6.5.3` cannot yet be honestly marked complete.

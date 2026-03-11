@@ -41,3 +41,40 @@ def test_agent_runner_pyproject_declares_sdk_dependencies() -> None:
 
     assert "openai-agents" in dependencies
     assert any(dependency.startswith("pydantic") for dependency in dependencies)
+
+
+def test_root_release_dockerfile_contains_required_runtime_scaffold() -> None:
+    dockerfile = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    required_snippets = [
+        "FROM python:3.11-slim",
+        "WORKDIR /app",
+        "COPY pyproject.toml README.md /app/",
+        "COPY app /app/app",
+        "COPY services /app/services",
+        "pip install --no-cache-dir .",
+        "useradd -m -u 1000 portex",
+        "USER portex",
+        "EXPOSE 8000",
+        'CMD ["python", "-m", "uvicorn", "app.main:app"',
+    ]
+
+    for snippet in required_snippets:
+        assert snippet in dockerfile
+
+
+def test_root_dockerignore_excludes_local_artifacts() -> None:
+    dockerignore = (PROJECT_ROOT / ".dockerignore").read_text(encoding="utf-8")
+
+    required_entries = [
+        ".git",
+        ".venv",
+        "__pycache__",
+        ".pytest_cache",
+        "data",
+        "web/node_modules",
+        "web/dist",
+    ]
+
+    for entry in required_entries:
+        assert entry in dockerignore

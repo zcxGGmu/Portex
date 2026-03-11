@@ -83,6 +83,7 @@
 - `.venv/bin/pytest tests/ -v --cov`: run the current backend CI-equivalent test command with coverage.
 - `.venv/bin/python scripts/security_scan.py`: run the repository-local backend security scan (Ruff `S` rules on runtime code).
 - `.venv/bin/python scripts/dependency_audit.py`: run the repository-local backend dependency audit (`pip-audit` on the Python project).
+- `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`: run the repository-root release-image build entrypoint (real Docker verification still depends on local Docker availability).
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm ci`: install frontend dependencies from the committed lockfile.
 - `cd web && npm run lint`: frontend lint.

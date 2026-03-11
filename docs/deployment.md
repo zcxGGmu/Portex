@@ -167,13 +167,26 @@ Important current boundaries:
 - Task execution state and logs do not yet provide durable process-restart recovery.
 - The IM delivery chain and WebSocket run flow are still intentionally incremental.
 
-## Docker Compose Draft (Not Yet Verified)
+## Docker Release Image And Compose Draft (Not Yet Verified)
 
-The repository does not currently include a verified root-level Docker deployment flow. In particular:
+The repository now includes a root-level release-image build path:
+
+```bash
+.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
+```
+
+This wraps the same root build intent as:
+
+```bash
+docker build -t portex:v1.0.0 .
+```
+
+Current boundaries still matter:
 
 - the current environment does not have Docker daemon verification evidence
-- `scripts/build_docker.py` is still a placeholder
-- `container/agent-runner/Dockerfile` covers the runner image only, not a full backend/frontend deployment
+- the root `Dockerfile` covers the backend runtime image only
+- the frontend production artifact is still produced separately via `cd web && npm run build`
+- `container/agent-runner/Dockerfile` remains the runner-specific image definition, not the full release image
 
 Use the following Compose file as a draft starting point only:
 

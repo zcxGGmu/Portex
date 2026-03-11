@@ -79,6 +79,9 @@ Common commands:
 # backend dependency audit
 .venv/bin/python scripts/dependency_audit.py
 
+# release image build entrypoint
+.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
+
 # backend lint
 .venv/bin/ruff check .
 
@@ -128,6 +131,7 @@ Portex is not yet a full production-ready system. Important current boundaries:
 - Feishu and Telegram slices cover auth/parsing/conversion/minimal send contracts, but the full production IM runtime chain is not yet wired end-to-end
 - `app/routes/messages.py` and the WebSocket message flow do not yet represent a fully connected cross-platform delivery pipeline
 - Docker lifecycle code exists, but the current local environment has not provided Docker daemon smoke-test evidence
+- the repository now includes a root release-image build entrypoint (`Dockerfile` + `scripts/build_docker.py`), but this environment still lacks Docker runtime verification evidence for `docker build -t portex:v1.0.0 .`
 - the Python dependency audit currently ignores `CVE-2024-23342` for `ecdsa` because `0.19.1` is still the newest published version; that exception must be revisited when the dependency graph or upstream releases change
 - the current security-header layer is intentionally minimal and stops before CSP, HSTS, TLS, or reverse-proxy hardening
 - the first formal release tag is `v1.0.0`, but the repository/package/runtime version strings still remain `0.1.0` until the later release-execution phases

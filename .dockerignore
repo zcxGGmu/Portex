@@ -1,0 +1,14 @@
+.git
+.github
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+*.py[cod]
+*.sqlite3
+data
+docs
+tasks
+tests
+web/dist
+web/node_modules
