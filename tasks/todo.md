@@ -469,4 +469,4 @@
 - Updated `README.md` and `AGENTS.md` so repo-facing restart guidance now advances from `M6.5.2` to `M6.5.3` while keeping the intentional `v1.0.0` tag versus `0.1.0` runtime/package split visible.
 - Verification ran: `git diff --check`, `git rev-parse --verify refs/tags/v1.0.0` (before creation), `git ls-remote --tags origin v1.0.0 v1.0.0^{}` (before and after push), `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git show --stat --oneline v1.0.0`.
 - Local annotated tag `v1.0.0` currently points to `dba45f3` (`docs(release): complete M6.5.2 release tag`), and `origin` now exposes `refs/tags/v1.0.0` plus `refs/tags/v1.0.0^{}` for the same commit.
-- Note: this milestone pushed only the release tag to `origin`; local `main` still contains additional handoff commits not yet pushed to `origin/main`.
+- Note: the release tag was pushed first so `v1.0.0` stays anchored on `dba45f3`; any later `main` commits in this slice are handoff-only follow-ups.

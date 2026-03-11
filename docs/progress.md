@@ -183,7 +183,7 @@
 
 ## 3. 最新验证证据
 
-- M6.5.2 仓库状态：`git status --short --branch` -> `## main...origin/main [ahead 2]`
+- M6.5.2 仓库状态（写 handoff 时）：`git status --short --branch` -> `## main...origin/main [ahead 2]`，说明 release commit + handoff-only commits 当时仍在本地分阶段整理
 - M6.5.2 preflight：`git diff --check` -> `exit 0`; `git rev-parse --verify refs/tags/v1.0.0`（创建前）-> `fatal: Needed a single revision`; `git ls-remote --tags origin v1.0.0 v1.0.0^{}`（创建前）-> `no output`
 - M6.5.2 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `302 passed, 48 warnings in 15.24s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M6.5.2 本地 tag 验证：`git show --stat --oneline v1.0.0` -> annotated tag `v1.0.0` / message `Release v1.0.0`, points to `dba45f3`
@@ -290,7 +290,7 @@
    - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
    - 继续保留 `M6.4.3` 当前边界：当前只做了最小 HTTP 安全头，不包含 CSP、HSTS 或 HTTPS-only 假设，后续阶段不要误读成这些能力已到位
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入构建产物前不要意外把这两类版本语义混淆
-   - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；当前本地 `main` 已包含后续 handoff-only commit，而 `origin/main` 仍停在 `37cf465`，本地领先量以实时 `git status --short --branch` 为准
+   - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
    - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
    - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
