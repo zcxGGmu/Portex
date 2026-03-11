@@ -567,85 +567,87 @@
 - Frontend completeness is one of the largest visible gaps: Portex currently has `chat/login/register/settings`, while HappyClaw has setup pages, monitor/usage/memory/skills/MCP/users pages, a much richer chat view with files/skills/members/terminal panels, and explicit mobile/PWA optimizations.
 - Portex is stronger than HappyClaw in engineering hygiene: explicit milestone docs, restart-oriented handoff discipline, OpenAPI contract coverage, a large Python test suite, repo-local security scan/dependency audit, and verified CI-equivalent commands. The gap is mostly product/runtime breadth, not basic project rigor.
 
-### Priority Backlog
-
-- `P0` Close the main runtime gap: wire inbound IM -> agent execution -> outbound response as a real end-to-end chain instead of the current placeholder `/messages` boundary.
-- `P0` Replace the current placeholder queue/execution integration with a real per-group/per-user runtime plane that actually uses the existing host/container execution slices and session/workspace lifecycle.
-- `P0` Expand the group/workspace model from the current minimal demo list to something closer to HappyClaw's main workspace + bound chats + agent/session topology.
-- `P1` Add the missing operator surfaces: monitor/status API + page, richer settings/configuration flows, memory management UI/API, file-management UI/API, and terminal access controls.
-- `P1` Add skills and MCP server management surfaces, not just runner-side built-in tools.
-- `P1` Decide whether QQ is in-scope for Portex parity; if yes, it remains a major untouched integration area.
-- `P2` Add richer chat UX: file upload/preview, members/skills side panels, IM binding UI, usage views, and setup wizard / onboarding flow.
-- `P2` Add mobile/PWA hardening only after the core runtime/product chain is no longer minimal.
-
 ### Recommended Order
 
 - First finish `M6.5.3` on a machine with Docker so the current milestone is honestly closed.
 - Then prioritize the product gaps in this order: end-to-end IM chain, real execution plane, workspace/group model, operator surfaces, richer frontend.
 
-### Detailed Backlog
+### Proposed Milestones
 
-#### `G1` Main Runtime Chain
+#### `M7` HappyClaw Parity Alignment
 
-- [ ] `G1.1` Replace the current `/messages` placeholder acknowledgement with a real dispatch entry that can route a normalized inbound message into the active execution path.
-- [ ] `G1.2` Define the source-of-truth mapping from inbound channel message -> `group_folder` / `chat_jid` / execution target, instead of the current minimal `UnifiedMessage` boundary.
-- [ ] `G1.3` Wire Feishu inbound message events into the real trigger path, not just normalization and tests.
-- [ ] `G1.4` Wire Telegram inbound message events into the real trigger path, not just normalization and tests.
-- [ ] `G1.5` Implement outbound reply delivery for Telegram so the inbound -> agent -> outbound loop can actually close.
-- [ ] `G1.6` Replace the current “minimal message router only” boundary with a real per-channel response fan-out path.
-- [ ] `G1.7` Persist enough request/run metadata to correlate one inbound IM message with one agent run and one outbound response.
-- [ ] `G1.8` Add integration coverage for the end-to-end IM delivery chain instead of stopping at DTO/router contracts.
+**Goal**
+- Turn the current Portex scaffold into a product that closes the major runtime and operator-surface gaps versus HappyClaw, while preserving Portex’s Python + OpenAI Agents SDK architecture.
 
-#### `G2` Execution Plane
+**Milestone Map**
+- `M7.1` Main runtime chain parity
+- `M7.2` Execution plane parity
+- `M7.3` Workspace and group model parity
+- `M7.4` Operator surface parity
+- `M7.5` Chat and frontend parity
+- `M7.6` Channel and ecosystem parity decisions
 
-- [ ] `G2.1` Replace `services/group_queue.py` placeholder logic with a real per-group queue and lifecycle coordinator.
-- [ ] `G2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
-- [ ] `G2.3` Decide and implement the runtime selection contract: Web chat, IM chat, scheduled task, and future sub-session flows must all resolve to the same execution-plane rules.
-- [ ] `G2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
-- [ ] `G2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
-- [ ] `G2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
-- [ ] `G2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, and timeout behavior.
+#### `M7.1` Main Runtime Chain Parity
 
-#### `G3` Workspace And Group Model
+- [ ] `M7.1.1` Replace the current `/messages` queued placeholder with a real dispatch entry that can route a normalized inbound message into the active execution path.
+- [ ] `M7.1.2` Define the source-of-truth mapping from inbound channel message -> `group_folder` / `chat_jid` / execution target instead of stopping at the current `UnifiedMessage` DTO boundary.
+- [ ] `M7.1.3` Wire Feishu inbound message events into the real trigger path, not only the current normalization/test layer.
+- [ ] `M7.1.4` Wire Telegram inbound message events into the real trigger path, not only the current normalization/test layer.
+- [ ] `M7.1.5` Implement outbound Telegram reply delivery so the inbound -> agent -> outbound loop can actually close.
+- [ ] `M7.1.6` Replace the current “minimal message router only” boundary with a real per-channel response fan-out path.
+- [ ] `M7.1.7` Persist enough request/run metadata to correlate one inbound IM message with one agent run and one outbound response.
+- [ ] `M7.1.8` Add integration coverage for the end-to-end IM delivery chain instead of stopping at DTO/router contracts.
 
-- [ ] `G3.1` Replace the current demo `group-demo` group list with a real persisted group/workspace listing model.
-- [ ] `G3.2` Define the Portex equivalent of HappyClaw’s main workspace / bound chat / per-user home workspace model.
-- [ ] `G3.3` Add explicit workspace ownership and binding metadata so IM chats can be attached to a user’s main workspace or future sub-workspaces.
-- [ ] `G3.4` Extend the current group/member model so it can represent real working sessions instead of only the minimal membership CRUD boundary.
-- [ ] `G3.5` Decide whether Portex will support sub-agent / multi-session tabs like HappyClaw, and if yes, add the minimal data model needed for that.
-- [ ] `G3.6` Add API routes for listing, creating, updating, and binding workspaces/groups that reflect the chosen model.
+#### `M7.2` Execution Plane Parity
 
-#### `G4` Operator Surfaces
+- [ ] `M7.2.1` Replace `services/group_queue.py` placeholder logic with a real per-group queue and lifecycle coordinator.
+- [ ] `M7.2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
+- [ ] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
+- [ ] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
+- [ ] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
+- [ ] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
+- [ ] `M7.2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, timeout, and recovery behavior.
 
-- [ ] `G4.1` Add a real monitor/status API and page for queue state, executor state, and runtime health instead of only `/health`.
-- [ ] `G4.2` Add file-management APIs for workspace browsing, upload, download, preview, edit, and delete with the same path-safety rigor as the current execution security model.
-- [ ] `G4.3` Add memory-management APIs/UI on top of the current file-backed memory service, instead of leaving memory as a backend/runner-only primitive.
-- [ ] `G4.4` Add skills-management APIs/UI instead of relying only on runner-side default tool registration.
-- [ ] `G4.5` Add MCP server management APIs/UI if Portex intends to match HappyClaw’s user-managed MCP surface.
-- [ ] `G4.6` Expand settings/configuration flows beyond the current account summary page: provider config, channel config, registration policy, appearance, and system settings.
-- [ ] `G4.7` Add usage/audit/operator pages where Portex wants parity, or explicitly mark them as intentionally out of scope.
+#### `M7.3` Workspace And Group Model Parity
 
-#### `G5` Chat And Frontend Experience
+- [ ] `M7.3.1` Replace the current demo `group-demo` group list with a real persisted group/workspace listing model.
+- [ ] `M7.3.2` Define the Portex equivalent of HappyClaw’s main workspace / bound chat / per-user home workspace model.
+- [ ] `M7.3.3` Add explicit workspace ownership and binding metadata so IM chats can be attached to a user’s main workspace or future sub-workspaces.
+- [ ] `M7.3.4` Extend the current group/member model so it can represent real working sessions instead of only the minimal membership CRUD boundary.
+- [ ] `M7.3.5` Decide whether Portex will support sub-agent / multi-session tabs like HappyClaw, and if yes, add the minimal data model needed for that.
+- [ ] `M7.3.6` Add API routes for listing, creating, updating, and binding workspaces/groups that reflect the chosen model.
 
-- [ ] `G5.1` Expand the current `ChatPanel` from a narrow message/thinking/tool view into a richer workspace shell with room for files, members, skills, and execution controls.
-- [ ] `G5.2` Add file upload and attachment UX to Web chat, not just text-only message submission.
-- [ ] `G5.3` Add richer room/workspace switching UX instead of the current fixed `group-demo` WebSocket target.
-- [ ] `G5.4` Add IM binding UX if Portex will bind external chats to internal workspaces like HappyClaw.
-- [ ] `G5.5` Decide whether to add a terminal panel; if yes, define the execution-mode and permission boundaries first.
-- [ ] `G5.6` Add setup/onboarding pages if Portex wants parity with HappyClaw’s multi-step first-run experience.
-- [ ] `G5.7` Add mobile/PWA work only after the core operator/runtime surfaces stop being placeholders.
+#### `M7.4` Operator Surface Parity
 
-#### `G6` Channel And Ecosystem Extensions
+- [ ] `M7.4.1` Add a real monitor/status API and page for queue state, executor state, and runtime health instead of only `/health`.
+- [ ] `M7.4.2` Add file-management APIs for workspace browsing, upload, download, preview, edit, and delete with the same path-safety rigor as the current execution security model.
+- [ ] `M7.4.3` Add memory-management APIs/UI on top of the current file-backed memory service instead of leaving memory as a backend/runner-only primitive.
+- [ ] `M7.4.4` Add skills-management APIs/UI instead of relying only on runner-side default tool registration.
+- [ ] `M7.4.5` Add MCP server management APIs/UI if Portex intends to match HappyClaw’s user-managed MCP surface.
+- [ ] `M7.4.6` Expand settings/configuration flows beyond the current account summary page: provider config, channel config, registration policy, appearance, and system settings.
+- [ ] `M7.4.7` Add usage/audit/operator pages where Portex wants parity, or explicitly mark them as intentionally out of scope.
 
-- [ ] `G6.1` Decide explicitly whether QQ is part of Portex parity scope or intentionally excluded.
-- [ ] `G6.2` If QQ is in scope, define the minimal parity target first: C2C, group @Bot, pairing/binding, outbound reply, and image handling.
-- [ ] `G6.3` Decide how much of HappyClaw’s slash-command behavior should exist in Portex versus staying out of scope.
-- [ ] `G6.4` Decide whether Portex needs richer IM artifacts like Feishu cards, reactions, and long-message chunking parity.
-- [ ] `G6.5` Decide which HappyClaw-specific surfaces should remain intentionally unmatched because Portex uses a different runtime stack or product direction.
+#### `M7.5` Chat And Frontend Parity
 
-### Mapping Notes
+- [ ] `M7.5.1` Expand the current `ChatPanel` from a narrow message/thinking/tool view into a richer workspace shell with room for files, members, skills, and execution controls.
+- [ ] `M7.5.2` Add file upload and attachment UX to Web chat, not just text-only message submission.
+- [ ] `M7.5.3` Add richer room/workspace switching UX instead of the current fixed `group-demo` WebSocket target.
+- [ ] `M7.5.4` Add IM binding UX if Portex will bind external chats to internal workspaces like HappyClaw.
+- [ ] `M7.5.5` Decide whether to add a terminal panel; if yes, define the execution-mode and permission boundaries first.
+- [ ] `M7.5.6` Add setup/onboarding pages if Portex wants parity with HappyClaw’s multi-step first-run experience.
+- [ ] `M7.5.7` Add mobile/PWA work only after the core operator/runtime surfaces stop being placeholders.
 
-- `G1` and `G2` are the actual parity-critical gaps. Without them, Portex still has strong scaffolding but not the same product-grade execution system.
-- `G3` is the bridge between “minimal demo routes” and a real multi-user workspace product.
-- `G4` and `G5` are the largest visible product-surface differences when comparing the two repositories side by side.
-- `G6` should not be started until the project explicitly decides which HappyClaw features are true parity targets versus reference-only inspiration.
+#### `M7.6` Channel And Ecosystem Parity Decisions
+
+- [ ] `M7.6.1` Decide explicitly whether QQ is part of Portex parity scope or intentionally excluded.
+- [ ] `M7.6.2` If QQ is in scope, define the minimal parity target first: C2C, group @Bot, pairing/binding, outbound reply, and image handling.
+- [ ] `M7.6.3` Decide how much of HappyClaw’s slash-command behavior should exist in Portex versus staying out of scope.
+- [ ] `M7.6.4` Decide whether Portex needs richer IM artifacts like Feishu cards, reactions, and long-message chunking parity.
+- [ ] `M7.6.5` Decide which HappyClaw-specific surfaces should remain intentionally unmatched because Portex uses a different runtime stack or product direction.
+
+### Sequencing Notes
+
+- `M7.1` and `M7.2` are the actual parity-critical gaps. Without them, Portex still has strong scaffolding but not the same product-grade execution system.
+- `M7.3` is the bridge between “minimal demo routes” and a real multi-user workspace product.
+- `M7.4` and `M7.5` are the largest visible product-surface differences when comparing the two repositories side by side.
+- `M7.6` should not be started until the project explicitly decides which HappyClaw features are true parity targets versus reference-only inspiration.
