@@ -651,3 +651,21 @@
 - `M7.3` is the bridge between “minimal demo routes” and a real multi-user workspace product.
 - `M7.4` and `M7.5` are the largest visible product-surface differences when comparing the two repositories side by side.
 - `M7.6` should not be started until the project explicitly decides which HappyClaw features are true parity targets versus reference-only inspiration.
+
+# Session Plan (2026-03-11) - M7.1 Main Runtime Chain Planning
+
+## Goal
+- Define the first real post-`M6` parity milestone by turning `M7.1` into concrete design and implementation docs without accidentally swallowing `M7.2` queue work or `M7.3` workspace-model work.
+
+## Checklist
+- [x] Re-read the current message/runtime boundaries in `app/routes/messages.py`, `app/routes/websocket.py`, `services/agent_trigger.py`, `services/message_router.py`, `domain/schemas.py`, and the earlier `M5.3.2` routing docs
+- [x] Confirm the `M7.1` scope choice: close the IM runtime chain on top of the current runtime stack, but defer queue/workspace redesign
+- [x] Write the `M7.1` design doc
+- [x] Write the `M7.1` implementation plan doc
+
+## Review
+- Added `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` to lock `M7.1` as “close the current inbound -> runtime -> outbound chain on top of today’s runtime,” explicitly excluding full queue/workspace parity.
+- Added `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md` with task-by-task execution guidance for a future implementation session.
+- The chosen design keeps `M7.1` narrow on purpose: add a real dispatch service, add minimal channel ingestion adapters, add Telegram outbound delivery, replace the `/messages` placeholder, and add focused/integration coverage.
+- Explicitly deferred from `M7.1`: real per-group execution plane lifecycle (`M7.2`), final workspace/group topology (`M7.3`), richer operator surfaces (`M7.4`), and frontend product-surface expansion (`M7.5`).
+- Suggested future implementation order inside `M7.1`: dispatch service -> IM ingestion adapters -> real `/messages` dispatch -> integration coverage -> docs/handoff refresh.
