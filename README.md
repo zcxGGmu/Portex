@@ -1,5 +1,9 @@
 # Portex
 
+<p align="center">
+  <img src="assets/portex-crab-logo.svg" alt="Portex project logo" width="200" />
+</p>
+
 [中文](README.zh-CN.md) | **English**
 
 Portex is a remote, multi-user agent gateway built with Python, FastAPI, React, and the OpenAI Agents SDK.
@@ -163,6 +167,7 @@ cd web && npm run build
 
 ## Repository Map
 
+- `assets/`: shared static documentation assets such as the project logo
 - `app/`: FastAPI app, HTTP routes, middleware, and WebSocket entrypoints
 - `domain/`: schemas, permissions, and SQLAlchemy models
 - `infra/`: database wiring, runtime adapters, execution backends, and IM clients

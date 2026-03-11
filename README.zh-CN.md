@@ -1,5 +1,9 @@
 # Portex
 
+<p align="center">
+  <img src="assets/portex-crab-logo.svg" alt="Portex project logo" width="200" />
+</p>
+
 **中文** | [English](README.md)
 
 Portex 是一个基于 Python、FastAPI、React 和 OpenAI Agents SDK 构建的多用户远程智能体入口服务。
@@ -163,6 +167,7 @@ cd web && npm run build
 
 ## 仓库结构
 
+- `assets/`: 共享静态文档资源，例如项目 logo
 - `app/`: FastAPI 应用、HTTP 路由、中间件与 WebSocket 入口
 - `domain/`: schema、权限定义与 SQLAlchemy 模型
 - `infra/`: 数据库装配、runtime 适配层、执行后端与 IM 客户端

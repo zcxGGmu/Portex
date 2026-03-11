@@ -521,3 +521,28 @@
 - Fresh repository verification exposed a pre-existing duplicate test definition in `tests/scripts/test_build_docker.py`; removed the stale duplicate so both `pytest` and `ruff` returned to green.
 - Verification ran: `rg -n "M[0-9]" README.md README.zh-CN.md`, `git diff --check`, `.venv/bin/pytest tests/scripts/test_build_docker.py -q`, `.venv/bin/ruff check tests/scripts/test_build_docker.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, and `cd web && npm run build`.
 - Commit message: `docs(readme): refresh public project entrypoint`
+
+# Session Plan (2026-03-11) - README Project Icon
+
+## Goal
+- Add a technical-styled cartoon crab icon for Portex and surface it at the top of the English and Chinese README files.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, current README files, and recent repo state
+- [x] Brainstorm the icon direction with the user and get approval on the `Portal Crab` concept
+- [x] Write the project-icon design and implementation plan docs
+- [x] Add a focused failing test for the shared README/logo contract
+- [x] Create the shared SVG logo asset
+- [x] Integrate the icon into `README.md` and `README.zh-CN.md`
+- [x] Run focused verification and diff hygiene checks
+- [x] Update `docs/progress.md` with the README logo follow-up
+- [x] Commit the documentation/logo update with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-11-portex-project-icon-design.md` and `docs/plans/2026-03-11-portex-project-icon.md` to pin the README icon scope before implementation.
+- Added the shared logo asset `assets/portex-crab-logo.svg` in the approved `Portal Crab` direction and surfaced it near the top of both README entrypoints.
+- Updated the README repository maps so the new root `assets/` directory is explicitly documented in both languages.
+- Extended `tests/container/agent_runner/test_container_files.py` with README/logo static contract checks after an initial test-first spike showed this repo-root file-contract suite was the better long-term home than `tests/scripts/`.
+- Verification ran: `rg -n "assets/portex-crab-logo\\.svg|Portex project logo" README.md README.zh-CN.md`, `.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py`, `.venv/bin/ruff check .`, and `git diff --check`.
+- Review note: two independent code-review explorer subagents timed out on the working tree; the final quality gate used manual diff review plus the fresh focused/full verification evidence above, with no blocking issues found.
+- Commit message: `docs(readme): add Portex project icon`

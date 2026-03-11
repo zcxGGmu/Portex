@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 import tomllib
+import xml.etree.ElementTree as ET
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RUNNER_ROOT = PROJECT_ROOT / "container" / "agent-runner"
+LOGO_PATH = PROJECT_ROOT / "assets" / "portex-crab-logo.svg"
 
 
 def test_agent_runner_dockerfile_contains_required_runtime_scaffold() -> None:
@@ -78,3 +80,20 @@ def test_root_dockerignore_excludes_local_artifacts() -> None:
 
     for entry in required_entries:
         assert entry in dockerignore
+
+
+def test_readmes_reference_shared_portex_logo_asset() -> None:
+    for relative_path in ("README.md", "README.zh-CN.md"):
+        content = (PROJECT_ROOT / relative_path).read_text(encoding="utf-8")
+
+        assert 'src="assets/portex-crab-logo.svg"' in content
+        assert 'alt="Portex project logo"' in content
+
+
+def test_portex_logo_asset_exists_and_is_valid_svg() -> None:
+    assert LOGO_PATH.exists()
+
+    root = ET.fromstring(LOGO_PATH.read_text(encoding="utf-8"))
+
+    assert root.tag.endswith("svg")
+    assert root.attrib["viewBox"] == "0 0 512 512"

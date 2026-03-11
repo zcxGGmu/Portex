@@ -157,6 +157,9 @@
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
 - README follow-up：fresh repo verification 额外暴露 `tests/scripts/test_build_docker.py` 里遗留的重复同名测试；已删除过时重复定义，使 `pytest` 与 `ruff` 恢复全绿。
+- README icon follow-up：新增 `docs/plans/2026-03-11-portex-project-icon-design.md` 与 `docs/plans/2026-03-11-portex-project-icon.md`，把这次 README 项目标识补充固定为“单一 SVG 主 logo + 双语 README 共用资产”，不扩到 favicon、PNG 导出或 `web/` 图标接入。
+- README icon follow-up：新增根级 `assets/portex-crab-logo.svg`，以 `Portal Crab` 方向交付深海军蓝 + 蓝青配色的技术感卡通螃蟹，并在 `README.md` / `README.zh-CN.md` 顶部加入共享 logo 展示块，同时把新的 `assets/` 目录补入仓库结构说明。
+- README icon follow-up：扩展 `tests/container/agent_runner/test_container_files.py`，把 README/logo 静态契约与 SVG 文件存在性/`viewBox` 校验纳入现有仓库根文件合同测试，避免把文档资源检查误放到 `tests/scripts/`。
 - 最近阶段提交：
   - `24404d8` `docs(readme): add refresh design`
   - `e5e12d9` `build(release): add root artifact build path`
@@ -192,6 +195,9 @@
 
 ## 3. 最新验证证据
 
+- README icon follow-up 资源接线检查：`rg -n "assets/portex-crab-logo\\.svg|Portex project logo" README.md README.zh-CN.md` -> both README files now reference the shared asset at line 4
+- README icon follow-up focused 验证：`.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v` -> `6 passed in 0.06s`; `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py` -> `All checks passed!`; `git diff --check` -> `exit 0`
+- README icon follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 48 warnings in 12.72s`; `.venv/bin/ruff check .` -> `All checks passed!`
 - README follow-up 文档检查：`rg -n "M[0-9]" README.md README.zh-CN.md` -> `no output`; `git diff --check` -> `exit 0`
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`

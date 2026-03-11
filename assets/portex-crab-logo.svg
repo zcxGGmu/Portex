@@ -1,0 +1,165 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 512 512"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">Portex project logo</title>
+  <desc id="desc">
+    A geometric navy and teal cartoon crab logo with a portal ring.
+  </desc>
+  <defs>
+    <linearGradient id="ringGradient" x1="96" y1="84" x2="416" y2="428" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d2b4c" />
+      <stop offset="1" stop-color="#1b6f8f" />
+    </linearGradient>
+    <linearGradient id="shellGradient" x1="156" y1="184" x2="356" y2="352" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12385f" />
+      <stop offset="1" stop-color="#0d223b" />
+    </linearGradient>
+    <linearGradient id="clawGradient" x1="88" y1="102" x2="214" y2="222" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1c7ea0" />
+      <stop offset="1" stop-color="#12385f" />
+    </linearGradient>
+    <linearGradient id="coreGradient" x1="212" y1="226" x2="300" y2="322" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4cd3de" />
+      <stop offset="1" stop-color="#1e7f9d" />
+    </linearGradient>
+  </defs>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path
+      d="M126 165C153 112 200 84 256 84C312 84 359 112 386 165"
+      stroke="url(#ringGradient)"
+      stroke-width="24"
+    />
+    <path
+      d="M386 347C359 400 312 428 256 428C200 428 153 400 126 347"
+      stroke="url(#ringGradient)"
+      stroke-width="24"
+    />
+    <path
+      d="M116 256H82"
+      stroke="#1e7f9d"
+      stroke-width="18"
+    />
+    <path
+      d="M430 256H396"
+      stroke="#1e7f9d"
+      stroke-width="18"
+    />
+  </g>
+
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path
+      d="M171 215C138 209 110 192 89 164C96 131 117 109 152 102C180 120 198 149 201 182C191 193 181 204 171 215Z"
+      fill="url(#clawGradient)"
+      stroke="#0d2b4c"
+      stroke-width="10"
+    />
+    <path
+      d="M341 215C374 209 402 192 423 164C416 131 395 109 360 102C332 120 314 149 311 182C321 193 331 204 341 215Z"
+      fill="url(#clawGradient)"
+      stroke="#0d2b4c"
+      stroke-width="10"
+    />
+    <path
+      d="M182 211C167 225 160 242 160 262"
+      fill="none"
+      stroke="#0d2b4c"
+      stroke-width="10"
+    />
+    <path
+      d="M330 211C345 225 352 242 352 262"
+      fill="none"
+      stroke="#0d2b4c"
+      stroke-width="10"
+    />
+  </g>
+
+  <g fill="none" stroke="#0d2b4c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M167 248L122 240L100 264" />
+    <path d="M161 282L114 284L96 308" />
+    <path d="M172 318L132 334L116 364" />
+    <path d="M345 248L390 240L412 264" />
+    <path d="M351 282L398 284L416 308" />
+    <path d="M340 318L380 334L396 364" />
+  </g>
+
+  <g>
+    <path
+      d="M156 252C156 207 201 176 256 176C311 176 356 207 356 252V282C356 324 314 358 256 358C198 358 156 324 156 282V252Z"
+      fill="url(#shellGradient)"
+      stroke="#0d2b4c"
+      stroke-width="12"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M196 206C212 188 234 178 256 178C278 178 300 188 316 206"
+      fill="none"
+      stroke="#4cd3de"
+      stroke-width="10"
+      stroke-linecap="round"
+    />
+    <rect
+      x="214"
+      y="230"
+      width="84"
+      height="88"
+      rx="34"
+      fill="url(#coreGradient)"
+      opacity="0.95"
+    />
+    <path
+      d="M214 274H298"
+      fill="none"
+      stroke="#b5fbff"
+      stroke-width="10"
+      stroke-linecap="round"
+    />
+    <path
+      d="M256 230V318"
+      fill="none"
+      stroke="#b5fbff"
+      stroke-width="10"
+      stroke-linecap="round"
+    />
+    <path
+      d="M186 330C207 344 231 352 256 352C281 352 305 344 326 330"
+      fill="none"
+      stroke="#4cd3de"
+      stroke-width="8"
+      stroke-linecap="round"
+      opacity="0.85"
+    />
+  </g>
+
+  <g stroke="#0d2b4c" stroke-width="10" stroke-linecap="round">
+    <path d="M216 176L206 144" />
+    <path d="M296 176L306 144" />
+  </g>
+  <g>
+    <rect
+      x="186"
+      y="118"
+      width="40"
+      height="38"
+      rx="19"
+      fill="#12385f"
+      stroke="#0d2b4c"
+      stroke-width="8"
+    />
+    <rect
+      x="286"
+      y="118"
+      width="40"
+      height="38"
+      rx="19"
+      fill="#12385f"
+      stroke="#0d2b4c"
+      stroke-width="8"
+    />
+    <circle cx="206" cy="136" r="7" fill="#b5fbff" />
+    <circle cx="306" cy="136" r="7" fill="#b5fbff" />
+  </g>
+</svg>
