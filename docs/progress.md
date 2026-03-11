@@ -152,7 +152,9 @@
 - `M6.5.2`：创建本地 annotated tag `v1.0.0`，当前指向提交 `dba45f3`（`docs(release): complete M6.5.2 release tag`），并确认 `origin` 也已暴露 `refs/tags/v1.0.0` 与对应的解引用 commit。
 - `M6.5.3`（进行中）：新增 `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md` 与 `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`，将范围固定为“根级 release image 构建入口 + 前端现有产物链复用”，不扩成 GitHub Release、镜像推送或版本字符串同步。
 - `M6.5.3`（进行中）：新增根级 `Dockerfile`、`.dockerignore`，把 `scripts/build_docker.py` 从 placeholder 改为真实 `docker build` wrapper，并让 `Makefile` 同时支持 root release image 与 runner image 两条构建路径。
+- `M6.5.3`（进行中）：新增 `tests/scripts/test_build_docker.py`，并扩展 `tests/container/agent_runner/test_container_files.py`，把 root release-image path、`.dockerignore` 和 runner/root Docker scaffold 都锁进静态契约；当前 focused tests、全量后端回归、`ruff`、前端 `lint/build` 均已通过。
 - 最近阶段提交：
+  - `e5e12d9` `build(release): add root artifact build path`
   - `b5665ee` `docs(release): complete M6.5.2 release tag`
   - `dba45f3` `docs(release): complete M6.5.2 release tag`
   - `0c02778` `docs(release): complete M6.5.1 version planning`
@@ -185,6 +187,8 @@
 
 ## 3. 最新验证证据
 
+- 当前仓库状态：`git status --short --branch` -> `## main...origin/main [ahead 1]`
+- 当前 HEAD：`git log --oneline --decorate -1` -> `e5e12d9 (HEAD -> main) build(release): add root artifact build path`
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -282,6 +286,7 @@
 - `M6.5.2` 当前正式 release baseline 仍以 `v1.0.0 -> dba45f3` 为准；后续 handoff / release-artifact 构建入口提交已经进入当前 `main`，但不改变首个 release tag 锚点。
 - `M6.5.3` 当前已补齐仓库根的 release image 构建入口：`Dockerfile`、`.dockerignore`、`scripts/build_docker.py`、`Makefile build-release-image` 均已到位，前端产物路径继续是 `web/dist/`。
 - `M6.5.3` 当前仍未完成严格验收，因为这台机器没有 `docker` 命令；目前只能证明“仓库已可静态验证，且 build wrapper 会在缺失 Docker 时显式返回 127”，不能伪称 `docker build -t portex:v1.0.0 .` 已在本机通过。
+- `M6.5.3` 当前最新仓库提交是 `e5e12d9`，且本地 `main` 相对 `origin/main` 超前 1 个 commit；如果下一个会话需要共享这次 release-artifact 改动，先决定是否推送分支。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
