@@ -458,7 +458,7 @@
 - [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, release-planning docs, and current git/tag state
 - [x] Write `M6.5.2` design and implementation plan docs
 - [x] Update repo-facing docs and session tracking for post-`M6.5.2` state
-- [x] Run repository verification and create the `M6.5.2` completion commit
+- [x] Run repository verification and prepare the `M6.5.2` completion commit
 - [ ] Create and verify local annotated tag `v1.0.0`
 - [ ] Push and verify remote tag `v1.0.0`
 - [ ] Update `docs/progress.md` with `M6.5.2` evidence and next step
