@@ -496,3 +496,21 @@
 - Verification ran: `git diff --check`, `.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, `test -f web/dist/index.html`, `docker version --format '{{.Client.Version}}|{{.Server.Version}}'`, `docker build -t portex:v1.0.0 .`, and `docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
 - Review gates: spec review returned `no blocking spec findings`; the quality-review subagent timed out, so the final quality pass used manual diff review plus focused/full verification evidence, with no blocking issues found.
 - Current blocker: the repository-root image build path is implemented, but this environment still lacks the `docker` command, so `docker build -t portex:v1.0.0 .` and image inspection remain unverified and `M6.5.3` cannot yet be honestly marked complete.
+
+# Session Plan (2026-03-11) - README Refresh
+
+## Goal
+- Refresh the public README so it explains the Portex name and product positioning, replaces internal milestone references with a public support/todo view, adds architecture/workflow diagrams, and ships a Chinese counterpart README.
+
+## Checklist
+- [x] Re-read `README.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and the runtime/message slices that determine the current public architecture story
+- [x] Brainstorm the README refresh direction and get approval on the layered bilingual approach
+- [x] Write the README refresh design doc
+- [ ] Write the README refresh implementation plan doc
+- [ ] Rewrite `README.md` with the naming story, public capability matrix, public todo list, and Mermaid diagrams
+- [ ] Add `README.zh-CN.md` as a near-parity Chinese counterpart with language switch links
+- [ ] Run review plus repository verification for the documentation slice
+- [ ] Update `docs/progress.md` and this session review
+- [ ] Commit the documentation refresh with a detailed message
+
+## Review
