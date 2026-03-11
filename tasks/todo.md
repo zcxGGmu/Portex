@@ -546,3 +546,39 @@
 - Verification ran: `rg -n "assets/portex-crab-logo\\.svg|Portex project logo" README.md README.zh-CN.md`, `.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py`, `.venv/bin/ruff check .`, and `git diff --check`.
 - Review note: two independent code-review explorer subagents timed out on the working tree; the final quality gate used manual diff review plus the fresh focused/full verification evidence above, with no blocking issues found.
 - Commit message: `docs(readme): add Portex project icon`
+
+# Session Plan (2026-03-11) - Portex vs HappyClaw Gap Audit
+
+## Goal
+- Compare the current Portex implementation against `/home/zcxggmu/workspace/hello-projs/agents/happyclaw` and turn the remaining product gap into a restart-friendly backlog.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `README.md`, and key Portex runtime / route / frontend files
+- [x] Re-read the HappyClaw README plus representative backend/frontend files for routes, chat UX, config, IM, tasks, memory, skills, MCP, and monitoring
+- [x] Identify what Portex already matches versus what is still intentionally minimal
+- [x] Group the remaining differences into priority buckets that can guide the next implementation phases
+- [x] Record the comparison result in `tasks/todo.md`
+
+## Review
+- Portex already aligns on the broad foundation: Python backend + React frontend, Web chat, WebSocket run/stream/cancel flow, auth/invites/RBAC, task CRUD + logs, file-backed memory primitives, Feishu/Telegram client foundations, unified message DTO + minimal router, CI/tests/security scan/dependency audit, and the root release-image build entrypoint.
+- Portex is still materially behind HappyClaw on the primary product chain: end-to-end IM delivery is not wired, `/messages` is still a queued placeholder, the current Web happy path still runs directly through `OpenAIAgentsRuntime`, and the queue / host-mode / container-mode execution plane is not yet integrated into a full per-user workspace runtime.
+- HappyClaw also has a much broader admin/product surface that Portex does not yet expose: file-management APIs and UI, Web terminal, monitoring/status APIs, usage stats, richer settings/config flows, memory management APIs/UI, skill management, MCP server management, IM binding flows, and setup wizard pages.
+- HappyClaw currently supports an additional QQ channel plus a larger set of IM/runtime behaviors (pairing, slash commands, long-message handling, richer attachments, reaction/card-style responses). Portex currently only has Feishu + Telegram foundations, and even Telegram outbound send is still intentionally unimplemented.
+- Frontend completeness is one of the largest visible gaps: Portex currently has `chat/login/register/settings`, while HappyClaw has setup pages, monitor/usage/memory/skills/MCP/users pages, a much richer chat view with files/skills/members/terminal panels, and explicit mobile/PWA optimizations.
+- Portex is stronger than HappyClaw in engineering hygiene: explicit milestone docs, restart-oriented handoff discipline, OpenAPI contract coverage, a large Python test suite, repo-local security scan/dependency audit, and verified CI-equivalent commands. The gap is mostly product/runtime breadth, not basic project rigor.
+
+### Priority Backlog
+
+- `P0` Close the main runtime gap: wire inbound IM -> agent execution -> outbound response as a real end-to-end chain instead of the current placeholder `/messages` boundary.
+- `P0` Replace the current placeholder queue/execution integration with a real per-group/per-user runtime plane that actually uses the existing host/container execution slices and session/workspace lifecycle.
+- `P0` Expand the group/workspace model from the current minimal demo list to something closer to HappyClaw's main workspace + bound chats + agent/session topology.
+- `P1` Add the missing operator surfaces: monitor/status API + page, richer settings/configuration flows, memory management UI/API, file-management UI/API, and terminal access controls.
+- `P1` Add skills and MCP server management surfaces, not just runner-side built-in tools.
+- `P1` Decide whether QQ is in-scope for Portex parity; if yes, it remains a major untouched integration area.
+- `P2` Add richer chat UX: file upload/preview, members/skills side panels, IM binding UI, usage views, and setup wizard / onboarding flow.
+- `P2` Add mobile/PWA hardening only after the core runtime/product chain is no longer minimal.
+
+### Recommended Order
+
+- First finish `M6.5.3` on a machine with Docker so the current milestone is honestly closed.
+- Then prioritize the product gaps in this order: end-to-end IM chain, real execution plane, workspace/group model, operator surfaces, richer frontend.
