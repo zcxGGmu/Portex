@@ -26,7 +26,8 @@
 - `M6.3.2` is complete (Connection pool).
 - `M6.3.3` is complete (User memory cache).
 - `M6.4.1` is complete (Security scanning).
-- Current starting point is `M6.4.2` (Dependency audit).
+- `M6.4.2` is complete (Dependency audit).
+- Current starting point is `M6.4.3` (Security headers).
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -54,6 +55,7 @@
 - If resuming after `M6.2.1`, also skim `README.md` because the root project entrypoint now carries the current quick-start, command set, and boundary wording that `M6.2.2` should stay aligned with.
 - If resuming after `M6.3.3`, also skim `services/memory.py`, `tests/services/test_memory_service.py`, `docs/plans/2026-03-10-m6-3-3-user-memory-cache-design.md`, and `docs/plans/2026-03-10-m6-3-3-user-memory-cache.md` because the current minimal cache boundary now lives in the memory service and the next phase must not overread it as a general cache layer.
 - If resuming after `M6.4.1`, also skim `scripts/security_scan.py`, `tests/scripts/test_security_scan.py`, and `.github/workflows/test.yml` because `M6.4.2` should build on the current repo-local static scan chain instead of replacing it accidentally.
+- If resuming after `M6.4.2`, also skim `scripts/dependency_audit.py`, `tests/scripts/test_dependency_audit.py`, `pyproject.toml`, and `.github/workflows/test.yml` because `M6.4.3` should preserve both the current `pip-audit` chain and the explicit `ecdsa/CVE-2024-23342` ignore rationale.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -74,6 +76,7 @@
 - `.venv/bin/pytest -o addopts='' tests/integration/test_api.py tests/integration/test_websocket.py -q`: run the current integration-focused API + WebSocket suite.
 - `.venv/bin/pytest tests/ -v --cov`: run the current backend CI-equivalent test command with coverage.
 - `.venv/bin/python scripts/security_scan.py`: run the repository-local backend security scan (Ruff `S` rules on runtime code).
+- `.venv/bin/python scripts/dependency_audit.py`: run the repository-local backend dependency audit (`pip-audit` on the Python project).
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm ci`: install frontend dependencies from the committed lockfile.
 - `cd web && npm run lint`: frontend lint.

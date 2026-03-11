@@ -58,7 +58,8 @@
 - `M6.3.2` 已完成（实现连接池）。
 - `M6.3.3` 已完成（添加最小缓存层）。
 - `M6.4.1` 已完成（安全扫描）。
-- 当前起点：`M6.4.2`（依赖审计）。
+- `M6.4.2` 已完成（依赖审计）。
+- 当前起点：`M6.4.3`（安全头）。
 
 ---
 
@@ -136,7 +137,11 @@
 - `M6.4.1`：新增 `docs/plans/2026-03-11-m6-4-1-security-scanning-design.md` 与 `docs/plans/2026-03-11-m6-4-1-security-scanning.md`，将范围固定为“仓库内可执行、可验证的最小安全扫描工具链”，不提前扩到 `pip-audit`、安全头或更大的安全治理。
 - `M6.4.1`：新增 `scripts/security_scan.py` 与 `tests/scripts/test_security_scan.py`，用仓库内 Python 入口执行 Ruff `S` 规则，扫描 `app/domain/infra/services/scripts/pocs/portex/container/agent-runner/src` 这些运行时代码目录；同时把该命令接入 `.github/workflows/test.yml` 的 backend job，并在 `README.md` / `AGENTS.md` 暴露本地命令入口。
 - `M6.4.1`：将 `domain/schemas.py` 中两处 `assert` 防御改为显式 `ValueError`，并为 `EventType.TOKEN_DELTA` 添加精确 inline suppression，收敛当前运行时代码上的 3 个 Ruff `S` 规则结果，使 repo-local 安全扫描可直接通过。
+- `M6.4.2`：新增 `docs/plans/2026-03-11-m6-4-2-dependency-audit-design.md` 与 `docs/plans/2026-03-11-m6-4-2-dependency-audit.md`，将范围固定为“repo-local Python 依赖审计”，不扩到 `npm audit`、安全头或更大的安全治理。
+- `M6.4.2`：新增 `scripts/dependency_audit.py` 与 `tests/scripts/test_dependency_audit.py`，通过仓库内 Python 入口执行 `pip-audit` 审计当前项目依赖；同时在 `pyproject.toml` 中加入 `pip-audit>=2.9.0`，并把该命令接入 `.github/workflows/test.yml` 的 backend job 与 `README.md` / `AGENTS.md` 的本地命令入口。
+- `M6.4.2`：根据 fresh `pip-audit` 结果，为 `ecdsa 0.19.1 / CVE-2024-23342` 增加显式 ignore 常量；当前 `pip index versions ecdsa` 仍显示 `0.19.1` 为最新版本，`pip-audit` 也未提供可升级修复版本，因此本阶段将该例外作为可见残余风险记录在 handoff 中，而不是假装审计已无条件全绿。
 - 最近阶段提交：
+  - `791813b` `build(security): complete M6.4.1 security scan`
   - `058f950` `perf(memory): complete M6.3.3 user memory cache`
   - `26f2f77` `feat(memory): complete M4.4.2 daily memory`
   - `d97f13a` `feat(memory): complete M4.4.3 memory search`
@@ -162,6 +167,10 @@
 
 ## 3. 最新验证证据
 
+- M6.4.2 focused 验证：`.venv/bin/pytest tests/scripts/test_dependency_audit.py -v` -> `2 passed in 0.04s`
+- M6.4.2 依赖审计：`.venv/bin/python scripts/dependency_audit.py` -> `No known vulnerabilities found, 1 ignored`
+- M6.4.2 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `302 passed, 48 warnings in 16.90s`
+- M6.4.2 backend coverage 验证：`.venv/bin/pytest tests/ -v --cov` -> `302 passed, 48 warnings in 27.58s`, `TOTAL 95%`
 - M6.4.1 focused 验证：`.venv/bin/pytest tests/scripts/test_security_scan.py tests/domain/test_schemas.py -v` -> `6 passed in 0.18s`
 - M6.4.1 安全扫描：`.venv/bin/python scripts/security_scan.py` -> `All checks passed!`
 - M6.4.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `300 passed, 48 warnings in 12.69s`
@@ -228,7 +237,9 @@
 - `M6.3.2` 当前已将默认文件型 SQLite 连接显式配置为 `pool_size=20`、`max_overflow=10` 的队列池，并保持所有内存 SQLite 变体走 `StaticPool`；但仓库仍未做性能压测、也未引入更细粒度的连接池环境变量。
 - `M6.3.3` 当前缓存层只覆盖 `MemoryService.get_user_memory()` / `update_user_memory()` 的单进程 service-owned 读写路径；group daily memory、memory search、runner memory tools、外部文件改动和任何跨进程失效仍未缓存或协调。
 - `M6.4.1` 当前只完成仓库内的 Python 静态安全扫描入口：`scripts/security_scan.py` 通过 Ruff `S` 规则扫描运行时代码目录，刻意不扫描 `tests/`，以避免 pytest `assert` 主导结果信号。
-- `M6.4.1` 当前不包含依赖漏洞审计、前端包审计、secret scanning、CodeQL、Dependabot 或安全头；这些能力仍留给 `M6.4.2`、`M6.4.3` 或后续阶段单独设计。
+- `M6.4.2` 当前只完成 Python/backend 依赖审计：`scripts/dependency_audit.py` 审计项目依赖集合，Node/frontend 依赖审计仍未纳入当前 TODO 范围。
+- `M6.4.2` 当前对 `ecdsa 0.19.1 / CVE-2024-23342` 保留显式 ignore，因为 `pip-audit` 未给出 fix version，且 `pip index versions ecdsa` 仍显示 `0.19.1` 为最新版本；后续若上游发布修复版本或依赖图变化，必须重新检查并移除该例外。
+- `M6.4.2` 当前不包含前端包审计、secret scanning、CodeQL、Dependabot 或安全头；这些能力仍留给 `M6.4.3` 或后续阶段单独设计。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -238,11 +249,12 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`scripts/security_scan.py`、`tests/scripts/test_security_scan.py`、`.github/workflows/test.yml`、`tasks/todo.md`
-   - 再读：`docs/plans/2026-03-11-m6-4-1-security-scanning-design.md`、`docs/plans/2026-03-11-m6-4-1-security-scanning.md`
-2. 从 `M6.4.2` 开始：
-   - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成依赖审计、前端审计或更广义的安全治理已经完成
-   - 在 `M6.4.2` 中补依赖漏洞审计时，尽量复用当前 backend workflow / 本地命令习惯，不要把已通过的静态扫描链意外替换掉
+   - 建议顺手再看：`scripts/security_scan.py`、`scripts/dependency_audit.py`、`tests/scripts/test_security_scan.py`、`tests/scripts/test_dependency_audit.py`、`.github/workflows/test.yml`、`tasks/todo.md`
+   - 再读：`docs/plans/2026-03-11-m6-4-1-security-scanning-design.md`、`docs/plans/2026-03-11-m6-4-2-dependency-audit-design.md`
+2. 从 `M6.4.3` 开始：
+   - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
+   - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
+   - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
    - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
    - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
@@ -260,4 +272,4 @@
 
 ## 5. 一句话版
 
-> `M6.4.1` 已完成，下一步进入 `M6.4.2` 依赖审计。
+> `M6.4.2` 已完成，下一步进入 `M6.4.3` 安全头。

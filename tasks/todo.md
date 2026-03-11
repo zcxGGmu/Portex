@@ -378,3 +378,28 @@
 - Multi-agent implementation and review were used for the scan-entrypoint and runtime-finding slices. Two broader review agents timed out under interrupt; a follow-up quick review reported no blocking findings, and the final quality pass was completed with manual diff review plus fresh verification evidence.
 - Verification ran: `.venv/bin/pytest tests/scripts/test_security_scan.py tests/domain/test_schemas.py -v`, `.venv/bin/python scripts/security_scan.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/python -m pip install -e ".[dev]"`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Commit message for this milestone: `build(security): complete M6.4.1 security scan`.
+
+# Session Plan (2026-03-11) - M6.4.2 Dependency Audit
+
+## Goal
+- Complete `M6.4.2` by adding the smallest repository-local Python dependency-audit workflow using `pip-audit`, while preserving the `M6.4.1` static security scan chain.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and the latest `M6.4.1` docs
+- [x] Brainstorm the `M6.4.2` scope and confirm the repo-local `pip-audit` approach with the user
+- [x] Write `M6.4.2` design and implementation plan docs
+- [x] Add failing tests for the dependency-audit entrypoint
+- [x] Implement the minimal audit script and dev dependency wiring
+- [x] Run multi-agent spec/code-quality review on the dependency-audit slice
+- [x] Run focused verification, full backend regression, `ruff`, and frontend `lint/build`
+- [x] Update `docs/progress.md` with `M6.4.2` evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-11-m6-4-2-dependency-audit-design.md` and `docs/plans/2026-03-11-m6-4-2-dependency-audit.md` to pin the milestone boundary before implementation.
+- Added `tests/scripts/test_dependency_audit.py` and `scripts/dependency_audit.py` so the repository now has a local Python entrypoint for `pip-audit` against the current project dependency set.
+- Updated `pyproject.toml` to include `pip-audit>=2.9.0`, refreshed `.venv`, and wired the new command into `.github/workflows/test.yml`, `README.md`, and `AGENTS.md`.
+- Fresh `pip-audit` initially reported `ecdsa 0.19.1 / CVE-2024-23342` with no fix version. `pip index versions ecdsa` still showed `0.19.1` as latest, so the final script now carries one explicit ignore constant instead of hiding the exception in CI-only config.
+- Multi-agent review returned `spec-compliant` and `no findings`; the only recorded residual risk is the explicit `ecdsa/CVE-2024-23342` ignore, which is now documented for future revisit.
+- Verification ran: `.venv/bin/pytest tests/scripts/test_dependency_audit.py -v`, `.venv/bin/python scripts/dependency_audit.py`, `.venv/bin/python scripts/security_scan.py`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/pytest tests/ -v --cov`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Commit message for this milestone: `build(security): complete M6.4.2 dependency audit`.
