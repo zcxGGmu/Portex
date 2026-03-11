@@ -61,7 +61,8 @@
 - `M6.4.2` 已完成（依赖审计）。
 - `M6.4.3` 已完成（安全头）。
 - `M6.5.1` 已完成（版本规划）。
-- 当前起点：`M6.5.2`（创建发布标签）。
+- `M6.5.2` 已完成（创建发布标签）。
+- 当前起点：`M6.5.3`（构建发布产物）。
 
 ---
 
@@ -147,7 +148,11 @@
 - `M6.4.3`：扩展 `tests/app/routes/test_api_routes.py` 与 `tests/integration/test_api.py`，锁定 `/health` 和 CORS preflight 的安全头契约；通过 fresh 验证确认当前 middleware 只覆盖 HTTP 响应，不影响既有安全扫描、依赖审计或其他运行链路。
 - `M6.5.1`：新增 `docs/plans/2026-03-11-m6-5-1-version-planning-design.md` 与 `docs/plans/2026-03-11-m6-5-1-version-planning.md`，将范围固定为“版本策略决策与文档同步”，不提前创建 tag、修改运行时版本字符串或构建发布产物。
 - `M6.5.1`：明确首个正式发布标签目标为 `v1.0.0`，并规定 `v` 前缀只用于 git tag / release label；当前 `pyproject.toml`、包版本和运行时 API 响应继续保持 `0.1.0`，等 `M6.5.2` / `M6.5.3` 真正进入发布执行阶段再统一同步。
+- `M6.5.2`：新增 `docs/plans/2026-03-11-m6-5-2-release-tag-design.md` 与 `docs/plans/2026-03-11-m6-5-2-release-tag.md`，把本阶段范围固定为“release tag 执行 + handoff 推进”，不提前进入 `M6.5.3` 的构建产物工作。
+- `M6.5.2`：创建本地 annotated tag `v1.0.0`，当前指向提交 `dba45f3`（`docs(release): complete M6.5.2 release tag`），并确认 `origin` 也已暴露 `refs/tags/v1.0.0` 与对应的解引用 commit。
 - 最近阶段提交：
+  - `b5665ee` `docs(release): complete M6.5.2 release tag`
+  - `dba45f3` `docs(release): complete M6.5.2 release tag`
   - `0c02778` `docs(release): complete M6.5.1 version planning`
   - `ccd8e68` `feat(security): complete M6.4.3 security headers`
   - `616a09c` `docs(readme): remove external project references`
@@ -178,6 +183,11 @@
 
 ## 3. 最新验证证据
 
+- M6.5.2 仓库状态：`git status --short --branch` -> `## main...origin/main [ahead 2]`
+- M6.5.2 preflight：`git diff --check` -> `exit 0`; `git rev-parse --verify refs/tags/v1.0.0`（创建前）-> `fatal: Needed a single revision`; `git ls-remote --tags origin v1.0.0 v1.0.0^{}`（创建前）-> `no output`
+- M6.5.2 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `302 passed, 48 warnings in 15.24s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
+- M6.5.2 本地 tag 验证：`git show --stat --oneline v1.0.0` -> annotated tag `v1.0.0` / message `Release v1.0.0`, points to `dba45f3`
+- M6.5.2 远端 tag 验证：`git ls-remote --tags origin v1.0.0 v1.0.0^{}` -> `1bb79cb47616f4ae7161900f7a0c36886754402e refs/tags/v1.0.0`, `dba45f3d24c8d079d88aafb6b896fcf05037e320 refs/tags/v1.0.0^{}`
 - M6.5.1 文档一致性检查：`rg -n "M6\.5\.1|M6\.5\.2|v1\.0\.0|0\.1\.0" README.md AGENTS.md docs/progress.md` -> matched planned release tag `v1.0.0`, current package/runtime `0.1.0`, and next step `M6.5.2`
 - M6.5.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `302 passed, 48 warnings in 13.39s`
 - M6.5.1 仓库校验：`.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
@@ -261,7 +271,8 @@
 - `M6.4.3` 当前只完成最小 HTTP 安全头：响应统一带 `nosniff`、`DENY`、`no-referrer` 和最小 `Permissions-Policy`，但仍未引入 CSP、HSTS、TLS 或反向代理级安全配置。
 - `M6.4.3` 当前 middleware 只作用于 HTTP 响应，不改变 WebSocket 链路；这一点是有意保留的最小边界，不应误读为 WebSocket 已具备额外浏览器安全策略。
 - `M6.4.3` 当前不包含前端包审计、secret scanning、CodeQL、Dependabot、CSP 或 HSTS；这些能力仍留给后续阶段按需单独设计。
-- `M6.5.1` 当前只完成版本策略决策：计划发布标签为 `v1.0.0`，但仓库 package/runtime version 仍保持 `0.1.0`；这一差异是有意保留的，直到 `M6.5.2` / `M6.5.3` 进入真实发布执行再统一同步。
+- `M6.5.2` 当前已完成 release tag 执行：`v1.0.0` 已存在于本地与 `origin`，但仓库 package/runtime version 仍保持 `0.1.0`；这一差异仍是有意保留的，直到 `M6.5.3+` 再决定是否统一同步。
+- `M6.5.2` 当前只向 `origin` 推送了 tag，没有推送本地 `main`；因此当前工作区仍含有仅存在于本地的 release/handoff commit，而正式 release baseline 以 `v1.0.0 -> dba45f3` 为准。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
 - `services/message_service.py` 仍有 `datetime.utcnow()` 弃用告警。
@@ -272,13 +283,14 @@
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
    - 建议顺手再看：`pyproject.toml`、`README.md`、`docs/progress.md`、`tasks/todo.md`
-   - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`
-2. 从 `M6.5.2` 开始：
+   - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`
+2. 从 `M6.5.3` 开始：
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
    - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
    - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
    - 继续保留 `M6.4.3` 当前边界：当前只做了最小 HTTP 安全头，不包含 CSP、HSTS 或 HTTPS-only 假设，后续阶段不要误读成这些能力已到位
-   - 继续保留 `M6.5.1` 当前边界：首个正式 release tag 已规划为 `v1.0.0`，但 package/runtime version 仍是 `0.1.0`；在真正创建 tag 或构建产物前不要意外把这两类版本语义混淆
+   - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入构建产物前不要意外把这两类版本语义混淆
+   - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；当前本地 `main` 已包含后续 handoff-only commit，而 `origin/main` 仍停在 `37cf465`，本地领先量以实时 `git status --short --branch` 为准
    - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
    - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
@@ -296,4 +308,4 @@
 
 ## 5. 一句话版
 
-> `M6.5.1` 已完成，下一步进入 `M6.5.2` 创建发布标签。
+> `M6.5.2` 已完成，下一步进入 `M6.5.3` 构建发布产物。

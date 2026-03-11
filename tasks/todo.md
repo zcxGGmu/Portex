@@ -459,10 +459,14 @@
 - [x] Write `M6.5.2` design and implementation plan docs
 - [x] Update repo-facing docs and session tracking for post-`M6.5.2` state
 - [x] Run repository verification and prepare the `M6.5.2` completion commit
-- [ ] Create and verify local annotated tag `v1.0.0`
-- [ ] Push and verify remote tag `v1.0.0`
-- [ ] Update `docs/progress.md` with `M6.5.2` evidence and next step
-- [ ] Commit the milestone with a detailed message
+- [x] Create and verify local annotated tag `v1.0.0`
+- [x] Push and verify remote tag `v1.0.0`
+- [x] Update `docs/progress.md` with `M6.5.2` evidence and next step
+- [x] Commit the milestone with a detailed message
 
 ## Review
-- Pending.
+- Added `docs/plans/2026-03-11-m6-5-2-release-tag-design.md` and `docs/plans/2026-03-11-m6-5-2-release-tag.md` to pin the milestone boundary before executing the tag.
+- Updated `README.md` and `AGENTS.md` so repo-facing restart guidance now advances from `M6.5.2` to `M6.5.3` while keeping the intentional `v1.0.0` tag versus `0.1.0` runtime/package split visible.
+- Verification ran: `git diff --check`, `git rev-parse --verify refs/tags/v1.0.0` (before creation), `git ls-remote --tags origin v1.0.0 v1.0.0^{}` (before and after push), `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git show --stat --oneline v1.0.0`.
+- Local annotated tag `v1.0.0` currently points to `dba45f3` (`docs(release): complete M6.5.2 release tag`), and `origin` now exposes `refs/tags/v1.0.0` plus `refs/tags/v1.0.0^{}` for the same commit.
+- Note: this milestone pushed only the release tag to `origin`; local `main` still contains additional handoff commits not yet pushed to `origin/main`.
