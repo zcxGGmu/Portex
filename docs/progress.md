@@ -1,7 +1,7 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-11 (Asia/Shanghai)
-仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
+最后更新: 2026-03-12 (Asia/Shanghai)
+仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
 
 ---
@@ -165,8 +165,14 @@
 - README logo redesign：沿用 `tests/container/agent_runner/test_container_files.py` 锁定新的 README/logo 合同（`width="560"`、`viewBox="0 0 1800 420"`），并确认 redesign focused 验证、`M6.5.3` focused tests、全量后端回归与 `ruff` 全部恢复绿色。
 - M6.5.3 handoff follow-up：补记当前 Docker unblock 的环境事实，确认本机仍未安装 Docker 包，Codex 也不能复用交互式 `sudo` 缓存；当前 `M6.5.3` 依旧停留在“release build path 已就位，但真实容器构建验收仍受宿主环境阻塞”的状态。
 - M6.5.3 handoff follow-up：确认 rootless Docker 也不是现成退路，当前机器缺少 `newuidmap/newgidmap`、`/etc/subuid`、`/etc/subgid`、`slirp4netns/rootlesskit/fuse-overlayfs` 等官方前置条件。
+- HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
+- HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `ededce2` `docs(plans): define M7.1 runtime chain parity`
+  - `6fee196` `docs(handoff): promote parity backlog to milestones`
+  - `3eb6dbe` `docs(handoff): expand happyclaw parity backlog`
   - `ccb9197` `docs(handoff): record docker install blocker details`
+  - `7d5a588` `docs(handoff): sync progress and agent guidance`
   - `7213f68` `docs(handoff): record Portex logo redesign`
   - `90af55b` `docs(readme): redesign Portex logo lockup`
   - `a4ce545` `docs(readme): add Portex logo redesign plan`
@@ -204,6 +210,9 @@
 
 ## 3. 最新验证证据
 
+- HappyClaw parity backlog docs check：`rg -n "M7\\.1|M7\\.2|M7\\.3|M7\\.4|M7\\.5|M7\\.6|Proposed Milestones" tasks/todo.md` -> milestone tree present
+- M7.1 planning docs check：`rg -n "M7\\.1 Main Runtime Chain Parity|Task 1: Lock the dispatch-service contract|Session Plan \\(2026-03-11\\) - M7\\.1 Main Runtime Chain Planning" docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md tasks/todo.md` -> design/plan/session note all present
+- Latest planning commit before this handoff：`git log --oneline --decorate -1` -> `ededce2 (HEAD -> main) docs(plans): define M7.1 runtime chain parity`
 - README logo redesign focused 验证：`.venv/bin/pytest tests/container/agent_runner/test_container_files.py -v` -> `6 passed in 0.03s`; `.venv/bin/ruff check tests/container/agent_runner/test_container_files.py` -> `All checks passed!`; `git diff --check` -> `exit 0`
 - README logo redesign + M6.5.3 focused：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `10 passed in 0.37s`; `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `[Errno 2] No such file or directory: 'docker'`, `exit 127`; `docker build -t portex:v1.0.0 .` -> `zsh:1: command not found: docker`; `docker image inspect portex:v1.0.0 --format '{{.Id}}'` -> `zsh:1: command not found: docker`
 - README logo redesign 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 1 warning in 10.42s`; `.venv/bin/ruff check .` -> `All checks passed!`
@@ -217,8 +226,8 @@
 - README follow-up 文档检查：`rg -n "M[0-9]" README.md README.zh-CN.md` -> `no output`; `git diff --check` -> `exit 0`
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
-- 最近一次仓库状态采样：本地 `main` 仍有未推送的 handoff-only 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff 记录提交：`ccb9197` `docs(handoff): record docker install blocker details`
+- 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
+- 最近一次 handoff/planning 记录提交：`ededce2` `docs(plans): define M7.1 runtime chain parity`
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -318,6 +327,8 @@
 - `M6.5.3` 当前仍未完成严格验收，因为这台机器没有 `docker` 命令；目前只能证明“仓库已可静态验证，且 build wrapper 会在缺失 Docker 时显式返回 127”，不能伪称 `docker build -t portex:v1.0.0 .` 已在本机通过。
 - `M6.5.3` 当前 release-artifact baseline 仍是 `e5e12d9`（`build(release): add root artifact build path`）；其上已继续追加 README/logo 与 handoff-only 提交，是否完全同步以实时 `git status --short --branch` 为准。
 - `M6.5.3` 当前额外确认了两层环境阻塞：一是本机 `sudo` 需要人工输入密码，所以 Codex 不能直接走官方 apt 安装；二是 rootless Docker 所需的 `uidmap/subuid/subgid/slirp4netns` 等前置条件也缺失，暂时不能绕过 sudo 直接启用用户态 daemon。
+- `M7` 当前仍只是规划层 backlog：`tasks/todo.md` 里已经有 `M7.1` ~ `M7.6`，且 `M7.1` 的 design/implementation docs 已写好；但 `docs/TODO.md` 这个正式计划源仍停在 `M6.5.3`，所以下一位 Codex 只有在用户明确接受或暂缓 Docker blocker 时，才应把 `M7.1` 当作实际开发入口。
+- `M7.1` 当前推荐范围已固定：只补主运行链（dispatch service、最小 IM ingestion adapters、Telegram outbound、真实 `/messages` dispatch、focused + integration tests），明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -331,6 +342,7 @@
    - 建议顺手再看：`pyproject.toml`、`README.md`、`docs/progress.md`、`tasks/todo.md`
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
    - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
+   - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
 2. 从 `M6.5.3` 开始：
    - 先确认本机是否已经有可用的 `docker` CLI / daemon；如果有，优先 fresh 运行 `docker build -t portex:v1.0.0 .` 和 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`，再决定是否把 `M6.5.3` 标记完成
    - 如果 Docker 仍不可用，继续把 `M6.5.3` 视为“构建入口已完成、运行时验证受环境阻塞”的中间态，不要谎报阶段完成
@@ -344,6 +356,7 @@
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
    - `M6.5.3` 当前仓库面已经补齐 root release image build path；下一步优先在有 Docker 的机器上实际执行 `docker build -t portex:v1.0.0 .` 和 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
    - 如果 Docker 仍不可用，不要把当前静态验证误报成 full artifact completion；只记录 blocker，并保持 `M6.5.3` 为当前起点
+   - 如果用户明确决定暂缓 Docker runtime 验收，下一条真实产品开发入口是 `M7.1`；直接按 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md` 执行，而不要一边做 `M7.1` 一边偷偷吞掉 `M7.2/M7.3`
    - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
    - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
