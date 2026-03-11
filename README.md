@@ -1,6 +1,6 @@
 # Portex
 
-Portex is a multi-user remote AI agent service built with Python and the OpenAI Agents SDK. This repository is a Python refactor of [HappyClaw](https://github.com/riba2534/happyclaw.git), with the local reference implementation kept at `/home/zcxggmu/workspace/hello-projs/agents/happyclaw`.
+Portex is a multi-user remote AI agent service built with Python and the OpenAI Agents SDK.
 
 ## Current Status
 
@@ -137,8 +137,3 @@ Portex is not yet a full production-ready system. Important current boundaries:
 - [`docs/PORTEX_PLAN.md`](docs/PORTEX_PLAN.md): broader project planning context
 - [`docs/deployment.md`](docs/deployment.md): current deployment guide for verified local process setup plus draft Compose notes
 - [`AGENTS.md`](AGENTS.md): repository workflow and operator constraints for Codex sessions
-
-## Upstream Reference
-
-- Upstream project: [HappyClaw](https://github.com/riba2534/happyclaw.git)
-- Local reference path: `/home/zcxggmu/workspace/hello-projs/agents/happyclaw`
