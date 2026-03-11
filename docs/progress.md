@@ -148,6 +148,7 @@
 - `M6.5.1`：新增 `docs/plans/2026-03-11-m6-5-1-version-planning-design.md` 与 `docs/plans/2026-03-11-m6-5-1-version-planning.md`，将范围固定为“版本策略决策与文档同步”，不提前创建 tag、修改运行时版本字符串或构建发布产物。
 - `M6.5.1`：明确首个正式发布标签目标为 `v1.0.0`，并规定 `v` 前缀只用于 git tag / release label；当前 `pyproject.toml`、包版本和运行时 API 响应继续保持 `0.1.0`，等 `M6.5.2` / `M6.5.3` 真正进入发布执行阶段再统一同步。
 - 最近阶段提交：
+  - `0c02778` `docs(release): complete M6.5.1 version planning`
   - `ccd8e68` `feat(security): complete M6.4.3 security headers`
   - `616a09c` `docs(readme): remove external project references`
   - `1eeae51` `build(security): complete M6.4.2 dependency audit`
@@ -178,6 +179,8 @@
 ## 3. 最新验证证据
 
 - M6.5.1 文档一致性检查：`rg -n "M6\.5\.1|M6\.5\.2|v1\.0\.0|0\.1\.0" README.md AGENTS.md docs/progress.md` -> matched planned release tag `v1.0.0`, current package/runtime `0.1.0`, and next step `M6.5.2`
+- M6.5.1 后端回归：`.venv/bin/pytest -o addopts='' -q` -> `302 passed, 48 warnings in 13.39s`
+- M6.5.1 仓库校验：`.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M6.4.3 focused 验证：`.venv/bin/pytest tests/app/routes/test_api_routes.py tests/integration/test_api.py -v` -> `46 passed, 26 warnings in 6.70s`
 - M6.4.3 安全扫描：`.venv/bin/python scripts/security_scan.py` -> `All checks passed!`
 - M6.4.3 依赖审计：`.venv/bin/python scripts/dependency_audit.py` -> `No known vulnerabilities found, 1 ignored`
