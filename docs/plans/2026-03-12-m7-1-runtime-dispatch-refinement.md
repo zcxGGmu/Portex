@@ -178,7 +178,7 @@ Run:
 .venv/bin/pytest -o addopts='' tests/integration/test_message_flow.py -q
 ```
 
-Expected: FAIL because the full chain is not wired yet.
+Expected: FAIL because the full chain is not wired yet. If earlier tasks already finished enough glue that this test passes on first run, treat it as confirmation that the integration contract is genuinely covered and record that fact explicitly in the review notes instead of pretending a red phase happened.
 
 **Step 3: Finish any remaining glue**
 
