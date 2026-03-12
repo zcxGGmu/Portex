@@ -24,16 +24,16 @@ Portex 是一个基于 Python、FastAPI、React 和 OpenAI Agents SDK 构建的�
 - [x] 多用户认证、邀请码、群组成员管理与 RBAC
 - [x] 任务调度、任务 CRUD API 与内存态运行日志
 - [x] 文件型用户 / 群组记忆，以及 runner 侧 memory tools
-- [x] 飞书基础能力：鉴权、Webhook 验签 / 解密、消息归一化与最小发送契约
-- [x] Telegram 基础能力：轮询、消息归一化与 Markdown 转换
-- [x] 统一消息 DTO 与最小跨通道路由边界
+- [x] 飞书和 Telegram 的 app-level 入站路由，已经接入当前 runtime dispatch 主链
+- [x] Telegram 文本回发与 Feishu 出站路由，已经接入共享的 message dispatch 边界
+- [x] 统一消息 DTO、真实 `/messages` dispatch 与最小跨通道回复 fan-out
 - [x] 仓库根发布镜像构建入口已在当前主机完成验证，前端产物仍按设计单独输出到 `web/dist/`
 - [x] 本地 CI 工作流、回归测试、安全扫描、依赖审计与基础 HTTP 安全头
 
 ## 接下来要做什么
 
-- [ ] 打通端到端 IM 投递链路：收到消息 -> 触发 agent -> 回发响应
 - [ ] 为用户、任务、日志与记忆补齐比当前最小实现更稳固的持久化能力
+- [ ] 补齐 execution plane parity：排队、运行时选择、会话续接与恢复信号
 - [ ] 继续加强部署、反向代理、密钥管理与浏览器安全策略
 - [ ] 为长期团队使用补齐更完整的运维可观测性和管理能力
 
@@ -95,7 +95,7 @@ sequenceDiagram
     end
 ```
 
-### 当前 IM 归一化与路由边界
+### 当前 IM Dispatch 边界
 
 ```mermaid
 flowchart LR
@@ -105,12 +105,13 @@ flowchart LR
     FEvent --> UMsg["UnifiedMessage"]
     TEvent --> UMsg
 
-    UMsg --> Router["MessageRouter"]
+    UMsg --> Dispatch["MessageDispatchService"]
+    Dispatch --> RuntimeDispatch["run_agent_execution(...)"]
+    Dispatch --> Router["MessageRouter"]
     Router --> WebHandler["web handler"]
     Router --> FeishuHandler["feishu handler"]
     Router --> TelegramHandler["telegram handler"]
-
-    Placeholder["/messages HTTP 路由<br/>当前只返回 queued acknowledgement"]
+    HTTP["/messages HTTP 路由<br/>走同一 dispatch 边界"]
 ```
 
 ## 快速开始
@@ -188,8 +189,8 @@ export DOCKER_HOST=unix:///run/user/1000/docker.sock
 ## 当前边界
 
 - 持久化：若干用户、任务、日志与记忆能力仍然基于最小的内存态或文件型实现。
-- IM 运行链：飞书和 Telegram 基础能力已就位，但“入站消息 -> agent 运行 -> 出站回复”尚未完全打通。
-- 消息路由：`UnifiedMessage` 与 `MessageRouter` 已定义当前路由边界，而 `/messages` 仍只是一个 queued acknowledgement 占位接口。
+- IM 运行链：飞书 / Telegram adapter 与 HTTP `/messages` 已接通最小的“入站 -> runtime -> 出站回复”链路，但 provider-backed 的生产化加固仍未完成。
+- 消息持久化：当前只把最小关联元数据写入现有 `messages.attachments` JSON，尚未扩成更丰富的审计/追踪模型。
 - 执行路径：仓库里已经有独立的 `container/agent-runner` 切片，但当前浏览器 WebSocket 主链路仍直接走 `OpenAIAgentsRuntime`。
 - Docker 发布镜像：仓库根构建入口已在当前主机通过用户态 rootless Docker 完成验证；按设计前端产物仍是单独的 `web/dist/` 构建结果。
 - 安全与部署：基础扫描、依赖审计与 HTTP 安全头已经具备，但这还不是完全 hardened 的生产部署方案。

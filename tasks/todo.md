@@ -589,14 +589,14 @@
 
 #### `M7.1` Main Runtime Chain Parity
 
-- [ ] `M7.1.1` Replace the current `/messages` queued placeholder with a real dispatch entry that can route a normalized inbound message into the active execution path.
-- [ ] `M7.1.2` Define the source-of-truth mapping from inbound channel message -> `group_folder` / `chat_jid` / execution target instead of stopping at the current `UnifiedMessage` DTO boundary.
-- [ ] `M7.1.3` Wire Feishu inbound message events into the real trigger path, not only the current normalization/test layer.
-- [ ] `M7.1.4` Wire Telegram inbound message events into the real trigger path, not only the current normalization/test layer.
-- [ ] `M7.1.5` Implement outbound Telegram reply delivery so the inbound -> agent -> outbound loop can actually close.
-- [ ] `M7.1.6` Replace the current “minimal message router only” boundary with a real per-channel response fan-out path.
-- [ ] `M7.1.7` Persist enough request/run metadata to correlate one inbound IM message with one agent run and one outbound response.
-- [ ] `M7.1.8` Add integration coverage for the end-to-end IM delivery chain instead of stopping at DTO/router contracts.
+- [x] `M7.1.1` Replace the current `/messages` queued placeholder with a real dispatch entry that can route a normalized inbound message into the active execution path.
+- [x] `M7.1.2` Define the source-of-truth mapping from inbound channel message -> `group_folder` / `chat_jid` / execution target instead of stopping at the current `UnifiedMessage` DTO boundary.
+- [x] `M7.1.3` Wire Feishu inbound message events into the real trigger path, not only the current normalization/test layer.
+- [x] `M7.1.4` Wire Telegram inbound message events into the real trigger path, not only the current normalization/test layer.
+- [x] `M7.1.5` Implement outbound Telegram reply delivery so the inbound -> agent -> outbound loop can actually close.
+- [x] `M7.1.6` Replace the current “minimal message router only” boundary with a real per-channel response fan-out path.
+- [x] `M7.1.7` Persist enough request/run metadata to correlate one inbound IM message with one agent run and one outbound response.
+- [x] `M7.1.8` Add integration coverage for the end-to-end IM delivery chain instead of stopping at DTO/router contracts.
 
 #### `M7.2` Execution Plane Parity
 
@@ -698,11 +698,17 @@
 - Start `M7.1` on the user-approved narrow path: add a structured runtime-result boundary, then close the inbound IM/http -> runtime -> outbound reply chain without absorbing WebSocket unification or execution-plane redesign.
 
 ## Checklist
-- [ ] Re-read the current runtime, IM, message route, and persistence slices
-- [ ] Write the refined `M7.1` design doc
-- [ ] Write the refined `M7.1` implementation plan doc
-- [ ] Commit the design/plan refinement
-- [ ] Add failing tests for the structured runtime-result and dispatch-service contract
-- [ ] Implement the first `M7.1` batch and verify it
+- [x] Re-read the current runtime, IM, message route, and persistence slices
+- [x] Write the refined `M7.1` design doc
+- [x] Write the refined `M7.1` implementation plan doc
+- [x] Commit the design/plan refinement
+- [x] Add failing tests for the structured runtime-result and dispatch-service contract
+- [x] Implement the first `M7.1` batch and verify it
 
 ## Review
+- Added `docs/plans/2026-03-12-m7-1-runtime-dispatch-refinement-design.md` and `docs/plans/2026-03-12-m7-1-runtime-dispatch-refinement.md` to lock the user-approved narrower `M7.1` execution order: structured runtime-result path first, then dispatch/IM adapters, without swallowing WebSocket unification or `M7.2`.
+- Added `services/message_dispatch.py` plus a structured `run_agent_execution()` path in `services/agent_trigger.py`, so non-WebSocket callers can reuse the current runtime stack and receive `run_id/status/final_output/error/timeout_ms` without parsing broadcast strings.
+- Added app-level Feishu and Telegram ingestion routes in `app/routes/im.py`, real Telegram outbound text sending, a real `/messages` dispatch path, and minimal message-correlation metadata persisted through `services/message_service.py` into the existing `attachments` field.
+- Added `tests/services/test_message_dispatch.py`, `tests/app/routes/test_im_routes.py`, `tests/app/routes/test_message_routes.py`, and `tests/integration/test_message_flow.py`, and extended existing runtime/route/Telegram tests to lock the `M7.1` chain end to end.
+- Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/services/test_message_service.py tests/app/routes/test_im_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/im/test_telegram.py tests/infra/im/test_feishu.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
+- Session commits completed: `docs(plans): refine M7.1 runtime dispatch design`, `feat(messages): add main runtime dispatch service`, `feat(messages): persist dispatch metadata`, `feat(im): add M7.1 ingestion adapters`, `feat(messages): replace message placeholder route`, `test(messages): add M7.1 integration coverage`, `docs(handoff): record M7.1 completion`.

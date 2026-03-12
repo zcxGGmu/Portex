@@ -24,16 +24,16 @@ Portex is a remote, multi-user agent gateway built with Python, FastAPI, React, 
 - [x] Multi-user auth, invite codes, group membership, and RBAC
 - [x] Task scheduling, CRUD APIs, and in-memory run logs
 - [x] File-backed user/group memory plus runner-side memory tools
-- [x] Feishu foundations: auth, webhook verification/decrypt, normalization, and a minimal send contract
-- [x] Telegram foundations: polling, normalization, and Markdown conversion
-- [x] Unified message DTO and a minimal cross-channel routing boundary
+- [x] Feishu and Telegram app-level ingress routes wired into the current runtime dispatch path
+- [x] Telegram outbound text replies plus Feishu outbound routing through the shared message-dispatch boundary
+- [x] Unified message DTO, real `/messages` dispatch, and minimal cross-channel response fan-out
 - [x] Root release-image build path verified on the current host, with the frontend production artifact still emitted separately as `web/dist/`
 - [x] Local CI workflow, regression tests, security scan, dependency audit, and baseline HTTP security headers
 
 ## What's Next
 
-- [ ] End-to-end IM delivery: inbound message -> agent run -> outbound response
 - [ ] Stronger persistence for users, tasks, logs, and memory beyond the current minimal stores
+- [ ] Execution-plane parity: queueing, runtime selection, follow-up session lifecycle, and recovery signals
 - [ ] Production hardening for deployment, reverse proxy, secret handling, and browser security policy
 - [ ] Richer operational visibility and administration flows for long-running team use
 
@@ -95,7 +95,7 @@ sequenceDiagram
     end
 ```
 
-### Current IM Normalization Boundary
+### Current IM Dispatch Boundary
 
 ```mermaid
 flowchart LR
@@ -105,12 +105,13 @@ flowchart LR
     FEvent --> UMsg["UnifiedMessage"]
     TEvent --> UMsg
 
-    UMsg --> Router["MessageRouter"]
+    UMsg --> Dispatch["MessageDispatchService"]
+    Dispatch --> RuntimeDispatch["run_agent_execution(...)"]
+    Dispatch --> Router["MessageRouter"]
     Router --> WebHandler["web handler"]
     Router --> FeishuHandler["feishu handler"]
     Router --> TelegramHandler["telegram handler"]
-
-    Placeholder["/messages HTTP route<br/>queued acknowledgement only"]
+    HTTP["/messages HTTP route<br/>same dispatch boundary"]
 ```
 
 ## Quick Start
@@ -188,8 +189,8 @@ export DOCKER_HOST=unix:///run/user/1000/docker.sock
 ## Current Boundaries
 
 - Persistence: several user, task, log, and memory paths still rely on minimal in-memory or file-backed implementations.
-- IM runtime: Feishu and Telegram foundations exist, but the full inbound-to-agent-to-outbound delivery chain is not wired end to end.
-- Message routing: `UnifiedMessage` and `MessageRouter` define the current routing boundary, while `/messages` still returns a queued acknowledgement only.
+- IM runtime: the minimal inbound-to-runtime-to-outbound chain is now wired for Feishu/Telegram adapters and the HTTP `/messages` entrypoint, but provider-backed production hardening is still incomplete.
+- Message persistence: correlation metadata is intentionally minimal and currently lives in the existing `messages.attachments` JSON payload rather than a richer audit model.
 - Execution: the repo contains a separate `container/agent-runner` slice, but the current browser WebSocket happy path runs through `OpenAIAgentsRuntime`.
 - Docker release image: the root release-image path is verified on the current host via user-space rootless Docker; the frontend artifact remains a separate `web/dist/` build by design.
 - Security and deployment: baseline scans, dependency audit, and HTTP security headers are in place, but this is not yet a fully hardened production deployment story.

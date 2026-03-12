@@ -64,7 +64,8 @@
 - `M6.5.2` 已完成（创建发布标签）。
 - `M6.5.3` 已完成（构建发布产物）。
 - `M6` 已完成（`M6.1` ~ `M6.5`）。
-- 当前起点：正式 `docs/TODO.md` 已执行到末尾；下一条真实开发入口需由用户明确决定是否进入 `M7.1` parity backlog。
+- `M7.1` 已完成（主运行链补齐，基于 parity backlog）。
+- 当前起点：如果用户继续 parity backlog，下一条真实开发入口是 `M7.2`（execution plane parity）；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -158,6 +159,11 @@
 - `M6.5.3` blocker follow-up：将 `tests/scripts/test_build_docker.py` 收紧为真实 `FileNotFoundError(2, ..., "docker")` 形态，并把 `scripts/build_docker.py` 缺失 Docker CLI 时的 stderr 统一为稳定文案 `docker command not found`，避免测试、脚本实际输出与 handoff 记录继续漂移。
 - `M6.5.3` final verification：独立复验确认当前主机可通过用户态 rootless Docker 完成真实发布镜像构建；fresh `docker version`、`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`、`docker image inspect portex:v1.0.0 --format '{{.Id}}'` 与 `cd web && npm run build` 已全部通过。
 - `M6.5.3` final verification：当前可复现路径为 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`；fresh root release image 当前为 `sha256:5f9f0625c0e66bbae47ede13473ed1dae5fd5cb0ac474290d053f18869494742`。
+- `M7.1`：新增 `docs/plans/2026-03-12-m7-1-runtime-dispatch-refinement-design.md` 与 `docs/plans/2026-03-12-m7-1-runtime-dispatch-refinement.md`，将现有设计收紧为“先补结构化 runtime result，再补 dispatch/IM adapters”，明确不统一当前 WebSocket 主链。
+- `M7.1`：新增 `services/message_dispatch.py`、`services.agent_trigger.run_agent_execution()` 与 `RuntimeReplyCollector`，让非 WebSocket 调用方可以复用当前 runtime 栈并获取 `run_id/status/final_output/error/timeout_ms`。
+- `M7.1`：新增 `app/routes/im.py` 并挂载 Feishu webhook / Telegram update ingest 路由；`infra/im/telegram.py` 增加最小 `send_text_message()`，`app/routes/messages.py` 也已从 queued placeholder 切到真实 dispatch entrypoint。
+- `M7.1`：扩展 `services/message_service.py`，把 `channel/group_folder/run_id/external_message_id` 以稳定 JSON 序列化进现有 `attachments` 字段，实现最小消息关联元数据而不引入新 migration 机制。
+- `M7.1`：新增 `tests/services/test_message_dispatch.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`，并扩展 `tests/services/test_agent_trigger.py`、`tests/services/test_message_service.py`、`tests/app/routes/test_api_routes.py`、`tests/infra/im/test_telegram.py`，把 `M7.1` 主链合同锁入 focused + integration 覆盖。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -173,6 +179,15 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `ca04ebb` `docs(plans): note M7.1 integration shortcut`
+  - `e8699b9` `test(messages): add M7.1 integration coverage`
+  - `a6c4e4e` `feat(messages): replace message placeholder route`
+  - `7689e78` `feat(im): add M7.1 ingestion adapters`
+  - `4b7260c` `feat(messages): persist dispatch metadata`
+  - `c601d97` `feat(messages): add main runtime dispatch service`
+  - `dc1442b` `docs(plans): refine M7.1 runtime dispatch design`
+  - `8af71d1` `docs(release): complete M6.5.3 artifact verification`
+  - `586e286` `build(release): normalize docker blocker output`
   - `ededce2` `docs(plans): define M7.1 runtime chain parity`
   - `6fee196` `docs(handoff): promote parity backlog to milestones`
   - `3eb6dbe` `docs(handoff): expand happyclaw parity backlog`
@@ -215,6 +230,12 @@
 
 ## 3. 最新验证证据
 
+- M7.1 focused/runtime+dispatch：`.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `15 passed, 1 warning in 2.97s`
+- M7.1 focused/IM adapters：`.venv/bin/pytest -o addopts='' tests/app/routes/test_im_routes.py tests/infra/im/test_telegram.py tests/infra/im/test_feishu.py -q` -> `41 passed, 1 warning in 3.34s`
+- M7.1 focused/message routes：`.venv/bin/pytest -o addopts='' tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py -q` -> `46 passed, 27 warnings in 9.35s`
+- M7.1 focused/integration：`.venv/bin/pytest -o addopts='' tests/integration/test_message_flow.py -q` -> `1 passed, 1 warning in 2.71s`
+- M7.1 milestone verification：`.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/services/test_message_service.py tests/app/routes/test_im_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/im/test_telegram.py tests/infra/im/test_feishu.py -q` -> `107 passed, 30 warnings in 10.56s`
+- M7.1 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `325 passed, 50 warnings in 13.25s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M6.5.3 final verification：`ls -l "$HOME/bin/docker" "$HOME/bin/dockerd-rootless-setuptool.sh"` -> both files present under `/home/zq/bin`
 - M6.5.3 final verification：`PATH="$HOME/bin:$PATH" "$HOME/bin/dockerd-rootless-setuptool.sh" check` -> `Requirements are satisfied`
 - M6.5.3 final verification：`PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `29.3.0|29.3.0`
@@ -339,9 +360,10 @@
 - `M6.5.2` 当前正式 release baseline 仍以 `v1.0.0 -> dba45f3` 为准；后续 handoff / release-artifact 构建入口提交已经进入当前 `main`，但不改变首个 release tag 锚点。
 - `M6.5.3` 当前已完成正式验收：仓库根 release image 构建入口、`web/dist/` 前端产物链，以及 fresh `docker version` / `scripts/build_docker.py --tag portex:v1.0.0` / `docker image inspect` 证据均已就位。
 - `M6.5.3` 当前主机的可复现 Docker 路径是用户态 rootless Docker：导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock` 后即可复现当前 release-image 验证。
-- `M6` 当前已全部完成，`docs/TODO.md` 的正式路线也已执行到末尾；后续如需继续做产品功能，必须由用户明确决定是否进入 `M7.1` parity backlog，或先把 `M7` 提升为新的正式计划源。
-- `M7` 当前仍只是规划层 backlog：`tasks/todo.md` 里已经有 `M7.1` ~ `M7.6`，且 `M7.1` 的 design/implementation docs 已写好；但进入该方向前仍应先得到用户明确同意。
-- `M7.1` 当前推荐范围已固定：只补主运行链（dispatch service、最小 IM ingestion adapters、Telegram outbound、真实 `/messages` dispatch、focused + integration tests），明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
+- `M6` 当前已全部完成，`docs/TODO.md` 的正式路线也已执行到末尾。
+- `M7.1` 当前已完成：真实 `/messages` dispatch、最小 Feishu/Telegram ingress、Telegram outbound text send、结构化 runtime-result、最小消息关联元数据，以及 focused + integration coverage 均已到位。
+- `M7.1` 当前仍保持刻意收敛：浏览器 WebSocket 主链没有被强行统一进新 dispatch service，queue/execution plane lifecycle 仍留在 `M7.2`，workspace/group model 仍留在 `M7.3`。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.2`。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -356,12 +378,13 @@
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
    - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
    - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
-2. 当前正式 `M6` 路线已完成：
+2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.1` 已完成：
    - 如需复现当前 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户明确决定继续产品开发，下一条真实开发入口是 `M7.1`；直接按 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md` 执行，而不要一边做 `M7.1` 一边偷偷吞掉 `M7.2/M7.3`
+   - 如果用户继续 parity backlog，优先从 `M7.2` 开始，并先重读 `tasks/todo.md` 中 `M7.2.1` ~ `M7.2.7`，再补新的 design/implementation docs；不要在 `M7.2` 里回退或重做已经完成的 `M7.1`
+   - 如果需要继续维护 `M7.1` 代码面，先看 `app/routes/im.py`、`app/routes/messages.py`、`services/message_dispatch.py`、`services/message_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
    - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
    - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
@@ -373,7 +396,7 @@
    - 继续保留 `M6.2.2` 当前边界：HTTP API 已在 FastAPI `/docs` 中补齐，但 WebSocket 契约仍不在 OpenAPI 内
    - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
    - 继续保留 `M6.1.2` 当前边界：integration 测试入口已建立，但 API matrix 仍窄、WebSocket 仍基于 fake runtime，不能把它误读成真实 provider/e2e 已打通
-   - 继续保留 `M5.4` 当前边界：不要把阶段验收结论误读成真实 IM 运行链已打通；`app/routes/messages.py`、WebSocket 主链和真实发送编排仍未接上
+   - 不要回退 `M7.1` 当前边界：`app/routes/messages.py`、`app/routes/im.py`、`services/message_dispatch.py` 和 Telegram outbound text send 现在已经接上；下一阶段真正缺的是 execution plane / queue / workspace model，而不是再写一遍 IM dispatch
    - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
    - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
    - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
@@ -383,4 +406,4 @@
 
 ## 5. 一句话版
 
-> `M6` 已全部完成：`M6.5.3` 已在当前主机通过 rootless Docker 完成 fresh 发布镜像构建与检查，下一步是否进入 `M7.1` 取决于用户是否明确开启 parity backlog。
+> `M6` 已全部完成，`M7.1` 也已完成：当前 parity backlog 的真实下一步是 `M7.2` execution plane parity。

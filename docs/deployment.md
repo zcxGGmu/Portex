@@ -60,6 +60,18 @@ These are not required just to boot the backend and frontend. Use them only when
 - `OPENAI_AGENTS_DISABLE_TRACING`
   - The current docs use `1` in local provider sanity checks.
 
+### Optional IM Channel Runtime
+
+These are only needed when you want the app-owned Feishu / Telegram ingress routes to talk to real providers instead of running under tests or fakes.
+
+- `PORTEX_FEISHU_APP_ID`
+- `PORTEX_FEISHU_APP_SECRET`
+- `PORTEX_FEISHU_ENCRYPT_KEY`
+  - Optional unless you handle encrypted Feishu callbacks.
+- `PORTEX_FEISHU_VERIFICATION_TOKEN`
+  - Optional unless you add signature verification around Feishu webhooks.
+- `PORTEX_TELEGRAM_BOT_TOKEN`
+
 ## Local Process Deployment (Verified)
 
 ### 1. Prepare the backend environment
@@ -165,7 +177,7 @@ Important current boundaries:
 
 - Several user, task, log, and memory capabilities still rely on in-memory or file-backed minimal implementations.
 - Task execution state and logs do not yet provide durable process-restart recovery.
-- The IM delivery chain and WebSocket run flow are still intentionally incremental.
+- The IM dispatch chain now exists, but still uses minimal persistence metadata and the current direct runtime stack rather than the fuller execution plane planned for `M7.2`.
 
 ## Docker Release Image (Verified) And Compose Draft
 
