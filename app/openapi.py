@@ -38,9 +38,8 @@ OPENAPI_TAGS = [
     },
     {
         "name": "messages",
-        "description": "Minimal HTTP message enqueue endpoint. The current "
-        "implementation only returns a queued acknowledgement and does not represent "
-        "the full IM delivery chain.",
+        "description": "HTTP message dispatch entrypoint backed by the current "
+        "runtime-chain orchestration boundary.",
     },
     {
         "name": "tasks",

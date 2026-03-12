@@ -126,6 +126,9 @@ def test_register_login_and_get_current_user_flow(api_client: TestClient) -> Non
 
 
 def test_groups_and_messages_require_authentication(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+
     groups_unauthorized = api_client.get("/groups")
     assert groups_unauthorized.status_code == 401
 
@@ -148,15 +151,34 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     groups_payload = groups_response.json()
     assert len(groups_payload["groups"]) >= 1
 
-    messages_response = api_client.post(
-        "/messages",
-        json={"group_id": "group-demo", "content": "hello"},
-        headers=auth_headers,
-    )
+    class FakeDispatchService:
+        async def dispatch_inbound_message(self, message):
+            _ = message
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-auth-check",
+                    "status": "completed",
+                    "final_output": "hello back",
+                },
+            )()
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    try:
+        messages_response = api_client.post(
+            "/messages",
+            json={"group_id": "group-demo", "content": "hello"},
+            headers=auth_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
     assert messages_response.status_code == 200
     message_payload = messages_response.json()
     assert message_payload["message_id"]
-    assert message_payload["status"]
+    assert message_payload["status"] == "completed"
+    assert message_payload["run_id"] == "run-auth-check"
 
 
 def test_group_member_routes_require_authentication(api_client: TestClient) -> None:
@@ -1004,7 +1026,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "403" in create_task_operation["responses"]
 
     send_message_operation = schema["paths"]["/messages"]["post"]
-    assert "queued" in send_message_operation["description"].lower()
+    assert "dispatch" in send_message_operation["description"].lower()
 
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][

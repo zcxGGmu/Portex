@@ -193,24 +193,34 @@ class DeleteGroupMemberResponse(BaseModel):
 
 class SendMessageRequest(BaseModel):
     group_id: str = Field(
-        description="Target group identifier for the message request.",
+        description="Target group/workspace identifier for the dispatched message.",
         examples=["group-demo"],
     )
     content: str = Field(
         min_length=1,
-        description="Message content to enqueue through the current HTTP placeholder endpoint.",
+        description="Message content to dispatch through the current runtime chain.",
         examples=["hello from HTTP"],
     )
 
 
 class SendMessageResponse(BaseModel):
     message_id: str = Field(
-        description="Generated identifier for the queued message acknowledgement.",
+        description="Generated identifier for the normalized inbound message.",
         examples=["msg-abcdef123456"],
     )
+    run_id: str | None = Field(
+        default=None,
+        description="Runtime run identifier associated with the dispatched message.",
+        examples=["run-abcdef123456"],
+    )
     status: str = Field(
-        description="Current message enqueue status.",
-        examples=["queued"],
+        description="Dispatch result status returned by the current runtime chain.",
+        examples=["completed"],
+    )
+    final_output: str | None = Field(
+        default=None,
+        description="Final assistant reply when the dispatch completed successfully.",
+        examples=["hello from Portex"],
     )
 
 
