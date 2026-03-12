@@ -117,6 +117,26 @@ class _NonCooperativeBackend:
         self.cancelled_run_ids.append(run_id)
 
 
+class _BlockingCancelBackend:
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.calls: list[str] = []
+        self.cancelled_run_ids: list[str] = []
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        _ = (run_id, session_id)
+        self.calls.append(request.prompt)
+        self.started.set()
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            raise
+
+    async def cancel(self, run_id: str) -> None:
+        self.cancelled_run_ids.append(run_id)
+        await asyncio.Future()
+
+
 @pytest.mark.asyncio
 async def test_execution_coordinator_processes_one_group_fifo_and_reuses_session() -> None:
     from services.execution_coordinator import ExecutionCoordinator
@@ -236,6 +256,7 @@ async def test_execution_coordinator_marks_running_run_cancelled() -> None:
 
     cancelled = await coordinator.cancel(handle.run_id)
     result = await coordinator.wait_for_run(handle.run_id)
+    await asyncio.sleep(0)
 
     assert cancelled is True
     assert result.status == "cancelled"
@@ -338,3 +359,26 @@ async def test_execution_coordinator_invalid_requested_mode_returns_failed_resul
     assert result.status == "failed"
     assert result.error == "unsupported execution mode: unknown"
     assert backend.calls == []
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_running_cancel_does_not_wait_for_blocking_backend_cancel() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _BlockingCancelBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    handle = await coordinator.submit_execution(_request(group_folder="group-a", prompt="block"))
+    await backend.started.wait()
+
+    result = await asyncio.wait_for(coordinator.cancel(handle.run_id), timeout=0.05)
+    terminal = await coordinator.wait_for_run(handle.run_id)
+    await asyncio.sleep(0)
+
+    assert result is True
+    assert terminal.status == "cancelled"
+    assert backend.cancelled_run_ids == [handle.run_id]

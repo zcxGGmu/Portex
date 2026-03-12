@@ -140,7 +140,6 @@ class ExecutionCoordinator:
             if backend is not None:
                 self._cancelled_run_ids.add(run_id)
                 self._statuses[run_id] = "cancelled"
-                await backend.cancel(run_id)
                 execution_task = self._running_tasks.get(run_id)
                 if execution_task is not None and not execution_task.done():
                     execution_task.cancel()
@@ -153,6 +152,7 @@ class ExecutionCoordinator:
                         status="cancelled",
                     )
                 )
+                asyncio.create_task(self._best_effort_backend_cancel(backend, run_id))
                 return True
         return False
 
@@ -321,6 +321,12 @@ class ExecutionCoordinator:
             return self._select_backend_name(request)
         except Exception:
             return "unknown"
+
+    async def _best_effort_backend_cancel(self, backend: ExecutionBackend, run_id: str) -> None:
+        try:
+            await backend.cancel(run_id)
+        except Exception:
+            return None
 
     def _store_terminal_result(self, result: ExecutionResult) -> None:
         self._statuses[result.run_id] = result.status
