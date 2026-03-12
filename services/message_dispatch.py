@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from domain.schemas import UnifiedMessage
 from infra.runtime.adapter import RunResult
+from services.execution_coordinator import ExecutionRequest
 from services.agent_trigger import RuntimeFactory, SessionIdFactory, run_agent_execution
 
 DEFAULT_ASSISTANT_SENDER_ID = "portex"
@@ -50,6 +51,14 @@ TargetResolver = Callable[[UnifiedMessage], ResolvedMessageTarget]
 RuntimeTrigger = Callable[..., Awaitable[RunResult]]
 
 
+class ExecutionSubmitter(Protocol):
+    async def submit_execution(self, request: ExecutionRequest):
+        ...
+
+    async def wait_for_run(self, run_id: str):
+        ...
+
+
 class MessageDispatchService:
     """Dispatch normalized inbound messages through the current runtime path."""
 
@@ -57,6 +66,7 @@ class MessageDispatchService:
         self,
         *,
         target_resolver: TargetResolver,
+        execution_coordinator: ExecutionSubmitter | None = None,
         runtime_trigger: RuntimeTrigger = run_agent_execution,
         runtime_factory: RuntimeFactory | None = None,
         session_id_factory: SessionIdFactory | None = None,
@@ -65,6 +75,7 @@ class MessageDispatchService:
         assistant_sender_id: str = DEFAULT_ASSISTANT_SENDER_ID,
     ) -> None:
         self._target_resolver = target_resolver
+        self._execution_coordinator = execution_coordinator
         self._runtime_trigger = runtime_trigger
         self._runtime_factory = runtime_factory or self._missing_runtime_factory
         self._session_id_factory = session_id_factory
@@ -90,14 +101,21 @@ class MessageDispatchService:
             external_message_id=message.message_id,
         )
 
-        run_result = await self._runtime_trigger(
-            group_folder=target.group_folder,
-            message=message.content,
-            user_id=message.sender_id,
-            runtime_factory=self._runtime_factory,
-            session_id_factory=self._session_id_factory,
-            request_id=run_id,
-        )
+        if self._execution_coordinator is not None:
+            handle = await self._execution_coordinator.submit_execution(
+                self._build_execution_request(target, message, run_id=run_id)
+            )
+            run_id = handle.run_id
+            run_result = await self._execution_coordinator.wait_for_run(run_id)
+        else:
+            run_result = await self._runtime_trigger(
+                group_folder=target.group_folder,
+                message=message.content,
+                user_id=message.sender_id,
+                runtime_factory=self._runtime_factory,
+                session_id_factory=self._session_id_factory,
+                request_id=run_id,
+            )
 
         if run_result.status != "completed":
             return DispatchResult(
@@ -150,6 +168,23 @@ class MessageDispatchService:
                 chat_jid=message.chat_jid,
             )
         return self._target_resolver(message)
+
+    def _build_execution_request(
+        self,
+        target: ResolvedMessageTarget,
+        message: UnifiedMessage,
+        *,
+        run_id: str,
+    ) -> ExecutionRequest:
+        source = "web" if message.channel == "web" else "im"
+        return ExecutionRequest(
+            request_id=run_id,
+            group_folder=target.group_folder,
+            chat_jid=target.chat_jid,
+            user_id=message.sender_id,
+            prompt=message.content,
+            source=source,
+        )
 
     def _missing_runtime_factory(self, group_folder: str):
         _ = group_folder

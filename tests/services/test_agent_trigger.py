@@ -446,6 +446,7 @@ async def test_trigger_agent_execution_cleans_up_consumer_task_on_outer_cancella
             self.received_requests: list[RunRequest] = []
             self.active_streams = 0
             self.started = asyncio.Event()
+            self.cancelled_run_ids: list[str] = []
 
         async def run_streamed(self, request: RunRequest):
             self.received_requests.append(request)
@@ -458,7 +459,7 @@ async def test_trigger_agent_execution_cleans_up_consumer_task_on_outer_cancella
                 self.active_streams -= 1
 
         async def cancel(self, run_id: str) -> None:
-            _ = run_id
+            self.cancelled_run_ids.append(run_id)
 
     runtime = HangingRuntime()
     manager = FakeWebSocketManager()
@@ -483,3 +484,4 @@ async def test_trigger_agent_execution_cleans_up_consumer_task_on_outer_cancella
 
     await asyncio.sleep(0)
     assert runtime.active_streams == 0
+    assert runtime.cancelled_run_ids == ["run-outer-cancel"]

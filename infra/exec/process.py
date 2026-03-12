@@ -140,6 +140,7 @@ class ProcessExecutor:
             data_root=self.data_root,
             runner_root=self.runner_root,
         )
+        self._active_processes: dict[str, asyncio.subprocess.Process] = {}
 
     def build_command(self) -> list[str]:
         """Build the subprocess argv for the local runner."""
@@ -191,6 +192,7 @@ class ProcessExecutor:
         payload: ContainerInputPayload,
         *,
         timeout: int | None = None,
+        run_id: str | None = None,
     ) -> ProcessRunResult:
         """Execute the local runner once and collect stdout, stderr, and return code."""
         group_dir = self.resolve_group_dir(group_folder)
@@ -213,6 +215,9 @@ class ProcessExecutor:
                 f"Failed to start host process runner for group '{group_folder}'"
             ) from exc
 
+        if run_id is not None:
+            self._active_processes[run_id] = process
+
         try:
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(self.serialize_input(payload)),
@@ -223,12 +228,28 @@ class ProcessExecutor:
             raise ProcessExecutionError(
                 f"Host process runner timed out after {effective_timeout} seconds for group '{group_folder}'"
             ) from exc
+        finally:
+            if run_id is not None:
+                self._active_processes.pop(run_id, None)
 
         return ProcessRunResult(
             returncode=process.returncode or 0,
             stdout=stdout.decode("utf-8"),
             stderr=stderr.decode("utf-8"),
         )
+
+    async def cancel(self, run_id: str) -> bool:
+        """Best-effort cancellation for one active host-mode run."""
+        process = self._active_processes.get(run_id)
+        if process is None:
+            return False
+        process.kill()
+        wait = getattr(process, "wait", None)
+        if callable(wait):
+            maybe_awaitable = wait()
+            if hasattr(maybe_awaitable, "__await__"):
+                await maybe_awaitable
+        return True
 
 
 ProcessRunner = ProcessExecutor

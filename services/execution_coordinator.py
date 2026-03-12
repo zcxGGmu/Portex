@@ -23,6 +23,8 @@ class ExecutionRequest:
     requested_mode: str | None = None
     timeout_ms: int | None = None
     fresh_session: bool = False
+    request_id: str | None = None
+    request_metadata: Mapping[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -90,7 +92,7 @@ class ExecutionCoordinator:
         self._completed_order: deque[str] = deque()
 
     async def submit_execution(self, request: ExecutionRequest) -> ExecutionHandle:
-        run_id = uuid4().hex
+        run_id = request.request_id or uuid4().hex
         future: asyncio.Future[ExecutionResult] = asyncio.get_running_loop().create_future()
         self._run_futures[run_id] = future
         self._run_requests[run_id] = request

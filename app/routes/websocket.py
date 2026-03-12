@@ -4,22 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import json
-from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.websocket import ConnectionManager
 from infra.runtime.adapter import RunEvent
-from infra.runtime.openai import OpenAIAgentsRuntime
-from services.agent_trigger import serialize_run_event, trigger_agent_execution
+from portex.contracts.events import EventType
+from services.agent_trigger import serialize_run_event
+from services.execution_coordinator import ExecutionRequest, ExecutionResult
+from services.execution_runtime import get_execution_coordinator
 
 router = APIRouter(tags=["websocket"])
 manager = ConnectionManager()
 DEFAULT_WEBSOCKET_USER_ID = "websocket-user"
-
-
-def create_runtime() -> OpenAIAgentsRuntime:
-    return OpenAIAgentsRuntime(tools=[])
 
 
 def _parse_cancel_run_id(message: str) -> str | None:
@@ -70,23 +67,90 @@ async def _cleanup_task(task: asyncio.Task[None] | None) -> None:
 @router.websocket("/ws/{group_folder}")
 async def websocket_endpoint(websocket: WebSocket, group_folder: str) -> None:
     await manager.connect(websocket, group_folder)
-    runtime = create_runtime()
     broadcaster = ConnectionScopedBroadcaster(websocket, manager)
+    coordinator = get_execution_coordinator()
     active_run_id: str | None = None
     active_task: asyncio.Task[None] | None = None
+    terminal_event_seen = False
 
-    async def execute_message(message: str, run_id: str) -> None:
+    async def broadcast_event(event: RunEvent) -> None:
+        nonlocal terminal_event_seen
+        if event.event_type in {
+            EventType.RUN_COMPLETED.value,
+            EventType.RUN_FAILED.value,
+            EventType.RUN_TIMEOUT.value,
+        }:
+            terminal_event_seen = True
+        await broadcaster.send_message(
+            serialize_run_event(event),
+            group_folder,
+        )
+
+    async def emit_terminal_event(result: ExecutionResult) -> None:
+        if terminal_event_seen and result.status in {"completed", "failed", "timeout"}:
+            return
+
+        if result.status == "cancelled":
+            await websocket.send_text(
+                serialize_run_event(
+                    RunEvent(
+                        event_type=EventType.RUN_FAILED.value,
+                        run_id=result.run_id,
+                        payload={"status": "cancelled"},
+                    )
+                )
+            )
+            return
+
+        if result.status == "timeout":
+            await broadcaster.send_message(
+                serialize_run_event(
+                    RunEvent(
+                        event_type=EventType.RUN_TIMEOUT.value,
+                        run_id=result.run_id,
+                        payload={"status": "timeout", "timeout_ms": result.timeout_ms},
+                    )
+                ),
+                group_folder,
+            )
+            return
+
+        if result.status == "completed":
+            if result.backend == "openai_runtime":
+                return
+            await broadcaster.send_message(
+                serialize_run_event(
+                    RunEvent(
+                        event_type=EventType.RUN_COMPLETED.value,
+                        run_id=result.run_id,
+                        payload={
+                            "status": "response.completed",
+                            "final_output": result.final_output,
+                        },
+                    )
+                ),
+                group_folder,
+            )
+            return
+
+        if result.status == "failed":
+            await broadcaster.send_message(
+                serialize_run_event(
+                    RunEvent(
+                        event_type=EventType.RUN_FAILED.value,
+                        run_id=result.run_id,
+                        payload={"error": result.error or "execution failed"},
+                    )
+                ),
+                group_folder,
+            )
+
+    async def wait_for_result(run_id: str) -> None:
         nonlocal active_run_id, active_task
 
         try:
-            await trigger_agent_execution(
-                group_folder=group_folder,
-                message=message,
-                user_id=DEFAULT_WEBSOCKET_USER_ID,
-                websocket_manager=broadcaster,
-                runtime_factory=lambda _group: runtime,
-                request_id=run_id,
-            )
+            result = await coordinator.wait_for_run(run_id)
+            await emit_terminal_event(result)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -112,10 +176,11 @@ async def websocket_endpoint(websocket: WebSocket, group_folder: str) -> None:
             cancel_run_id = _parse_cancel_run_id(message)
             if cancel_run_id is not None:
                 if active_run_id == cancel_run_id:
-                    await runtime.cancel(cancel_run_id)
+                    await coordinator.cancel(cancel_run_id)
                     await _cleanup_task(active_task)
                     active_task = None
                     active_run_id = None
+                    terminal_event_seen = True
                     await websocket.send_text(
                         serialize_run_event(
                             RunEvent(
@@ -133,14 +198,24 @@ async def websocket_endpoint(websocket: WebSocket, group_folder: str) -> None:
             if active_task is not None and not active_task.done():
                 continue
 
-            run_id = uuid4().hex
-            active_run_id = run_id
-            active_task = asyncio.create_task(execute_message(message, run_id))
+            terminal_event_seen = False
+            handle = await coordinator.submit_execution(
+                ExecutionRequest(
+                    group_folder=group_folder,
+                    chat_jid=group_folder,
+                    user_id=DEFAULT_WEBSOCKET_USER_ID,
+                    prompt=message,
+                    source="web",
+                    request_metadata={"event_handler": broadcast_event},
+                )
+            )
+            active_run_id = handle.run_id
+            active_task = asyncio.create_task(wait_for_result(handle.run_id))
     except WebSocketDisconnect:
         pass
     finally:
         if active_run_id is not None:
-            await runtime.cancel(active_run_id)
+            await coordinator.cancel(active_run_id)
         await _cleanup_task(active_task)
         manager.disconnect(websocket, group_folder)
 

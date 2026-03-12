@@ -103,3 +103,67 @@ def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) 
 
     assert response.status_code == 400
     assert response.json() == {"detail": "dispatch failed"}
+
+
+def test_post_messages_default_dependency_uses_execution_coordinator(api_client: TestClient) -> None:
+    from app.routes import im as im_routes
+
+    submit_calls: list[object] = []
+    store_calls: list[dict[str, object]] = []
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            from services.execution_coordinator import ExecutionHandle
+
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id=request.request_id or "run-http-coordinator",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            from services.execution_coordinator import ExecutionResult
+
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="group-demo",
+                backend="openai_runtime",
+                session_id="group-demo",
+                final_output="http reply",
+            )
+
+        async def cancel(self, run_id: str) -> bool:
+            _ = run_id
+            return True
+
+    async def fake_store_message(*, db, **kwargs):
+        _ = db
+        store_calls.append(kwargs)
+        return type("StoredMessage", (), {"id": f"db-{len(store_calls)}"})()
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(im_routes, "get_execution_coordinator", lambda: FakeCoordinator(), raising=False)
+    monkeypatch.setattr(im_routes, "store_message", fake_store_message, raising=False)
+    monkeypatch.setattr(
+        "services.message_dispatch.run_agent_execution",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct runtime helper should not be used")),
+    )
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "group-demo", "content": "hello from http"},
+            headers=_login_headers(api_client, "alice", "secret"),
+        )
+    finally:
+        monkeypatch.undo()
+
+    assert response.status_code == 200
+    assert len(submit_calls) == 1
+    assert submit_calls[0].group_folder == "group-demo"
+    assert submit_calls[0].source == "web"
+    assert response.json()["run_id"] == submit_calls[0].request_id
+    assert len(store_calls) == 2
+    assert store_calls[0]["run_id"] == submit_calls[0].request_id

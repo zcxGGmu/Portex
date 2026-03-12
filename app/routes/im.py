@@ -14,7 +14,7 @@ from domain.schemas import UnifiedMessage
 from infra.db.database import get_db
 from infra.im.feishu import FeishuClient, FeishuClientError
 from infra.im.telegram import TelegramClient, TelegramClientError
-from infra.runtime.openai import OpenAIAgentsRuntime
+from services.execution_runtime import get_execution_coordinator
 from services.message_dispatch import (
     MessageDispatchError,
     MessageDispatchService,
@@ -93,7 +93,7 @@ def get_message_dispatch_service(
 ) -> MessageDispatchService:
     return MessageDispatchService(
         target_resolver=_resolve_target,
-        runtime_factory=lambda _group: OpenAIAgentsRuntime(tools=[]),
+        execution_coordinator=get_execution_coordinator(),
         store_message=lambda **kwargs: store_message(db=db, **kwargs),
         message_router=MessageRouter(
             feishu_handler=_send_feishu_message,

@@ -28,56 +28,52 @@ def test_websocket_endpoint_starts_background_execution_for_text_message(
 ) -> None:
     from app.routes import websocket as websocket_routes
 
-    recorded_calls: list[dict[str, str]] = []
+    recorded_requests: list[object] = []
 
-    async def fake_trigger_agent_execution(
-        *,
-        group_folder: str,
-        message: str,
-        user_id: str,
-        websocket_manager: object,
-        runtime_factory: object,
-        session_id_factory: object | None = None,
-        request_id: str | None = None,
-        timeout_ms: int = 300_000,
-    ) -> str:
-        _ = (runtime_factory, session_id_factory, timeout_ms)
-        recorded_calls.append(
-            {
-                "group_folder": group_folder,
-                "message": message,
-                "user_id": user_id,
-                "request_id": request_id or "",
-            }
-        )
-        await websocket_manager.send_message(
-            json.dumps(
-                {
-                    "event_type": "run.started",
-                    "run_id": request_id,
-                    "payload": {"status": "started"},
-                }
-            ),
-            group_folder,
-        )
-        return request_id or "missing"
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            from infra.runtime.adapter import RunEvent
+            from services.execution_coordinator import ExecutionHandle
 
-    class FakeRuntime:
-        async def cancel(self, run_id: str) -> None:
+            recorded_requests.append(request)
+            await request.request_metadata["event_handler"](
+                RunEvent(event_type="run.started", run_id="run-fixed")
+            )
+            return ExecutionHandle(
+                run_id="run-fixed",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            from services.execution_coordinator import ExecutionResult
+
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="group-1",
+                backend="openai_runtime",
+                session_id="group-1",
+                final_output="done",
+            )
+
+        async def cancel(self, run_id: str) -> bool:
             _ = run_id
-
-    class FixedUUID:
-        hex = "run-fixed"
+            return True
 
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(
         websocket_routes,
-        "trigger_agent_execution",
-        fake_trigger_agent_execution,
+        "get_execution_coordinator",
+        lambda: FakeCoordinator(),
         raising=False,
     )
-    monkeypatch.setattr(websocket_routes, "create_runtime", lambda: FakeRuntime(), raising=False)
-    monkeypatch.setattr(websocket_routes, "uuid4", lambda: FixedUUID(), raising=False)
+    monkeypatch.setattr(
+        websocket_routes,
+        "trigger_agent_execution",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct trigger should not be used")),
+        raising=False,
+    )
 
     try:
         with api_client.websocket_connect("/ws/group-1") as websocket:
@@ -85,14 +81,9 @@ def test_websocket_endpoint_starts_background_execution_for_text_message(
 
             payload = json.loads(websocket.receive_text())
             assert payload["event_type"] == "run.started"
-            assert recorded_calls == [
-                {
-                    "group_folder": "group-1",
-                    "message": "ping",
-                    "user_id": "websocket-user",
-                    "request_id": "run-fixed",
-                }
-            ]
+            assert len(recorded_requests) == 1
+            assert recorded_requests[0].group_folder == "group-1"
+            assert recorded_requests[0].prompt == "ping"
     finally:
         monkeypatch.undo()
 
@@ -104,51 +95,55 @@ def test_websocket_endpoint_cancels_active_run_from_same_socket(
 
     cancel_event = threading.Event()
 
-    class FakeRuntime:
+    class FakeCoordinator:
         def __init__(self) -> None:
             self.cancelled_run_ids: list[str] = []
 
-        async def cancel(self, run_id: str) -> None:
+        async def submit_execution(self, request):
+            from infra.runtime.adapter import RunEvent
+            from services.execution_coordinator import ExecutionHandle
+
+            await request.request_metadata["event_handler"](
+                RunEvent(event_type="run.started", run_id="run-cancel")
+            )
+            return ExecutionHandle(
+                run_id="run-cancel",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            await asyncio.to_thread(cancel_event.wait)
+            from services.execution_coordinator import ExecutionResult
+
+            return ExecutionResult(
+                run_id=run_id,
+                status="cancelled",
+                group_folder="group-1",
+                backend="openai_runtime",
+                session_id="group-1",
+            )
+
+        async def cancel(self, run_id: str) -> bool:
             self.cancelled_run_ids.append(run_id)
             cancel_event.set()
+            return True
 
-    runtime = FakeRuntime()
-
-    async def fake_trigger_agent_execution(
-        *,
-        group_folder: str,
-        message: str,
-        user_id: str,
-        websocket_manager: object,
-        runtime_factory: object,
-        session_id_factory: object | None = None,
-        request_id: str | None = None,
-        timeout_ms: int = 300_000,
-    ) -> str:
-        _ = (
-            group_folder,
-            message,
-            user_id,
-            websocket_manager,
-            runtime_factory,
-            session_id_factory,
-            timeout_ms,
-        )
-        await asyncio.to_thread(cancel_event.wait)
-        return request_id or "missing"
-
-    class FixedUUID:
-        hex = "run-cancel"
+    coordinator = FakeCoordinator()
 
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(
         websocket_routes,
-        "trigger_agent_execution",
-        fake_trigger_agent_execution,
+        "get_execution_coordinator",
+        lambda: coordinator,
         raising=False,
     )
-    monkeypatch.setattr(websocket_routes, "create_runtime", lambda: runtime, raising=False)
-    monkeypatch.setattr(websocket_routes, "uuid4", lambda: FixedUUID(), raising=False)
+    monkeypatch.setattr(
+        websocket_routes,
+        "trigger_agent_execution",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct trigger should not be used")),
+        raising=False,
+    )
 
     try:
         with api_client.websocket_connect("/ws/group-1") as websocket:
@@ -156,10 +151,12 @@ def test_websocket_endpoint_cancels_active_run_from_same_socket(
             websocket.send_text(json.dumps({"type": "cancel", "run_id": "run-cancel"}))
 
             assert cancel_event.wait(1)
-            assert runtime.cancelled_run_ids == ["run-cancel"]
+            assert coordinator.cancelled_run_ids == ["run-cancel"]
 
-            payload = json.loads(websocket.receive_text())
-            assert payload["event_type"] == "run.failed"
-            assert payload["payload"] == {"status": "cancelled"}
+            started_payload = json.loads(websocket.receive_text())
+            failed_payload = json.loads(websocket.receive_text())
+            assert started_payload["event_type"] == "run.started"
+            assert failed_payload["event_type"] == "run.failed"
+            assert failed_payload["payload"] == {"status": "cancelled"}
     finally:
         monkeypatch.undo()

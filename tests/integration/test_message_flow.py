@@ -29,21 +29,32 @@ def test_telegram_ingest_route_wires_normalization_dispatch_runtime_and_outbound
     from app.main import app
     from app.routes import im as im_routes
     from infra.im.telegram import TelegramClient
-    from infra.runtime.adapter import RunResult
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
     from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
     from services.message_router import MessageRouter
 
-    runtime_calls: list[dict[str, object]] = []
+    submit_calls: list[object] = []
     store_calls: list[dict[str, object]] = []
     routed_messages: list[object] = []
 
-    async def runtime_trigger(**kwargs):
-        runtime_calls.append(kwargs)
-        return RunResult(
-            run_id=kwargs["request_id"],
-            status="completed",
-            final_output="agent reply",
-        )
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id="run-telegram",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="resolved-group",
+                backend="openai_runtime",
+                session_id="resolved-group",
+                final_output="agent reply",
+            )
 
     async def store_message(**kwargs):
         store_calls.append(kwargs)
@@ -60,7 +71,7 @@ def test_telegram_ingest_route_wires_normalization_dispatch_runtime_and_outbound
             group_folder="resolved-group",
             chat_jid=message.chat_jid,
         ),
-        runtime_trigger=runtime_trigger,
+        execution_coordinator=FakeCoordinator(),
         store_message=store_message,
         message_router=MessageRouter(
             feishu_handler=unexpected_handler,
@@ -88,15 +99,15 @@ def test_telegram_ingest_route_wires_normalization_dispatch_runtime_and_outbound
     )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "dispatched", "run_id": runtime_calls[0]["request_id"]}
-    assert runtime_calls[0]["group_folder"] == "resolved-group"
-    assert runtime_calls[0]["message"] == "hello telegram"
-    assert runtime_calls[0]["user_id"] == "4001"
+    assert response.json() == {"status": "dispatched", "run_id": "run-telegram"}
+    assert submit_calls[0].group_folder == "resolved-group"
+    assert submit_calls[0].prompt == "hello telegram"
+    assert submit_calls[0].user_id == "4001"
     assert len(store_calls) == 2
     assert store_calls[0]["is_from_me"] is False
     assert store_calls[1]["is_from_me"] is True
     assert store_calls[0]["channel"] == "telegram"
-    assert store_calls[1]["run_id"] == runtime_calls[0]["request_id"]
+    assert store_calls[1]["run_id"] == "run-telegram"
     assert len(routed_messages) == 1
     assert routed_messages[0].channel == "telegram"
     assert routed_messages[0].content == "agent reply"

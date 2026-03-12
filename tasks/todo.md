@@ -600,8 +600,8 @@
 
 #### `M7.2` Execution Plane Parity
 
-- [ ] `M7.2.1` Replace `services/group_queue.py` placeholder logic with a real per-group queue and lifecycle coordinator.
-- [ ] `M7.2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
+- [x] `M7.2.1` Replace `services/group_queue.py` placeholder logic with a real per-group queue and lifecycle coordinator.
+- [x] `M7.2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
 - [ ] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
 - [ ] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
 - [ ] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
@@ -733,3 +733,29 @@
 - Hardened running cancellation so the coordinator records terminal `cancelled` state immediately, cancels the in-flight execution task, and only performs backend cancellation as a best-effort background action; also added minimal completed-run retention so coordinator-owned state does not grow without bound in the obvious happy path.
 - Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q`.
 - Session commits completed so far: `docs(plans): define M7.2 execution plane parity`, `feat(execution): add M7.2 coordinator core`, `fix(execution): harden coordinator cancellation`.
+
+# Session Plan (2026-03-12) - M7.2.2 Execution Backend Adapters
+
+## Goal
+- Continue from the documented parity handoff point by connecting the current in-process, host-process, and container runner slices to the coordinator contract, and rewire WebSocket plus IM/HTTP dispatch through that coordinator without swallowing scheduled-task execution in the same pass.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, the `M7.2` design docs, and the current execution/runtime entrypoints
+- [x] Write the focused `M7.2.2` design doc
+- [x] Write the focused `M7.2.2` implementation plan doc
+- [x] Add failing tests for execution backends and coordinator-backed entrypoint wiring
+- [x] Implement unified execution backends and default coordinator wiring
+- [x] Rewire WebSocket and default IM/HTTP dispatch through the coordinator
+- [x] Run focused verification and broader regression
+- [x] Update `docs/progress.md` and this session review
+- [x] Commit the `M7.2.2` slice with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-12-m7-2-2-execution-backend-adapters-design.md` to lock this slice as “backend adapters + Web/IM/HTTP rewiring”, explicitly deferring scheduled-task submission to the next execution-plane sub-step.
+- Added `docs/plans/2026-03-12-m7-2-2-execution-backend-adapters.md` with a TDD-first implementation order: backend tests first, then adapter implementation, then route/service rewiring, then verification and handoff refresh.
+- Added `services/execution_backends.py` and `services/execution_runtime.py`, so the coordinator now owns three request-scoped backends: OpenAI runtime reuse, host-process runner parsing, and `docker run -i` container execution parsing.
+- Rewired `app/routes/websocket.py` and default `MessageDispatchService` wiring in `app/routes/im.py` to submit `ExecutionRequest` objects through the coordinator instead of calling direct runtime helpers.
+- Extended focused coverage with `tests/services/test_execution_backends.py`, coordinator-backed dispatch tests, WebSocket coordinator-route tests, message-route default wiring tests, integration WebSocket parity checks, and the new `ProcessExecutor.cancel()` test.
+- Fixed three review-driven regressions before final verification: inbound-message persistence now happens before coordinator submission, WebSocket now synthesizes `run.failed` for OpenAI-backed failed results that never streamed a terminal event, and outer cancellation now calls `runtime.cancel()` before tearing down the consumer task.
+- Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_im_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
+- Session commit completed: `feat(execution): complete M7.2.2 backend adapters`.

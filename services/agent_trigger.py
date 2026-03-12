@@ -95,7 +95,7 @@ async def run_agent_execution(
     event_handler: RunEventHandler | None = None,
     session_id_factory: SessionIdFactory | None = None,
     request_id: str | None = None,
-    timeout_ms: int = 300_000,
+    timeout_ms: int | None = 300_000,
 ) -> RunResult:
     run_id = request_id or uuid4().hex
     resolve_session_id = session_id_factory or _default_session_id_factory
@@ -125,9 +125,13 @@ async def run_agent_execution(
     )
 
     try:
-        done, _pending = await asyncio.wait({consumer_task}, timeout=timeout_ms / 1000)
+        timeout_seconds = None if timeout_ms is None else timeout_ms / 1000
+        done, _pending = await asyncio.wait({consumer_task}, timeout=timeout_seconds)
     except asyncio.CancelledError:
-        await _cleanup_consumer_task(consumer_task)
+        try:
+            await runtime.cancel(request.request_id)
+        finally:
+            await _cleanup_consumer_task(consumer_task)
         raise
 
     if consumer_task in done:
@@ -139,7 +143,8 @@ async def run_agent_execution(
     finally:
         await _cleanup_consumer_task(consumer_task)
 
-    await handle_event(_build_timeout_event(run_id, timeout_ms))
+    if timeout_ms is not None:
+        await handle_event(_build_timeout_event(run_id, timeout_ms))
 
     return collector.build_result()
 

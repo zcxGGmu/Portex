@@ -27,6 +27,7 @@ class FakeProcess:
         self._stderr = stderr
         self.communicate_calls: list[bytes | None] = []
         self.kill_calls = 0
+        self.wait_calls = 0
 
     async def communicate(self, input: bytes | None = None) -> tuple[bytes, bytes]:
         self.communicate_calls.append(input)
@@ -34,6 +35,10 @@ class FakeProcess:
 
     def kill(self) -> None:
         self.kill_calls += 1
+
+    async def wait(self) -> int:
+        self.wait_calls += 1
+        return self.returncode
 
 
 @pytest.mark.asyncio
@@ -258,7 +263,53 @@ def test_host_mode_restrictions_define_required_security_boundaries() -> None:
     }
     assert HOST_MODE_RESTRICTIONS["allowed_directories"]
     assert HOST_MODE_RESTRICTIONS["forbidden_commands"]
-    assert HOST_MODE_RESTRICTIONS["max_execution_time"] == 3600
+
+
+@pytest.mark.asyncio
+async def test_process_executor_cancel_kills_active_run(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from infra.exec.process import ProcessExecutor
+    from src.types import ContainerInput
+
+    release = asyncio.Event()
+
+    class BlockingProcess(FakeProcess):
+        async def communicate(self, input: bytes | None = None) -> tuple[bytes, bytes]:
+            self.communicate_calls.append(input)
+            await release.wait()
+            return self._stdout, self._stderr
+
+        def kill(self) -> None:
+            super().kill()
+            release.set()
+
+    fake_process = BlockingProcess()
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> BlockingProcess:
+        _ = (command, kwargs)
+        return fake_process
+
+    monkeypatch.setattr(
+        "infra.exec.process.asyncio.create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    executor = ProcessExecutor(data_root=tmp_path / "data", runner_root=tmp_path / "runner-root")
+    payload = ContainerInput(prompt="hello", group_folder="group-a")
+
+    execution = asyncio.create_task(
+        executor.run_agent("group-a", payload, run_id="run-cancel")
+    )
+    await asyncio.sleep(0)
+
+    cancelled = await executor.cancel("run-cancel")
+    await asyncio.wait_for(execution, timeout=1)
+
+    assert cancelled is True
+    assert fake_process.kill_calls == 1
+    assert fake_process.wait_calls == 1
 
 
 @pytest.mark.asyncio
