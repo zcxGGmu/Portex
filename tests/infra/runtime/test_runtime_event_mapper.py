@@ -42,7 +42,7 @@ def test_map_raw_response_delta_to_token_delta() -> None:
     assert event.payload["delta"] == "hello"
 
 
-def test_map_raw_response_completed_to_run_completed() -> None:
+def test_map_raw_response_completed_is_ignored_in_favor_of_runtime_level_final_output() -> None:
     sdk_event = SimpleNamespace(
         type="raw_response_event",
         data=SimpleNamespace(type="response.completed"),
@@ -50,8 +50,7 @@ def test_map_raw_response_completed_to_run_completed() -> None:
 
     event = _map_sdk_event()(sdk_event, run_id="run-3")
 
-    assert event is not None
-    assert event.event_type == "run.completed"
+    assert event is None
 
 
 def test_map_raw_response_failed_to_run_failed() -> None:

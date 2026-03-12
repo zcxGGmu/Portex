@@ -13,8 +13,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 class FakeResult:
-    def __init__(self, events: list[object]) -> None:
+    def __init__(self, events: list[object], *, final_output: object = None) -> None:
         self._events = events
+        self.final_output = final_output
 
     async def stream_events(self):
         for event in self._events:
@@ -66,7 +67,12 @@ async def test_openai_runtime_maps_stream_events(monkeypatch: pytest.MonkeyPatch
                         type="raw_response_event",
                         data=SimpleNamespace(type="response.output_text.delta", delta="hello"),
                     ),
-                ]
+                    SimpleNamespace(
+                        type="raw_response_event",
+                        data=SimpleNamespace(type="response.completed"),
+                    ),
+                ],
+                final_output="hello world",
             )
 
     monkeypatch.setattr("infra.runtime.openai.Agent", FakeAgent)
@@ -85,9 +91,11 @@ async def test_openai_runtime_maps_stream_events(monkeypatch: pytest.MonkeyPatch
 
     assert captured["agent_name"] == "PortexAgent"
     assert captured["input"] == "hi"
-    assert len(events) == 2
+    assert len(events) == 3
     assert events[0].event_type == "run.started"
     assert events[1].event_type == "run.token.delta"
+    assert events[2].event_type == "run.completed"
+    assert events[2].payload["final_output"] == "hello world"
 
 
 @pytest.mark.asyncio
@@ -155,7 +163,12 @@ async def test_openai_runtime_cleans_up_stream_registry_after_completion(
                 type="raw_response_event",
                 data=SimpleNamespace(type="response.output_text.delta", delta="done"),
             ),
-        ]
+            SimpleNamespace(
+                type="raw_response_event",
+                data=SimpleNamespace(type="response.completed"),
+            ),
+        ],
+        final_output="done",
     )
 
     class FakeRunner:
@@ -178,5 +191,7 @@ async def test_openai_runtime_cleans_up_stream_registry_after_completion(
 
     events = [event async for event in runtime.run_streamed(request)]
 
-    assert len(events) == 2
+    assert len(events) == 3
     assert runtime._active_streamed_runs == {}
+    assert events[-1].event_type == "run.completed"
+    assert events[-1].payload["final_output"] == "done"

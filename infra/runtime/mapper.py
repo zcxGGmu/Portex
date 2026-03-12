@@ -31,11 +31,7 @@ def map_sdk_event(sdk_event: Any, *, run_id: str) -> RunEvent | None:
                 payload=_payload(delta=getattr(sdk_event.data, "delta", None)),
             )
         if raw_type == "response.completed":
-            return RunEvent(
-                event_type="run.completed",
-                run_id=run_id,
-                payload=_payload(status=raw_type),
-            )
+            return None
         if raw_type in {"response.failed", "response.incomplete"}:
             return RunEvent(
                 event_type="run.failed",
