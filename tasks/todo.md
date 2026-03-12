@@ -719,11 +719,17 @@
 - Start `M7.2` on the approved coordinator-first path: add one per-group execution coordinator, one backend-selection policy, and one shared submission contract for Web/IM/tasks without swallowing `M7.3` workspace-model work or `M7.4` operator surfaces.
 
 ## Checklist
-- [ ] Re-read the current execution-plane entrypoints and backend helpers
-- [ ] Write the `M7.2` design doc
-- [ ] Write the `M7.2` implementation plan doc
-- [ ] Commit the `M7.2` planning docs
+- [x] Re-read the current execution-plane entrypoints and backend helpers
+- [x] Write the `M7.2` design doc
+- [x] Write the `M7.2` implementation plan doc
+- [x] Commit the `M7.2` planning docs
 - [ ] Add failing tests for the coordinator/policy contract
 - [ ] Implement the first `M7.2` batch and verify it
 
 ## Review
+- Added `docs/plans/2026-03-12-m7-2-execution-plane-parity-design.md` and `docs/plans/2026-03-12-m7-2-execution-plane-parity.md` to lock the approved coordinator-first `M7.2` scope: one in-process execution coordinator, one backend policy, and one shared submission contract for Web/IM/tasks, while explicitly deferring workspace topology and operator UI.
+- Added `services/execution_coordinator.py`, `services/execution_policy.py`, and replaced the old `services/group_queue.py` placeholder with a compatibility alias to the real coordinator core.
+- Added `tests/services/test_execution_coordinator.py` and `tests/services/test_execution_policy.py`, covering per-group FIFO, different-group independence, session reuse, fresh session creation, queued and running cancellation, timeout, invalid mode failure, and missing-backend failure.
+- Hardened running cancellation so the coordinator records terminal `cancelled` state immediately, cancels the in-flight execution task, and only performs backend cancellation as a best-effort background action; also added minimal completed-run retention so coordinator-owned state does not grow without bound in the obvious happy path.
+- Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q`.
+- Session commits completed so far: `docs(plans): define M7.2 execution plane parity`, `feat(execution): add M7.2 coordinator core`, `fix(execution): harden coordinator cancellation`.
