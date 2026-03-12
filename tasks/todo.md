@@ -669,3 +669,23 @@
 - The chosen design keeps `M7.1` narrow on purpose: add a real dispatch service, add minimal channel ingestion adapters, add Telegram outbound delivery, replace the `/messages` placeholder, and add focused/integration coverage.
 - Explicitly deferred from `M7.1`: real per-group execution plane lifecycle (`M7.2`), final workspace/group topology (`M7.3`), richer operator surfaces (`M7.4`), and frontend product-surface expansion (`M7.5`).
 - Suggested future implementation order inside `M7.1`: dispatch service -> IM ingestion adapters -> real `/messages` dispatch -> integration coverage -> docs/handoff refresh.
+
+# Session Plan (2026-03-12) - M6.5.3 Docker Blocker Message Normalization
+
+## Goal
+- Keep work inside the formal `M6.5.3` scope by normalizing the Docker-missing blocker message exposed by `scripts/build_docker.py`, then refresh restart docs with the fresh evidence.
+
+## Checklist
+- [x] Re-read the current `M6.5.3` build wrapper, tests, and blocker notes
+- [x] Add or tighten the failing test for a stable missing-Docker error message
+- [x] Implement the minimal `scripts/build_docker.py` change to normalize the message
+- [x] Run focused verification for the build wrapper and static release-artifact slice
+- [x] Run the broader backend/frontend regression commands relevant to this milestone
+- [x] Update `docs/progress.md` with the new blocker evidence and result
+- [x] Commit if and only if this session completes an intended repository change cleanly
+
+## Review
+- Tightened `tests/scripts/test_build_docker.py` so the missing-Docker path now matches the real `subprocess.run()` failure shape (`FileNotFoundError(2, ..., "docker")`) instead of a synthetic message-only exception.
+- Normalized `scripts/build_docker.py` stderr for the missing CLI case to the stable operator-facing string `docker command not found`, while preserving the existing `127` exit code and the current `docker build` wrapper behavior.
+- Refreshed `docs/progress.md` so the newest `M6.5.3` evidence uses the normalized blocker wording and keeps the milestone in the honest state: repository path implemented, real Docker runtime verification still blocked by this host.
+- Verification ran fresh: `git diff --check`; `.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -v`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `test -f web/dist/index.html`; `docker version --format '{{.Client.Version}}|{{.Server.Version}}'`.

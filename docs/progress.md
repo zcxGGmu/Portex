@@ -153,6 +153,7 @@
 - `M6.5.3`（进行中）：新增 `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md` 与 `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`，将范围固定为“根级 release image 构建入口 + 前端现有产物链复用”，不扩成 GitHub Release、镜像推送或版本字符串同步。
 - `M6.5.3`（进行中）：新增根级 `Dockerfile`、`.dockerignore`，把 `scripts/build_docker.py` 从 placeholder 改为真实 `docker build` wrapper，并让 `Makefile` 同时支持 root release image 与 runner image 两条构建路径。
 - `M6.5.3`（进行中）：新增 `tests/scripts/test_build_docker.py`，并扩展 `tests/container/agent_runner/test_container_files.py`，把 root release-image path、`.dockerignore` 和 runner/root Docker scaffold 都锁进静态契约；当前 focused tests、全量后端回归、`ruff`、前端 `lint/build` 均已通过。
+- `M6.5.3` blocker follow-up：将 `tests/scripts/test_build_docker.py` 收紧为真实 `FileNotFoundError(2, ..., "docker")` 形态，并把 `scripts/build_docker.py` 缺失 Docker CLI 时的 stderr 统一为稳定文案 `docker command not found`，避免测试、脚本实际输出与 handoff 记录继续漂移。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -210,6 +211,9 @@
 
 ## 3. 最新验证证据
 
+- M6.5.3 blocker-message follow-up：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -v` -> `10 passed in 0.08s`
+- M6.5.3 blocker-message follow-up：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
+- M6.5.3 blocker-message follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 48 warnings in 17.25s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`; `docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `zsh:1: command not found: docker`
 - HappyClaw parity backlog docs check：`rg -n "M7\\.1|M7\\.2|M7\\.3|M7\\.4|M7\\.5|M7\\.6|Proposed Milestones" tasks/todo.md` -> milestone tree present
 - M7.1 planning docs check：`rg -n "M7\\.1 Main Runtime Chain Parity|Task 1: Lock the dispatch-service contract|Session Plan \\(2026-03-11\\) - M7\\.1 Main Runtime Chain Planning" docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md tasks/todo.md` -> design/plan/session note all present
 - Latest planning commit before this handoff：`git log --oneline --decorate -1` -> `ededce2 (HEAD -> main) docs(plans): define M7.1 runtime chain parity`

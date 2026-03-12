@@ -83,7 +83,7 @@ def test_main_returns_127_when_docker_command_is_missing(monkeypatch) -> None:
 
     def fake_run(command, *, cwd, check):
         _ = (command, cwd, check)
-        raise FileNotFoundError("docker command not found")
+        raise FileNotFoundError(2, "No such file or directory", "docker")
 
     monkeypatch.setattr(build_docker.subprocess, "run", fake_run)
     stderr = io.StringIO()
@@ -91,4 +91,4 @@ def test_main_returns_127_when_docker_command_is_missing(monkeypatch) -> None:
     exit_code = build_docker.main(["--tag", "portex:v1.0.0"], stderr=stderr)
 
     assert exit_code == 127
-    assert "docker command not found" in stderr.getvalue()
+    assert stderr.getvalue().strip() == "docker command not found"

@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IMAGE_TAG = "portex:v1.0.0"
 DEFAULT_DOCKERFILE = "Dockerfile"
 DEFAULT_CONTEXT = "."
+DOCKER_COMMAND_MISSING_MESSAGE = "docker command not found"
 
 
 def build_docker_command(
@@ -60,8 +61,8 @@ def main(
             cwd=PROJECT_ROOT,
             check=False,
         )
-    except FileNotFoundError as exc:
-        print(str(exc), file=stderr)
+    except FileNotFoundError:
+        print(DOCKER_COMMAND_MISSING_MESSAGE, file=stderr)
         return 127
 
     return completed.returncode
