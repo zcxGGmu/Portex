@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from pathlib import Path
 import sys
 from uuid import UUID
@@ -83,3 +84,52 @@ async def test_store_message_supports_outbound_flag(db_session: AsyncSession) ->
     persisted = await db_session.get(_message_model(), message.id)
     assert persisted is not None
     assert persisted.is_from_me is True
+
+
+@pytest.mark.asyncio
+async def test_store_message_serializes_dispatch_metadata_into_attachments(
+    db_session: AsyncSession,
+) -> None:
+    from services.message_service import store_message
+
+    message = await store_message(
+        db=db_session,
+        chat_jid="telegram:chat-1",
+        sender="assistant",
+        content="response",
+        is_from_me=True,
+        channel="telegram",
+        group_folder="group-1",
+        run_id="run-123",
+        external_message_id="external-123",
+    )
+
+    assert message.attachments == json.dumps(
+        {
+            "channel": "telegram",
+            "external_message_id": "external-123",
+            "group_folder": "group-1",
+            "run_id": "run-123",
+        },
+        sort_keys=True,
+    )
+
+    persisted = await db_session.get(_message_model(), message.id)
+    assert persisted is not None
+    assert persisted.attachments == message.attachments
+
+
+@pytest.mark.asyncio
+async def test_store_message_keeps_attachments_empty_when_no_metadata_is_provided(
+    db_session: AsyncSession,
+) -> None:
+    from services.message_service import store_message
+
+    message = await store_message(
+        db=db_session,
+        chat_jid="group-demo",
+        sender="alice",
+        content="hello world",
+    )
+
+    assert message.attachments is None
