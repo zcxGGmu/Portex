@@ -1,0 +1,165 @@
+"""Message dispatch orchestration for M7.1."""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Protocol
+from uuid import uuid4
+
+from domain.schemas import UnifiedMessage
+from infra.runtime.adapter import RunResult
+from services.agent_trigger import RuntimeFactory, SessionIdFactory, run_agent_execution
+
+DEFAULT_ASSISTANT_SENDER_ID = "portex"
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+@dataclass(slots=True)
+class ResolvedMessageTarget:
+    group_folder: str
+    chat_jid: str
+
+
+@dataclass(slots=True)
+class DispatchResult:
+    run_id: str
+    status: str
+    group_folder: str
+    inbound_message_id: str
+    outbound_message_id: str | None = None
+    final_output: str | None = None
+    error: str | None = None
+
+
+class MessageDispatchError(RuntimeError):
+    """Raised when a normalized message cannot be dispatched."""
+
+
+class MessageRouterProtocol(Protocol):
+    async def route_message(self, message: UnifiedMessage) -> None:
+        ...
+
+
+StoreMessageCallable = Callable[..., Awaitable[Any]]
+TargetResolver = Callable[[UnifiedMessage], ResolvedMessageTarget]
+RuntimeTrigger = Callable[..., Awaitable[RunResult]]
+
+
+class MessageDispatchService:
+    """Dispatch normalized inbound messages through the current runtime path."""
+
+    def __init__(
+        self,
+        *,
+        target_resolver: TargetResolver,
+        runtime_trigger: RuntimeTrigger = run_agent_execution,
+        runtime_factory: RuntimeFactory | None = None,
+        session_id_factory: SessionIdFactory | None = None,
+        store_message: StoreMessageCallable,
+        message_router: MessageRouterProtocol,
+        assistant_sender_id: str = DEFAULT_ASSISTANT_SENDER_ID,
+    ) -> None:
+        self._target_resolver = target_resolver
+        self._runtime_trigger = runtime_trigger
+        self._runtime_factory = runtime_factory or self._missing_runtime_factory
+        self._session_id_factory = session_id_factory
+        self._store_message = store_message
+        self._message_router = message_router
+        self._assistant_sender_id = assistant_sender_id
+
+    async def dispatch_inbound_message(self, message: UnifiedMessage) -> DispatchResult:
+        if message.content.strip() == "":
+            raise MessageDispatchError("message content cannot be empty")
+
+        target = self._resolve_target(message)
+        run_id = uuid4().hex
+
+        inbound_record = await self._store_message(
+            chat_jid=target.chat_jid,
+            sender=message.sender_id,
+            content=message.content,
+            is_from_me=False,
+            channel=message.channel,
+            group_folder=target.group_folder,
+            run_id=run_id,
+            external_message_id=message.message_id,
+        )
+
+        run_result = await self._runtime_trigger(
+            group_folder=target.group_folder,
+            message=message.content,
+            user_id=message.sender_id,
+            runtime_factory=self._runtime_factory,
+            session_id_factory=self._session_id_factory,
+            request_id=run_id,
+        )
+
+        if run_result.status != "completed":
+            return DispatchResult(
+                run_id=run_result.run_id,
+                status=run_result.status,
+                group_folder=target.group_folder,
+                inbound_message_id=inbound_record.id,
+                final_output=run_result.final_output,
+                error=run_result.error,
+            )
+
+        if run_result.final_output is None or run_result.final_output.strip() == "":
+            raise MessageDispatchError("runtime completed without final output")
+
+        outbound_message = UnifiedMessage(
+            channel=message.channel,
+            chat_jid=target.chat_jid,
+            sender_id=self._assistant_sender_id,
+            group_folder=target.group_folder,
+            content=run_result.final_output,
+            message_id=f"out-{run_result.run_id}",
+            timestamp=_utcnow(),
+        )
+        await self._message_router.route_message(outbound_message)
+
+        outbound_record = await self._store_message(
+            chat_jid=target.chat_jid,
+            sender=self._assistant_sender_id,
+            content=run_result.final_output,
+            is_from_me=True,
+            channel=message.channel,
+            group_folder=target.group_folder,
+            run_id=run_result.run_id,
+            external_message_id=outbound_message.message_id,
+        )
+
+        return DispatchResult(
+            run_id=run_result.run_id,
+            status=run_result.status,
+            group_folder=target.group_folder,
+            inbound_message_id=inbound_record.id,
+            outbound_message_id=outbound_record.id,
+            final_output=run_result.final_output,
+        )
+
+    def _resolve_target(self, message: UnifiedMessage) -> ResolvedMessageTarget:
+        if message.group_folder is not None:
+            return ResolvedMessageTarget(
+                group_folder=message.group_folder,
+                chat_jid=message.chat_jid,
+            )
+        return self._target_resolver(message)
+
+    def _missing_runtime_factory(self, group_folder: str):
+        _ = group_folder
+        raise MessageDispatchError("runtime_factory is required for dispatch")
+
+
+__all__ = [
+    "DEFAULT_ASSISTANT_SENDER_ID",
+    "DispatchResult",
+    "MessageDispatchError",
+    "MessageDispatchService",
+    "ResolvedMessageTarget",
+]

@@ -24,8 +24,11 @@ class RunEvent:
 
 @dataclass(slots=True)
 class RunResult:
+    run_id: str
     status: str
-    final_output: str
+    final_output: str | None = None
+    error: str | None = None
+    timeout_ms: int | None = None
 
 
 @runtime_checkable

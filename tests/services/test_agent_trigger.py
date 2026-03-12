@@ -38,6 +38,80 @@ class BlockingResult:
 
 
 @pytest.mark.asyncio
+async def test_run_agent_execution_returns_structured_result_for_completed_run() -> None:
+    from infra.runtime.adapter import RunEvent, RunRequest
+    from services.agent_trigger import run_agent_execution
+
+    class FakeRuntime:
+        def __init__(self) -> None:
+            self.received_requests: list[RunRequest] = []
+
+        async def run_streamed(self, request: RunRequest):
+            self.received_requests.append(request)
+            yield RunEvent(event_type="run.started", run_id=request.request_id)
+            yield RunEvent(
+                event_type="run.completed",
+                run_id=request.request_id,
+                payload={"final_output": "done"},
+            )
+
+        async def cancel(self, run_id: str) -> None:
+            _ = run_id
+
+    runtime = FakeRuntime()
+
+    result = await run_agent_execution(
+        group_folder="group-a",
+        message="hello",
+        user_id="user-a",
+        runtime_factory=lambda _group: runtime,
+        request_id="run-structured",
+    )
+
+    assert result.run_id == "run-structured"
+    assert result.status == "completed"
+    assert result.final_output == "done"
+    assert result.error is None
+
+
+@pytest.mark.asyncio
+async def test_run_agent_execution_returns_structured_timeout_result() -> None:
+    from infra.runtime.adapter import RunEvent, RunRequest
+    from services.agent_trigger import run_agent_execution
+
+    class SlowRuntime:
+        def __init__(self) -> None:
+            self.received_requests: list[RunRequest] = []
+            self.cancelled_run_ids: list[str] = []
+
+        async def run_streamed(self, request: RunRequest):
+            self.received_requests.append(request)
+            yield RunEvent(event_type="run.started", run_id=request.request_id)
+            await asyncio.sleep(0.05)
+            yield RunEvent(event_type="run.completed", run_id=request.request_id)
+
+        async def cancel(self, run_id: str) -> None:
+            self.cancelled_run_ids.append(run_id)
+
+    runtime = SlowRuntime()
+
+    result = await run_agent_execution(
+        group_folder="group-timeout",
+        message="hello timeout",
+        user_id="user-timeout",
+        runtime_factory=lambda _group: runtime,
+        request_id="run-timeout-structured",
+        timeout_ms=10,
+    )
+
+    assert result.run_id == "run-timeout-structured"
+    assert result.status == "timeout"
+    assert result.final_output is None
+    assert result.timeout_ms == 10
+    assert runtime.cancelled_run_ids == ["run-timeout-structured"]
+
+
+@pytest.mark.asyncio
 async def test_trigger_agent_execution_streams_runtime_events() -> None:
     from infra.runtime.adapter import RunEvent, RunRequest
     from services.agent_trigger import trigger_agent_execution
