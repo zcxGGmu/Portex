@@ -152,6 +152,33 @@ class TelegramClient(IMClient):
             return text
         return None
 
+    async def send_text_message(self, chat_id: str, text: str) -> dict[str, object]:
+        """Send a minimal text reply through the Telegram Bot API."""
+        client = self.http_client or httpx.AsyncClient()
+        close_client = self.http_client is None
+        try:
+            try:
+                response = await client.post(
+                    f"{self.base_url.rstrip('/')}/bot{self.bot_token}/sendMessage",
+                    json={
+                        "chat_id": chat_id,
+                        "text": self.markdown_to_html(text),
+                        "parse_mode": "HTML",
+                    },
+                )
+                payload = response.json()
+            except Exception as exc:  # pragma: no cover - exercised via fake clients in tests
+                raise TelegramClientError(str(exc) or "failed to send Telegram message") from exc
+        finally:
+            if close_client:
+                await client.aclose()
+
+        if not isinstance(payload, dict):
+            raise TelegramClientError("invalid Telegram response payload")
+        if payload.get("ok") is not True:
+            raise TelegramClientError(str(payload.get("description", "failed to send Telegram message")))
+        return payload
+
     def send_message(self, channel: str, text: str) -> bool:
         """Guard the legacy IM protocol until Telegram send support exists."""
         _ = (channel, text)

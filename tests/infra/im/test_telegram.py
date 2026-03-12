@@ -38,6 +38,20 @@ class _RaisingAsyncClient:
         _ = (url, params)
         raise self._exc
 
+    async def post(self, url: str, json: dict[str, object]) -> _FakeResponse:
+        _ = (url, json)
+        raise self._exc
+
+
+class _FakeSendAsyncClient:
+    def __init__(self, payload: object) -> None:
+        self._payload = payload
+        self.calls: list[tuple[str, dict[str, object]]] = []
+
+    async def post(self, url: str, json: dict[str, object]) -> _FakeResponse:
+        self.calls.append((url, json))
+        return _FakeResponse(self._payload)
+
 
 @pytest.mark.asyncio
 async def test_get_updates_returns_result_and_uses_expected_request_shape() -> None:
@@ -271,6 +285,58 @@ def test_handle_update_rejects_boolean_identifiers() -> None:
                 },
             }
         )
+
+
+@pytest.mark.asyncio
+async def test_send_text_message_posts_expected_request_shape() -> None:
+    from infra.im.telegram import TelegramClient
+
+    fake_client = _FakeSendAsyncClient(
+        {
+            "ok": True,
+            "result": {
+                "message_id": 501,
+            },
+        }
+    )
+    client = TelegramClient(bot_token="bot-token", http_client=fake_client)
+
+    result = await client.send_text_message(chat_id="-3001", text="**hello**")
+
+    assert result == {
+        "ok": True,
+        "result": {
+            "message_id": 501,
+        },
+    }
+    assert fake_client.calls == [
+        (
+            "https://api.telegram.org/botbot-token/sendMessage",
+            {
+                "chat_id": "-3001",
+                "text": "<b>hello</b>",
+                "parse_mode": "HTML",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_send_text_message_raises_for_error_payload() -> None:
+    from infra.im.telegram import TelegramClient, TelegramClientError
+
+    client = TelegramClient(
+        bot_token="bot-token",
+        http_client=_FakeSendAsyncClient(
+            {
+                "ok": False,
+                "description": "chat not found",
+            }
+        ),
+    )
+
+    with pytest.raises(TelegramClientError, match="chat not found"):
+        await client.send_text_message(chat_id="-3001", text="hello")
 
 
 def test_send_message_raises_until_telegram_send_support_exists() -> None:

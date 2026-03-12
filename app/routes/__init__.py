@@ -5,6 +5,7 @@ __all__ = [
     "auth",
     "users",
     "groups",
+    "im",
     "messages",
     "tasks",
     "admin",
