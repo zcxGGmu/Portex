@@ -183,6 +183,10 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `b92cf71` `docs(handoff): record M7.2 coordinator core`
+  - `2de078e` `fix(execution): harden coordinator cancellation`
+  - `718aca5` `feat(execution): add M7.2 coordinator core`
+  - `8e5ea65` `docs(plans): define M7.2 execution plane parity`
   - `ca04ebb` `docs(plans): note M7.1 integration shortcut`
   - `e8699b9` `test(messages): add M7.1 integration coverage`
   - `a6c4e4e` `feat(messages): replace message placeholder route`
@@ -236,6 +240,7 @@
 
 - M7.2 core verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py -q` -> `15 passed in 0.13s`
 - M7.2 core regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `20 passed, 1 warning in 2.88s`
+- M7.2 core commit chain：`git log --oneline --decorate -4` -> `b92cf71 docs(handoff): record M7.2 coordinator core`, `2de078e fix(execution): harden coordinator cancellation`, `718aca5 feat(execution): add M7.2 coordinator core`, `8e5ea65 docs(plans): define M7.2 execution plane parity`
 - M7.1 focused/runtime+dispatch：`.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `15 passed, 1 warning in 2.97s`
 - M7.1 focused/IM adapters：`.venv/bin/pytest -o addopts='' tests/app/routes/test_im_routes.py tests/infra/im/test_telegram.py tests/infra/im/test_feishu.py -q` -> `41 passed, 1 warning in 3.34s`
 - M7.1 focused/message routes：`.venv/bin/pytest -o addopts='' tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py -q` -> `46 passed, 27 warnings in 9.35s`

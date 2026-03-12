@@ -723,8 +723,8 @@
 - [x] Write the `M7.2` design doc
 - [x] Write the `M7.2` implementation plan doc
 - [x] Commit the `M7.2` planning docs
-- [ ] Add failing tests for the coordinator/policy contract
-- [ ] Implement the first `M7.2` batch and verify it
+- [x] Add failing tests for the coordinator/policy contract
+- [x] Implement the first `M7.2` batch and verify it
 
 ## Review
 - Added `docs/plans/2026-03-12-m7-2-execution-plane-parity-design.md` and `docs/plans/2026-03-12-m7-2-execution-plane-parity.md` to lock the approved coordinator-first `M7.2` scope: one in-process execution coordinator, one backend policy, and one shared submission contract for Web/IM/tasks, while explicitly deferring workspace topology and operator UI.
