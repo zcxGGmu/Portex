@@ -670,10 +670,10 @@
 - Explicitly deferred from `M7.1`: real per-group execution plane lifecycle (`M7.2`), final workspace/group topology (`M7.3`), richer operator surfaces (`M7.4`), and frontend product-surface expansion (`M7.5`).
 - Suggested future implementation order inside `M7.1`: dispatch service -> IM ingestion adapters -> real `/messages` dispatch -> integration coverage -> docs/handoff refresh.
 
-# Session Plan (2026-03-12) - M6.5.3 Docker Blocker Message Normalization
+# Session Plan (2026-03-12) - M6.5.3 Release Artifact Completion
 
 ## Goal
-- Keep work inside the formal `M6.5.3` scope by normalizing the Docker-missing blocker message exposed by `scripts/build_docker.py`, then refresh restart docs with the fresh evidence.
+- Close formal `M6.5.3` by stabilizing the Docker-missing blocker path, independently re-verifying the real release-image build on the current host, and refreshing restart docs with the final evidence.
 
 ## Checklist
 - [x] Re-read the current `M6.5.3` build wrapper, tests, and blocker notes
@@ -681,11 +681,13 @@
 - [x] Implement the minimal `scripts/build_docker.py` change to normalize the message
 - [x] Run focused verification for the build wrapper and static release-artifact slice
 - [x] Run the broader backend/frontend regression commands relevant to this milestone
-- [x] Update `docs/progress.md` with the new blocker evidence and result
-- [x] Commit if and only if this session completes an intended repository change cleanly
+- [x] Independently verify the current host rootless Docker path and fresh release-image build
+- [x] Update `docs/TODO.md`, `docs/progress.md`, `AGENTS.md`, `README.md`, `README.zh-CN.md`, and `docs/deployment.md` with the final `M6.5.3` state
+- [x] Commit the milestone-completion result cleanly
 
 ## Review
-- Tightened `tests/scripts/test_build_docker.py` so the missing-Docker path now matches the real `subprocess.run()` failure shape (`FileNotFoundError(2, ..., "docker")`) instead of a synthetic message-only exception.
-- Normalized `scripts/build_docker.py` stderr for the missing CLI case to the stable operator-facing string `docker command not found`, while preserving the existing `127` exit code and the current `docker build` wrapper behavior.
-- Refreshed `docs/progress.md` so the newest `M6.5.3` evidence uses the normalized blocker wording and keeps the milestone in the honest state: repository path implemented, real Docker runtime verification still blocked by this host.
-- Verification ran fresh: `git diff --check`; `.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -v`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `test -f web/dist/index.html`; `docker version --format '{{.Client.Version}}|{{.Server.Version}}'`.
+- Tightened `tests/scripts/test_build_docker.py` so the missing-Docker path now matches the real `subprocess.run()` failure shape (`FileNotFoundError(2, ..., "docker")`) instead of a synthetic message-only exception, and normalized `scripts/build_docker.py` stderr to the stable operator-facing string `docker command not found` while preserving the existing `127` exit code.
+- Independent verification overturned the old blocker assumption: the current host already has a working user-space rootless Docker path under `~/bin`, with `DOCKER_HOST=unix:///run/user/1000/docker.sock`; fresh `docker version`, `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`, `docker image ls --no-trunc`, and `docker image inspect` all succeeded.
+- Refreshed `docs/TODO.md`, `docs/progress.md`, `AGENTS.md`, `README.md`, `README.zh-CN.md`, and `docs/deployment.md` so the repository now consistently records `M6.5.3` and `M6` as complete, while keeping `M7.1` as a user-gated next step rather than an automatic continuation.
+- Final verification ran fresh after the doc sync: `git diff --check`; `.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `test -f web/dist/index.html`; `PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker version --format '{{.Client.Version}}|{{.Server.Version}}'`; `PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock .venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`; `PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
+- Commit completed in this session: `docs(release): complete M6.5.3 artifact verification`.

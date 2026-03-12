@@ -167,7 +167,7 @@ Important current boundaries:
 - Task execution state and logs do not yet provide durable process-restart recovery.
 - The IM delivery chain and WebSocket run flow are still intentionally incremental.
 
-## Docker Release Image And Compose Draft (Not Yet Verified)
+## Docker Release Image (Verified) And Compose Draft
 
 The repository now includes a root-level release-image build path:
 
@@ -181,9 +181,18 @@ This wraps the same root build intent as:
 docker build -t portex:v1.0.0 .
 ```
 
+On the current host, the verified repro path is:
+
+```bash
+export PATH="$HOME/bin:$PATH"
+export DOCKER_HOST=unix:///run/user/1000/docker.sock
+.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
+docker image inspect portex:v1.0.0 --format '{{.Id}}'
+```
+
 Current boundaries still matter:
 
-- the current environment does not have Docker daemon verification evidence
+- the verified Docker path currently depends on a user-space rootless Docker toolchain under `~/bin`
 - the root `Dockerfile` covers the backend runtime image only
 - the frontend production artifact is still produced separately via `cd web && npm run build`
 - `container/agent-runner/Dockerfile` remains the runner-specific image definition, not the full release image
@@ -226,7 +235,7 @@ Treat this as a draft to adapt, not as a copy-paste production recipe.
 
 ## Current Deployment Boundaries
 
-- No verified Docker or Docker Compose smoke test exists in the current environment.
+- The root release image is verified on the current host via user-space rootless Docker, but Docker Compose still has no verified smoke test in this environment.
 - No documented reverse proxy, TLS, systemd, or container-orchestration setup exists yet.
 - The GitHub Actions workflow has been validated with local equivalent commands, but remote runner execution evidence is still absent from this environment.
 - FastAPI `/docs` now covers the HTTP API only; the WebSocket contract is still outside OpenAPI and must be understood from code/tests for now.

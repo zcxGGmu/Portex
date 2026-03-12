@@ -30,12 +30,13 @@
 - `M6.4.3` is complete (Security headers).
 - `M6.5.1` is complete (Version planning).
 - `M6.5.2` is complete (Release tag creation).
-- Current starting point is `M6.5.3` (Release artifact building).
-- First release tag is `v1.0.0`; package/runtime version intentionally remains `0.1.0` until `M6.5.3+`.
-- The repository-root release-image build path now exists (`Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`), but `M6.5.3` is still blocked on fresh Docker-runtime verification because the current host still has no installed Docker CLI/daemon.
-- Latest blocker detail: Codex cannot self-install Docker in this environment because non-interactive `sudo` still requires a password, and the machine also lacks the documented rootless prerequisites (`newuidmap/newgidmap`, `/etc/subuid`, `/etc/subgid`, `slirp4netns`/`rootlesskit`/`fuse-overlayfs`).
+- `M6.5.3` is complete (Release artifact building).
+- `M6` is complete (`M6.1.1` ~ `M6.5.3`).
+- First release tag is `v1.0.0`; package/runtime version intentionally remains `0.1.0` until a later explicit sync decision.
+- The repository-root release-image build path is now fully verified on the current host. Repro path: export `PATH="$HOME/bin:$PATH"` and `DOCKER_HOST=unix:///run/user/1000/docker.sock`, then run `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` and `docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
 - Proposed post-`M6` parity milestones `M7.1` ~ `M7.6` now live in `tasks/todo.md`, but `docs/TODO.md` remains the formal source of truth and still stops at `M6.5.3`.
 - `M7.1` planning docs now exist (`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`, `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`) for the case where the user explicitly decides to defer the Docker blocker and move on to runtime-chain parity work.
+- The formal `M6` roadmap is exhausted. Do not start `M7.1` unless the user explicitly chooses to move into parity work, or the formal plan source is intentionally promoted past `M6.5.3`.
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
 ## Project Structure & Module Organization
@@ -65,8 +66,8 @@
 - If resuming after `M6.4.1`, also skim `scripts/security_scan.py`, `tests/scripts/test_security_scan.py`, and `.github/workflows/test.yml` because `M6.4.2` should build on the current repo-local static scan chain instead of replacing it accidentally.
 - If resuming after `M6.4.2`, also skim `scripts/dependency_audit.py`, `tests/scripts/test_dependency_audit.py`, `pyproject.toml`, and `.github/workflows/test.yml` because `M6.4.3` should preserve both the current `pip-audit` chain and the explicit `ecdsa/CVE-2024-23342` ignore rationale.
 - If resuming after `M6.4.3`, also skim `app/middleware/security.py`, `app/main.py`, `tests/app/routes/test_api_routes.py`, and `tests/integration/test_api.py` because the current HTTP security-header contract now lives in those files and later phases should not regress it accidentally.
-- If resuming during `M6.5.3`, also skim `docs/plans/2026-03-11-m6-5-1-version-planning-design.md`, `docs/plans/2026-03-11-m6-5-1-version-planning.md`, `docs/plans/2026-03-11-m6-5-2-release-tag-design.md`, `docs/plans/2026-03-11-m6-5-2-release-tag.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`, `Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`, `docs/deployment.md`, `tests/scripts/test_build_docker.py`, and `tests/container/agent_runner/test_container_files.py` because the first release tag is `v1.0.0`, the repository-root image build path now exists, and the remaining blocker is still fresh Docker verification on a machine with Docker actually available.
-- If resuming during `M6.5.3`, check `docs/progress.md` for the latest environment notes before attempting installation work; the current blocker is not just “missing `docker`”, but also the inability to use non-interactive `sudo` plus missing rootless Docker prerequisites on this host.
+- If resuming after `M6.5.3`, also skim `docs/plans/2026-03-11-m6-5-1-version-planning-design.md`, `docs/plans/2026-03-11-m6-5-1-version-planning.md`, `docs/plans/2026-03-11-m6-5-2-release-tag-design.md`, `docs/plans/2026-03-11-m6-5-2-release-tag.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`, `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`, `Dockerfile`, `.dockerignore`, `scripts/build_docker.py`, `Makefile`, `docs/deployment.md`, `tests/scripts/test_build_docker.py`, and `tests/container/agent_runner/test_container_files.py` because the first release tag is `v1.0.0`, the repository-root image build path is verified, and future work should not accidentally regress the release-artifact contract.
+- If you need to reproduce the current host-side Docker verification, check `docs/progress.md` first and export `PATH="$HOME/bin:$PATH"` plus `DOCKER_HOST=unix:///run/user/1000/docker.sock` before running release-image commands.
 - If the user explicitly chooses to defer `M6.5.3` runtime verification and move on to parity work, also skim `tasks/todo.md`, `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`, and `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md` before editing anything; those docs lock the current `M7.1` scope so it does not accidentally swallow `M7.2` or `M7.3`.
 
 ## Build, Test, and Development Commands
@@ -89,7 +90,7 @@
 - `.venv/bin/pytest tests/ -v --cov`: run the current backend CI-equivalent test command with coverage.
 - `.venv/bin/python scripts/security_scan.py`: run the repository-local backend security scan (Ruff `S` rules on runtime code).
 - `.venv/bin/python scripts/dependency_audit.py`: run the repository-local backend dependency audit (`pip-audit` on the Python project).
-- `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`: run the repository-root release-image build entrypoint (real Docker verification still depends on local Docker availability).
+- `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`: run the repository-root release-image build entrypoint. On the current host, export `PATH="$HOME/bin:$PATH"` and `DOCKER_HOST=unix:///run/user/1000/docker.sock` to reuse the verified rootless Docker daemon.
 - `.venv/bin/ruff check .`: lint.
 - `cd web && npm ci`: install frontend dependencies from the committed lockfile.
 - `cd web && npm run lint`: frontend lint.

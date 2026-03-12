@@ -62,7 +62,9 @@
 - `M6.4.3` 已完成（安全头）。
 - `M6.5.1` 已完成（版本规划）。
 - `M6.5.2` 已完成（创建发布标签）。
-- 当前起点：`M6.5.3`（构建发布产物）。
+- `M6.5.3` 已完成（构建发布产物）。
+- `M6` 已完成（`M6.1` ~ `M6.5`）。
+- 当前起点：正式 `docs/TODO.md` 已执行到末尾；下一条真实开发入口需由用户明确决定是否进入 `M7.1` parity backlog。
 
 ---
 
@@ -150,10 +152,12 @@
 - `M6.5.1`：明确首个正式发布标签目标为 `v1.0.0`，并规定 `v` 前缀只用于 git tag / release label；当前 `pyproject.toml`、包版本和运行时 API 响应继续保持 `0.1.0`，等 `M6.5.2` / `M6.5.3` 真正进入发布执行阶段再统一同步。
 - `M6.5.2`：新增 `docs/plans/2026-03-11-m6-5-2-release-tag-design.md` 与 `docs/plans/2026-03-11-m6-5-2-release-tag.md`，把本阶段范围固定为“release tag 执行 + handoff 推进”，不提前进入 `M6.5.3` 的构建产物工作。
 - `M6.5.2`：创建本地 annotated tag `v1.0.0`，当前指向提交 `dba45f3`（`docs(release): complete M6.5.2 release tag`），并确认 `origin` 也已暴露 `refs/tags/v1.0.0` 与对应的解引用 commit。
-- `M6.5.3`（进行中）：新增 `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md` 与 `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`，将范围固定为“根级 release image 构建入口 + 前端现有产物链复用”，不扩成 GitHub Release、镜像推送或版本字符串同步。
-- `M6.5.3`（进行中）：新增根级 `Dockerfile`、`.dockerignore`，把 `scripts/build_docker.py` 从 placeholder 改为真实 `docker build` wrapper，并让 `Makefile` 同时支持 root release image 与 runner image 两条构建路径。
-- `M6.5.3`（进行中）：新增 `tests/scripts/test_build_docker.py`，并扩展 `tests/container/agent_runner/test_container_files.py`，把 root release-image path、`.dockerignore` 和 runner/root Docker scaffold 都锁进静态契约；当前 focused tests、全量后端回归、`ruff`、前端 `lint/build` 均已通过。
+- `M6.5.3`：新增 `docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md` 与 `docs/plans/2026-03-11-m6-5-3-release-artifacts.md`，将范围固定为“根级 release image 构建入口 + 前端现有产物链复用”，不扩成 GitHub Release、镜像推送或版本字符串同步。
+- `M6.5.3`：新增根级 `Dockerfile`、`.dockerignore`，把 `scripts/build_docker.py` 从 placeholder 改为真实 `docker build` wrapper，并让 `Makefile` 同时支持 root release image 与 runner image 两条构建路径。
+- `M6.5.3`：新增 `tests/scripts/test_build_docker.py`，并扩展 `tests/container/agent_runner/test_container_files.py`，把 root release-image path、`.dockerignore` 和 runner/root Docker scaffold 都锁进静态契约；当前 focused tests、全量后端回归、`ruff`、前端 `lint/build` 均已通过。
 - `M6.5.3` blocker follow-up：将 `tests/scripts/test_build_docker.py` 收紧为真实 `FileNotFoundError(2, ..., "docker")` 形态，并把 `scripts/build_docker.py` 缺失 Docker CLI 时的 stderr 统一为稳定文案 `docker command not found`，避免测试、脚本实际输出与 handoff 记录继续漂移。
+- `M6.5.3` final verification：独立复验确认当前主机可通过用户态 rootless Docker 完成真实发布镜像构建；fresh `docker version`、`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`、`docker image inspect portex:v1.0.0 --format '{{.Id}}'` 与 `cd web && npm run build` 已全部通过。
+- `M6.5.3` final verification：当前可复现路径为 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`；fresh root release image 当前为 `sha256:5f9f0625c0e66bbae47ede13473ed1dae5fd5cb0ac474290d053f18869494742`。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -164,8 +168,8 @@
 - README logo redesign：新增 `docs/plans/2026-03-11-portex-logo-redesign-design.md` 与 `docs/plans/2026-03-11-portex-logo-redesign.md`，把这次 README logo 改版固定为“参考图风格的横向 crab mascot + PORTEX wordmark lockup”，仍复用同一个共享 SVG 资源路径。
 - README logo redesign：将 `assets/portex-crab-logo.svg` 从 `512x512` 几何 portal crab 重绘为横向 `PORTEX` lockup，双语 README 顶部图片宽度同步更新为 `560`，共享资源路径保持 `assets/portex-crab-logo.svg` 不变。
 - README logo redesign：沿用 `tests/container/agent_runner/test_container_files.py` 锁定新的 README/logo 合同（`width="560"`、`viewBox="0 0 1800 420"`），并确认 redesign focused 验证、`M6.5.3` focused tests、全量后端回归与 `ruff` 全部恢复绿色。
-- M6.5.3 handoff follow-up：补记当前 Docker unblock 的环境事实，确认本机仍未安装 Docker 包，Codex 也不能复用交互式 `sudo` 缓存；当前 `M6.5.3` 依旧停留在“release build path 已就位，但真实容器构建验收仍受宿主环境阻塞”的状态。
-- M6.5.3 handoff follow-up：确认 rootless Docker 也不是现成退路，当前机器缺少 `newuidmap/newgidmap`、`/etc/subuid`、`/etc/subgid`、`slirp4netns/rootlesskit/fuse-overlayfs` 等官方前置条件。
+- M6.5.3 handoff follow-up：此前记录的“当前主机无 Docker / rootless 不可行”结论已被 fresh 复验推翻；当前用户目录下的 `~/bin/docker` 与 `~/bin/dockerd-rootless-setuptool.sh` 已可用，且 `dockerd-rootless-setuptool.sh check` 返回 `Requirements are satisfied`。
+- M6.5.3 handoff follow-up：当前主机的 rootless Docker daemon 通过 `unix:///run/user/1000/docker.sock` 可用；后续重启若要复现 release build，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，无需再重复走 apt 安装排查。
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
@@ -211,6 +215,12 @@
 
 ## 3. 最新验证证据
 
+- M6.5.3 final verification：`ls -l "$HOME/bin/docker" "$HOME/bin/dockerd-rootless-setuptool.sh"` -> both files present under `/home/zq/bin`
+- M6.5.3 final verification：`PATH="$HOME/bin:$PATH" "$HOME/bin/dockerd-rootless-setuptool.sh" check` -> `Requirements are satisfied`
+- M6.5.3 final verification：`PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `29.3.0|29.3.0`
+- M6.5.3 final verification：`PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock .venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `Successfully built 5f9f0625c0e6`, `Successfully tagged portex:v1.0.0`
+- M6.5.3 final verification：`PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker image ls --no-trunc portex:v1.0.0` -> `sha256:5f9f0625c0e66bbae47ede13473ed1dae5fd5cb0ac474290d053f18869494742`
+- M6.5.3 final verification：`PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker image inspect portex:v1.0.0 --format '{{.Id}}'` -> `sha256:5f9f0625c0e66bbae47ede13473ed1dae5fd5cb0ac474290d053f18869494742`
 - M6.5.3 blocker-message follow-up：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -v` -> `10 passed in 0.08s`
 - M6.5.3 blocker-message follow-up：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
 - M6.5.3 blocker-message follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `310 passed, 48 warnings in 17.25s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`; `docker version --format '{{.Client.Version}}|{{.Server.Version}}'` -> `zsh:1: command not found: docker`
@@ -327,11 +337,10 @@
 - `M6.4.3` 当前不包含前端包审计、secret scanning、CodeQL、Dependabot、CSP 或 HSTS；这些能力仍留给后续阶段按需单独设计。
 - `M6.5.2` 当前已完成 release tag 执行：`v1.0.0` 已存在于本地与 `origin`，但仓库 package/runtime version 仍保持 `0.1.0`；这一差异仍是有意保留的，直到 `M6.5.3+` 再决定是否统一同步。
 - `M6.5.2` 当前正式 release baseline 仍以 `v1.0.0 -> dba45f3` 为准；后续 handoff / release-artifact 构建入口提交已经进入当前 `main`，但不改变首个 release tag 锚点。
-- `M6.5.3` 当前已补齐仓库根的 release image 构建入口：`Dockerfile`、`.dockerignore`、`scripts/build_docker.py`、`Makefile build-release-image` 均已到位，前端产物路径继续是 `web/dist/`。
-- `M6.5.3` 当前仍未完成严格验收，因为这台机器没有 `docker` 命令；目前只能证明“仓库已可静态验证，且 build wrapper 会在缺失 Docker 时显式返回 127”，不能伪称 `docker build -t portex:v1.0.0 .` 已在本机通过。
-- `M6.5.3` 当前 release-artifact baseline 仍是 `e5e12d9`（`build(release): add root artifact build path`）；其上已继续追加 README/logo 与 handoff-only 提交，是否完全同步以实时 `git status --short --branch` 为准。
-- `M6.5.3` 当前额外确认了两层环境阻塞：一是本机 `sudo` 需要人工输入密码，所以 Codex 不能直接走官方 apt 安装；二是 rootless Docker 所需的 `uidmap/subuid/subgid/slirp4netns` 等前置条件也缺失，暂时不能绕过 sudo 直接启用用户态 daemon。
-- `M7` 当前仍只是规划层 backlog：`tasks/todo.md` 里已经有 `M7.1` ~ `M7.6`，且 `M7.1` 的 design/implementation docs 已写好；但 `docs/TODO.md` 这个正式计划源仍停在 `M6.5.3`，所以下一位 Codex 只有在用户明确接受或暂缓 Docker blocker 时，才应把 `M7.1` 当作实际开发入口。
+- `M6.5.3` 当前已完成正式验收：仓库根 release image 构建入口、`web/dist/` 前端产物链，以及 fresh `docker version` / `scripts/build_docker.py --tag portex:v1.0.0` / `docker image inspect` 证据均已就位。
+- `M6.5.3` 当前主机的可复现 Docker 路径是用户态 rootless Docker：导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock` 后即可复现当前 release-image 验证。
+- `M6` 当前已全部完成，`docs/TODO.md` 的正式路线也已执行到末尾；后续如需继续做产品功能，必须由用户明确决定是否进入 `M7.1` parity backlog，或先把 `M7` 提升为新的正式计划源。
+- `M7` 当前仍只是规划层 backlog：`tasks/todo.md` 里已经有 `M7.1` ~ `M7.6`，且 `M7.1` 的 design/implementation docs 已写好；但进入该方向前仍应先得到用户明确同意。
 - `M7.1` 当前推荐范围已固定：只补主运行链（dispatch service、最小 IM ingestion adapters、Telegram outbound、真实 `/messages` dispatch、focused + integration tests），明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
@@ -347,20 +356,16 @@
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
    - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
    - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
-2. 从 `M6.5.3` 开始：
-   - 先确认本机是否已经有可用的 `docker` CLI / daemon；如果有，优先 fresh 运行 `docker build -t portex:v1.0.0 .` 和 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`，再决定是否把 `M6.5.3` 标记完成
-   - 如果 Docker 仍不可用，继续把 `M6.5.3` 视为“构建入口已完成、运行时验证受环境阻塞”的中间态，不要谎报阶段完成
-   - 如果要在这台 Ubuntu 22.04 机器上继续 unblock，优先让用户/管理员按 Docker 官方 Jammy 安装文档在交互式 shell 里执行 apt 安装；当前 Codex 的非交互工具调用无法复用 `sudo -v` 缓存
-   - 不要把 rootless Docker 当成现成退路：当前机器缺少 `newuidmap/newgidmap`、`/etc/subuid`、`/etc/subgid`、`slirp4netns/rootlesskit/fuse-overlayfs`，所以 rootless 方案也需要先补系统前置
+2. 当前正式 `M6` 路线已完成：
+   - 如需复现当前 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
+   - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
+   - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
+   - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
+   - 如果用户明确决定继续产品开发，下一条真实开发入口是 `M7.1`；直接按 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md` 执行，而不要一边做 `M7.1` 一边偷偷吞掉 `M7.2/M7.3`
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
    - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
    - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
    - 继续保留 `M6.4.3` 当前边界：当前只做了最小 HTTP 安全头，不包含 CSP、HSTS 或 HTTPS-only 假设，后续阶段不要误读成这些能力已到位
-   - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入构建产物前不要意外把这两类版本语义混淆
-   - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - `M6.5.3` 当前仓库面已经补齐 root release image build path；下一步优先在有 Docker 的机器上实际执行 `docker build -t portex:v1.0.0 .` 和 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
-   - 如果 Docker 仍不可用，不要把当前静态验证误报成 full artifact completion；只记录 blocker，并保持 `M6.5.3` 为当前起点
-   - 如果用户明确决定暂缓 Docker runtime 验收，下一条真实产品开发入口是 `M7.1`；直接按 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md` 执行，而不要一边做 `M7.1` 一边偷偷吞掉 `M7.2/M7.3`
    - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
    - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
    - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
@@ -378,4 +383,4 @@
 
 ## 5. 一句话版
 
-> `M6.5.3` 正在进行中：仓库根构建入口已补齐，但仍等待 Docker 可用环境完成真实镜像构建验证。
+> `M6` 已全部完成：`M6.5.3` 已在当前主机通过 rootless Docker 完成 fresh 发布镜像构建与检查，下一步是否进入 `M7.1` 取决于用户是否明确开启 parity backlog。

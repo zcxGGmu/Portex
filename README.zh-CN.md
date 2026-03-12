@@ -27,13 +27,13 @@ Portex 是一个基于 Python、FastAPI、React 和 OpenAI Agents SDK 构建的�
 - [x] 飞书基础能力：鉴权、Webhook 验签 / 解密、消息归一化与最小发送契约
 - [x] Telegram 基础能力：轮询、消息归一化与 Markdown 转换
 - [x] 统一消息 DTO 与最小跨通道路由边界
+- [x] 仓库根发布镜像构建入口已在当前主机完成验证，前端产物仍按设计单独输出到 `web/dist/`
 - [x] 本地 CI 工作流、回归测试、安全扫描、依赖审计与基础 HTTP 安全头
 
 ## 接下来要做什么
 
 - [ ] 打通端到端 IM 投递链路：收到消息 -> 触发 agent -> 回发响应
 - [ ] 为用户、任务、日志与记忆补齐比当前最小实现更稳固的持久化能力
-- [ ] 在具备 Docker 的机器上完成运行时与发布镜像构建验证
 - [ ] 继续加强部署、反向代理、密钥管理与浏览器安全策略
 - [ ] 为长期团队使用补齐更完整的运维可观测性和管理能力
 
@@ -165,6 +165,13 @@ cd web && npm run build
 .venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
 ```
 
+在当前主机上，复现已验证的 rootless Docker 路径需要：
+
+```bash
+export PATH="$HOME/bin:$PATH"
+export DOCKER_HOST=unix:///run/user/1000/docker.sock
+```
+
 ## 仓库结构
 
 - `assets/`: 共享静态文档资源，例如项目 logo
@@ -184,7 +191,7 @@ cd web && npm run build
 - IM 运行链：飞书和 Telegram 基础能力已就位，但“入站消息 -> agent 运行 -> 出站回复”尚未完全打通。
 - 消息路由：`UnifiedMessage` 与 `MessageRouter` 已定义当前路由边界，而 `/messages` 仍只是一个 queued acknowledgement 占位接口。
 - 执行路径：仓库里已经有独立的 `container/agent-runner` 切片，但当前浏览器 WebSocket 主链路仍直接走 `OpenAIAgentsRuntime`。
-- Docker 验证：根目录发布镜像构建入口已经存在，但仍需要在装有 Docker 的机器上完成 fresh `docker build` 验证。
+- Docker 发布镜像：仓库根构建入口已在当前主机通过用户态 rootless Docker 完成验证；按设计前端产物仍是单独的 `web/dist/` 构建结果。
 - 安全与部署：基础扫描、依赖审计与 HTTP 安全头已经具备，但这还不是完全 hardened 的生产部署方案。
 
 ## 文档导航

@@ -27,13 +27,13 @@ Portex is a remote, multi-user agent gateway built with Python, FastAPI, React, 
 - [x] Feishu foundations: auth, webhook verification/decrypt, normalization, and a minimal send contract
 - [x] Telegram foundations: polling, normalization, and Markdown conversion
 - [x] Unified message DTO and a minimal cross-channel routing boundary
+- [x] Root release-image build path verified on the current host, with the frontend production artifact still emitted separately as `web/dist/`
 - [x] Local CI workflow, regression tests, security scan, dependency audit, and baseline HTTP security headers
 
 ## What's Next
 
 - [ ] End-to-end IM delivery: inbound message -> agent run -> outbound response
 - [ ] Stronger persistence for users, tasks, logs, and memory beyond the current minimal stores
-- [ ] Verified Docker runtime and release-image build on a machine with Docker available
 - [ ] Production hardening for deployment, reverse proxy, secret handling, and browser security policy
 - [ ] Richer operational visibility and administration flows for long-running team use
 
@@ -165,6 +165,13 @@ cd web && npm run build
 .venv/bin/python scripts/build_docker.py --tag portex:v1.0.0
 ```
 
+On the current host, the verified rootless Docker repro uses:
+
+```bash
+export PATH="$HOME/bin:$PATH"
+export DOCKER_HOST=unix:///run/user/1000/docker.sock
+```
+
 ## Repository Map
 
 - `assets/`: shared static documentation assets such as the project logo
@@ -184,7 +191,7 @@ cd web && npm run build
 - IM runtime: Feishu and Telegram foundations exist, but the full inbound-to-agent-to-outbound delivery chain is not wired end to end.
 - Message routing: `UnifiedMessage` and `MessageRouter` define the current routing boundary, while `/messages` still returns a queued acknowledgement only.
 - Execution: the repo contains a separate `container/agent-runner` slice, but the current browser WebSocket happy path runs through `OpenAIAgentsRuntime`.
-- Docker verification: the root release-image build path exists, but a fresh `docker build` still needs to be verified on a machine where Docker is available.
+- Docker release image: the root release-image path is verified on the current host via user-space rootless Docker; the frontend artifact remains a separate `web/dist/` build by design.
 - Security and deployment: baseline scans, dependency audit, and HTTP security headers are in place, but this is not yet a fully hardened production deployment story.
 
 ## Documentation
