@@ -1,0 +1,340 @@
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+import sys
+
+import pytest
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _request(
+    *,
+    group_folder: str,
+    prompt: str,
+    requested_mode: str | None = None,
+    timeout_ms: int | None = None,
+    fresh_session: bool = False,
+):
+    from services.execution_coordinator import ExecutionRequest
+
+    return ExecutionRequest(
+        group_folder=group_folder,
+        chat_jid=group_folder,
+        user_id="user-a",
+        prompt=prompt,
+        source="web",
+        requested_mode=requested_mode,
+        timeout_ms=timeout_ms,
+        fresh_session=fresh_session,
+    )
+
+
+class _RecordingBackend:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+        self._gate = asyncio.Event()
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        self.calls.append(
+            {
+                "run_id": run_id,
+                "group_folder": request.group_folder,
+                "prompt": request.prompt,
+                "session_id": session_id,
+            }
+        )
+        await self._gate.wait()
+        return {
+            "status": "completed",
+            "final_output": f"reply:{request.prompt}",
+        }
+
+    async def cancel(self, run_id: str) -> None:
+        _ = run_id
+
+    def release(self) -> None:
+        self._gate.set()
+
+
+class _TimeoutBackend:
+    def __init__(self) -> None:
+        self.cancelled_run_ids: list[str] = []
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        _ = (request, run_id, session_id)
+        await asyncio.sleep(0.05)
+        return {"status": "completed", "final_output": "late"}
+
+    async def cancel(self, run_id: str) -> None:
+        self.cancelled_run_ids.append(run_id)
+
+
+class _CancellableBackend:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+        self._cancelled = asyncio.Event()
+        self.cancelled_run_ids: list[str] = []
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        self.calls.append(
+            {
+                "run_id": run_id,
+                "group_folder": request.group_folder,
+                "prompt": request.prompt,
+                "session_id": session_id,
+            }
+        )
+        await self._cancelled.wait()
+        return {"status": "completed", "final_output": "should-be-ignored"}
+
+    async def cancel(self, run_id: str) -> None:
+        self.cancelled_run_ids.append(run_id)
+        self._cancelled.set()
+
+
+class _NonCooperativeBackend:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.cancelled_run_ids: list[str] = []
+        self.started = asyncio.Event()
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        _ = session_id
+        self.calls.append(request.prompt)
+        if request.prompt == "first":
+            self.started.set()
+            try:
+                await asyncio.Future()
+            except asyncio.CancelledError:
+                raise
+        return {"status": "completed", "final_output": f"reply:{request.prompt}"}
+
+    async def cancel(self, run_id: str) -> None:
+        self.cancelled_run_ids.append(run_id)
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_processes_one_group_fifo_and_reuses_session() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+
+    assert coordinator.get_status(first.run_id) == "queued"
+    assert coordinator.get_status(second.run_id) == "queued"
+
+    await asyncio.sleep(0)
+    assert coordinator.get_status(first.run_id) == "running"
+    assert coordinator.get_status(second.run_id) == "queued"
+
+    backend.release()
+    first_result = await coordinator.wait_for_run(first.run_id)
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert first_result.status == "completed"
+    assert second_result.status == "completed"
+    assert [call["prompt"] for call in backend.calls] == ["first", "second"]
+    assert backend.calls[0]["session_id"] == backend.calls[1]["session_id"]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_allows_different_groups_to_progress_independently() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="alpha"))
+    second = await coordinator.submit_execution(_request(group_folder="group-b", prompt="beta"))
+
+    await asyncio.sleep(0)
+
+    assert coordinator.get_status(first.run_id) == "running"
+    assert coordinator.get_status(second.run_id) == "running"
+
+    backend.release()
+    await coordinator.wait_for_run(first.run_id)
+    await coordinator.wait_for_run(second.run_id)
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_cancels_queued_run_without_executing_backend() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+
+    await asyncio.sleep(0)
+    cancelled = await coordinator.cancel(second.run_id)
+    backend.release()
+
+    first_result = await coordinator.wait_for_run(first.run_id)
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert cancelled is True
+    assert first_result.status == "completed"
+    assert second_result.status == "cancelled"
+    assert [call["prompt"] for call in backend.calls] == ["first"]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_marks_timeout_and_calls_backend_cancel() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _TimeoutBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    handle = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="slow", timeout_ms=10)
+    )
+    result = await coordinator.wait_for_run(handle.run_id)
+
+    assert result.status == "timeout"
+    assert result.timeout_ms == 10
+    assert backend.cancelled_run_ids == [handle.run_id]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_marks_running_run_cancelled() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _CancellableBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    handle = await coordinator.submit_execution(_request(group_folder="group-a", prompt="cancel-me"))
+    await asyncio.sleep(0)
+
+    cancelled = await coordinator.cancel(handle.run_id)
+    result = await coordinator.wait_for_run(handle.run_id)
+
+    assert cancelled is True
+    assert result.status == "cancelled"
+    assert result.group_folder == "group-a"
+    assert result.backend == "openai_runtime"
+    assert result.session_id == "group-a"
+    assert backend.cancelled_run_ids == [handle.run_id]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_fresh_session_creates_distinct_session_id() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    second = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="second", requested_mode=None)
+    )
+    third = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="third", requested_mode=None, fresh_session=True)
+    )
+
+    backend.release()
+    await coordinator.wait_for_run(first.run_id)
+    await coordinator.wait_for_run(second.run_id)
+    await coordinator.wait_for_run(third.run_id)
+
+    assert backend.calls[0]["session_id"] == backend.calls[1]["session_id"]
+    assert backend.calls[2]["session_id"] != backend.calls[1]["session_id"]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_fails_when_policy_selects_missing_backend() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+
+    class MissingBackendPolicy:
+        def select_backend(self, request):
+            _ = request
+            return "missing-backend"
+
+    coordinator = ExecutionCoordinator(
+        execution_policy=MissingBackendPolicy(),
+        backends={},
+    )
+
+    handle = await coordinator.submit_execution(_request(group_folder="group-a", prompt="oops"))
+    result = await coordinator.wait_for_run(handle.run_id)
+
+    assert result.status == "failed"
+    assert result.error == "unknown execution backend: missing-backend"
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_running_cancel_unblocks_next_same_group_request() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _NonCooperativeBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+
+    await backend.started.wait()
+    cancelled = await coordinator.cancel(first.run_id)
+    first_result = await coordinator.wait_for_run(first.run_id)
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert cancelled is True
+    assert first_result.status == "cancelled"
+    assert second_result.status == "completed"
+    assert backend.calls == ["first", "second"]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_invalid_requested_mode_returns_failed_result() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    handle = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="bad-mode", requested_mode="unknown")
+    )
+    result = await coordinator.wait_for_run(handle.run_id)
+
+    assert result.status == "failed"
+    assert result.error == "unsupported execution mode: unknown"
+    assert backend.calls == []

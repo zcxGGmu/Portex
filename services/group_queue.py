@@ -1,11 +1,9 @@
-"""Group queue service placeholder."""
+"""Compatibility wrapper for the M7.2 execution coordinator."""
+
+from services.execution_coordinator import ExecutionCoordinator
 
 
-class GroupQueueService:
-    """In-memory queue placeholder for group scheduling."""
+GroupQueueService = ExecutionCoordinator
 
-    def __init__(self) -> None:
-        self._queue: list[str] = []
 
-    def enqueue(self, item: str) -> None:
-        self._queue.append(item)
+__all__ = ["GroupQueueService"]
