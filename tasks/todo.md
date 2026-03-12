@@ -691,3 +691,18 @@
 - Refreshed `docs/TODO.md`, `docs/progress.md`, `AGENTS.md`, `README.md`, `README.zh-CN.md`, and `docs/deployment.md` so the repository now consistently records `M6.5.3` and `M6` as complete, while keeping `M7.1` as a user-gated next step rather than an automatic continuation.
 - Final verification ran fresh after the doc sync: `git diff --check`; `.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `test -f web/dist/index.html`; `PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker version --format '{{.Client.Version}}|{{.Server.Version}}'`; `PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock .venv/bin/python scripts/build_docker.py --tag portex:v1.0.0`; `PATH="$HOME/bin:$PATH" DOCKER_HOST=unix:///run/user/1000/docker.sock docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
 - Commit completed in this session: `docs(release): complete M6.5.3 artifact verification`.
+
+# Session Plan (2026-03-12) - M7.1 Runtime Dispatch Refinement
+
+## Goal
+- Start `M7.1` on the user-approved narrow path: add a structured runtime-result boundary, then close the inbound IM/http -> runtime -> outbound reply chain without absorbing WebSocket unification or execution-plane redesign.
+
+## Checklist
+- [ ] Re-read the current runtime, IM, message route, and persistence slices
+- [ ] Write the refined `M7.1` design doc
+- [ ] Write the refined `M7.1` implementation plan doc
+- [ ] Commit the design/plan refinement
+- [ ] Add failing tests for the structured runtime-result and dispatch-service contract
+- [ ] Implement the first `M7.1` batch and verify it
+
+## Review
