@@ -712,3 +712,18 @@
 - Added `tests/services/test_message_dispatch.py`, `tests/app/routes/test_im_routes.py`, `tests/app/routes/test_message_routes.py`, and `tests/integration/test_message_flow.py`, and extended existing runtime/route/Telegram tests to lock the `M7.1` chain end to end.
 - Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/services/test_message_service.py tests/app/routes/test_im_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/im/test_telegram.py tests/infra/im/test_feishu.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
 - Session commits completed: `docs(plans): refine M7.1 runtime dispatch design`, `feat(messages): add main runtime dispatch service`, `feat(messages): persist dispatch metadata`, `feat(im): add M7.1 ingestion adapters`, `feat(messages): replace message placeholder route`, `test(messages): add M7.1 integration coverage`, `docs(handoff): record M7.1 completion`.
+
+# Session Plan (2026-03-12) - M7.2 Execution Plane Parity
+
+## Goal
+- Start `M7.2` on the approved coordinator-first path: add one per-group execution coordinator, one backend-selection policy, and one shared submission contract for Web/IM/tasks without swallowing `M7.3` workspace-model work or `M7.4` operator surfaces.
+
+## Checklist
+- [ ] Re-read the current execution-plane entrypoints and backend helpers
+- [ ] Write the `M7.2` design doc
+- [ ] Write the `M7.2` implementation plan doc
+- [ ] Commit the `M7.2` planning docs
+- [ ] Add failing tests for the coordinator/policy contract
+- [ ] Implement the first `M7.2` batch and verify it
+
+## Review
