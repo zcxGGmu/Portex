@@ -806,3 +806,22 @@
 - Multi-agent review found one real risk in the first draft: stream-time `OSError/sqlite3.Error` was too broad and could trigger a false session reset. The implementation was tightened so only session initialization/startup failures can drive the fresh-retry path; no additional findings remained in the coordinator/workspace slice.
 - Fresh verification ran: `git diff --check`; `.venv/bin/pytest tests/services/test_workspace_lifecycle.py tests/services/test_execution_coordinator.py tests/services/test_execution_backends.py tests/infra/runtime/test_openai.py tests/services/test_message_dispatch.py tests/services/test_task_service.py -q`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
 - Session commits completed: `docs(plans): define M7.2.4 session workspace lifecycle`, `feat(execution): complete M7.2.4 workspace session lifecycle`.
+
+# Session Plan (2026-03-13) - M7.2.5 Cancel Timeout Boundary
+
+## Goal
+- Continue from the current parity handoff point by hardening cancellation and timeout semantics across the real queue + executor boundary, so host/container cleanup remains reachable after outer coroutine cancellation and timeout no longer degrades into generic `failed` states.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, the `M7.2` docs, and the current execution/runtime slices
+- [x] Compare the current Portex cancel/timeout boundary against the HappyClaw reference implementation
+- [x] Write the focused `M7.2.5` design doc
+- [x] Write the focused `M7.2.5` implementation plan doc
+- [ ] Add failing tests for cleanup-aware cancel/timeout handling
+- [ ] Implement backend handle retention plus timeout normalization
+- [ ] Run focused verification and broader regression
+- [ ] Update `docs/progress.md` and this session review
+- [ ] Commit the `M7.2.5` slice with a detailed message
+
+## Review
+- Pending.
