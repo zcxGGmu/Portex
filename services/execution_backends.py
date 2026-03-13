@@ -13,6 +13,7 @@ from typing import Any
 from infra.exec.container_manager import CONTAINER_COMMAND, CONTAINER_WORKDIR, ContainerManager
 from infra.exec.process import ProcessExecutor
 from infra.runtime.adapter import AgentRuntime, RunEvent
+from infra.runtime.openai import OpenAIRuntimeSessionError
 from services.agent_trigger import RuntimeFactory, RunEventHandler, run_agent_execution
 from services.execution_coordinator import ExecutionRequest
 
@@ -37,6 +38,10 @@ def _install_request_metadata_property() -> None:
 
 
 _install_request_metadata_property()
+
+
+class SessionResumeFailedError(RuntimeError):
+    """Raised when a backend cannot safely resume the provided workspace session."""
 
 
 def _timeout_seconds(timeout_ms: int | None) -> int | None:
@@ -154,16 +159,19 @@ class OpenAIRuntimeBackend:
         runtime = self._runtime_factory(request.group_folder)
         self._active_runtimes[run_id] = runtime
         try:
-            result = await run_agent_execution(
-                group_folder=request.group_folder,
-                message=request.prompt,
-                user_id=request.user_id,
-                runtime_factory=lambda _group: runtime,
-                event_handler=_resolve_event_handler(request),
-                session_id_factory=lambda _group: session_id,
-                request_id=run_id,
-                timeout_ms=None,
-            )
+            try:
+                result = await run_agent_execution(
+                    group_folder=request.group_folder,
+                    message=request.prompt,
+                    user_id=request.user_id,
+                    runtime_factory=lambda _group: runtime,
+                    event_handler=_resolve_event_handler(request),
+                    session_id_factory=lambda _group: session_id,
+                    request_id=run_id,
+                    timeout_ms=None,
+                )
+            except OpenAIRuntimeSessionError as exc:
+                raise SessionResumeFailedError(str(exc)) from exc
         finally:
             self._active_runtimes.pop(run_id, None)
 
@@ -325,5 +333,6 @@ __all__ = [
     "OUTPUT_END_MARKER",
     "OUTPUT_START_MARKER",
     "OpenAIRuntimeBackend",
+    "SessionResumeFailedError",
     "parse_runner_output",
 ]

@@ -72,6 +72,32 @@ async def test_openai_runtime_backend_maps_run_result_and_forwards_event_handler
 
 
 @pytest.mark.asyncio
+async def test_openai_runtime_backend_translates_session_resume_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from infra.runtime.openai import OpenAIRuntimeSessionError
+    from services.execution_backends import OpenAIRuntimeBackend, SessionResumeFailedError
+
+    async def fake_run_agent_execution(**kwargs):
+        _ = kwargs
+        raise OpenAIRuntimeSessionError("resume failed")
+
+    monkeypatch.setattr(
+        "services.execution_backends.run_agent_execution",
+        fake_run_agent_execution,
+    )
+
+    backend = OpenAIRuntimeBackend(runtime_factory=lambda _group: object())
+
+    with pytest.raises(SessionResumeFailedError, match="resume failed"):
+        await backend.execute(
+            _request(),
+            run_id="run-openai",
+            session_id="session-a",
+        )
+
+
+@pytest.mark.asyncio
 async def test_host_process_backend_parses_runner_output() -> None:
     from infra.exec.process import ProcessRunResult
     from services.execution_backends import HostProcessBackend

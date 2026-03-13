@@ -9,6 +9,12 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 from uuid import uuid4
 
+from services.workspace_lifecycle import (
+    GroupFolderWorkspaceResolver,
+    WorkspaceResolver,
+    WorkspaceSessionStore,
+)
+
 ExecutionSource = Literal["web", "im", "scheduled"]
 ExecutionStatus = Literal["queued", "running", "completed", "failed", "cancelled", "timeout"]
 
@@ -73,10 +79,14 @@ class ExecutionCoordinator:
         *,
         execution_policy: ExecutionPolicyProtocol,
         backends: Mapping[str, ExecutionBackend],
+        workspace_resolver: WorkspaceResolver | None = None,
+        workspace_session_store: WorkspaceSessionStore | None = None,
         max_completed_runs: int = 256,
     ) -> None:
         self._execution_policy = execution_policy
         self._backends = dict(backends)
+        self._workspace_resolver = workspace_resolver or GroupFolderWorkspaceResolver()
+        self._workspace_session_store = workspace_session_store or WorkspaceSessionStore()
         self._max_completed_runs = max_completed_runs
         self._group_queues: dict[str, deque[tuple[str, ExecutionRequest]]] = {}
         self._group_workers: dict[str, asyncio.Task[None]] = {}
@@ -85,7 +95,6 @@ class ExecutionCoordinator:
         self._statuses: dict[str, ExecutionStatus] = {}
         self._running_backends: dict[str, ExecutionBackend] = {}
         self._running_tasks: dict[str, asyncio.Task[ExecutionResult]] = {}
-        self._session_ids: dict[str, str] = {}
         self._run_session_ids: dict[str, str] = {}
         self._cancelled_run_ids: set[str] = set()
         self._completed_results: dict[str, ExecutionResult] = {}
@@ -123,7 +132,7 @@ class ExecutionCoordinator:
         if status == "queued":
             request = self._run_requests[run_id]
             backend = self._safe_select_backend_name(request)
-            session_id = self._peek_session_id(request)
+            session_id = self._peek_session_id(request, backend)
             self._store_terminal_result(
                 self._build_result(
                     run_id=run_id,
@@ -137,7 +146,7 @@ class ExecutionCoordinator:
         if status == "running":
             request = self._run_requests[run_id]
             backend_name = self._safe_select_backend_name(request)
-            session_id = self._run_session_ids.get(run_id, self._peek_session_id(request))
+            session_id = self._run_session_ids.get(run_id, self._peek_session_id(request, backend_name))
             backend = self._running_backends.get(run_id)
             if backend is not None:
                 self._cancelled_run_ids.add(run_id)
@@ -178,7 +187,10 @@ class ExecutionCoordinator:
                         run_id=run_id,
                         group_folder=request.group_folder,
                         backend=self._safe_select_backend_name(request),
-                        session_id=self._peek_session_id(request),
+                        session_id=self._peek_session_id(
+                            request,
+                            self._safe_select_backend_name(request),
+                        ),
                         status="failed",
                         error=str(exc),
                     )
@@ -189,7 +201,7 @@ class ExecutionCoordinator:
         try:
             backend_name = self._select_backend_name(request)
         except Exception as exc:
-            session_id = self._peek_session_id(request)
+            session_id = self._peek_session_id(request, "unknown")
             self._store_terminal_result(
                 self._build_result(
                     run_id=run_id,
@@ -203,9 +215,8 @@ class ExecutionCoordinator:
             return
 
         backend = self._backends.get(backend_name)
-        session_id = self._resolve_session_id(request)
-        self._run_session_ids[run_id] = session_id
         if backend is None:
+            session_id = self._peek_session_id(request, backend_name)
             self._store_terminal_result(
                 self._build_result(
                     run_id=run_id,
@@ -218,14 +229,18 @@ class ExecutionCoordinator:
             )
             return
 
+        workspace_key = self._workspace_key(request)
+        session_id = self._resolve_session_id(request, backend_name)
+        self._run_session_ids[run_id] = session_id
         self._statuses[run_id] = "running"
         self._running_backends[run_id] = backend
         execution_task = asyncio.create_task(
-            self._run_backend_with_timeout(
+            self._execute_backend_with_lifecycle(
                 backend,
                 request,
                 run_id=run_id,
                 backend_name=backend_name,
+                workspace_key=workspace_key,
                 session_id=session_id,
             )
         )
@@ -247,6 +262,72 @@ class ExecutionCoordinator:
             self._cancelled_run_ids.discard(run_id)
             return
         self._store_terminal_result(result)
+
+    async def _execute_backend_with_lifecycle(
+        self,
+        backend: ExecutionBackend,
+        request: ExecutionRequest,
+        *,
+        run_id: str,
+        backend_name: str,
+        workspace_key: str,
+        session_id: str,
+    ) -> ExecutionResult:
+        try:
+            result = await self._run_backend_with_timeout(
+                backend,
+                request,
+                run_id=run_id,
+                backend_name=backend_name,
+                session_id=session_id,
+            )
+        except RuntimeError as exc:
+            if self._should_retry_session_resume(
+                backend_name=backend_name,
+                request=request,
+                error=exc,
+            ):
+                self._workspace_session_store.invalidate(workspace_key, reason=str(exc))
+                retry_session_id = self._resolve_session_id(
+                    request,
+                    backend_name,
+                    fresh_session=True,
+                )
+                self._run_session_ids[run_id] = retry_session_id
+                try:
+                    result = await self._run_backend_with_timeout(
+                        backend,
+                        request,
+                        run_id=run_id,
+                        backend_name=backend_name,
+                        session_id=retry_session_id,
+                    )
+                except RuntimeError as retry_exc:
+                    return self._build_result(
+                        run_id=run_id,
+                        group_folder=request.group_folder,
+                        backend=backend_name,
+                        session_id=retry_session_id,
+                        status="failed",
+                        error=str(retry_exc),
+                    )
+            else:
+                return self._build_result(
+                    run_id=run_id,
+                    group_folder=request.group_folder,
+                    backend=backend_name,
+                    session_id=session_id,
+                    status="failed",
+                    error=str(exc),
+                )
+
+        if self._uses_workspace_session(backend_name) and result.status == "completed":
+            self._workspace_session_store.commit_success(
+                workspace_key,
+                backend=backend_name,
+                session_id=result.session_id,
+            )
+        return result
 
     async def _run_backend_with_timeout(
         self,
@@ -276,6 +357,8 @@ class ExecutionCoordinator:
                 status="timeout",
                 timeout_ms=request.timeout_ms,
             )
+        except RuntimeError:
+            raise
         except Exception as exc:
             return self._build_result(
                 run_id=run_id,
@@ -300,20 +383,30 @@ class ExecutionCoordinator:
             timeout_ms=raw_result.get("timeout_ms"),
         )
 
-    def _resolve_session_id(self, request: ExecutionRequest) -> str:
-        if request.fresh_session or request.group_folder not in self._session_ids:
-            self._session_ids[request.group_folder] = self._new_session_id(request.group_folder)
-        return self._session_ids[request.group_folder]
+    def _workspace_key(self, request: ExecutionRequest) -> str:
+        return self._workspace_resolver.resolve_workspace_key(request.group_folder)
 
-    def _peek_session_id(self, request: ExecutionRequest) -> str:
-        if request.fresh_session:
-            return self._new_session_id(request.group_folder)
-        return self._session_ids.get(request.group_folder, self._new_session_id(request.group_folder))
+    def _resolve_session_id(
+        self,
+        request: ExecutionRequest,
+        backend_name: str,
+        *,
+        fresh_session: bool | None = None,
+    ) -> str:
+        workspace_key = self._workspace_key(request)
+        effective_fresh = request.fresh_session if fresh_session is None else fresh_session
+        if self._uses_workspace_session(backend_name):
+            return self._workspace_session_store.preview_session_id(
+                workspace_key,
+                backend=backend_name,
+                fresh_session=effective_fresh,
+            )
+        if effective_fresh:
+            return f"{workspace_key}:{uuid4().hex[:8]}"
+        return workspace_key
 
-    def _new_session_id(self, group_folder: str) -> str:
-        if group_folder not in self._session_ids:
-            return group_folder
-        return f"{group_folder}:{uuid4().hex[:8]}"
+    def _peek_session_id(self, request: ExecutionRequest, backend_name: str) -> str:
+        return self._resolve_session_id(request, backend_name)
 
     def _select_backend_name(self, request: ExecutionRequest) -> str:
         return self._execution_policy.select_backend(request)
@@ -329,6 +422,24 @@ class ExecutionCoordinator:
             await backend.cancel(run_id)
         except Exception:
             return None
+
+    def _uses_workspace_session(self, backend_name: str) -> bool:
+        return backend_name == "openai_runtime"
+
+    def _should_retry_session_resume(
+        self,
+        *,
+        backend_name: str,
+        request: ExecutionRequest,
+        error: RuntimeError,
+    ) -> bool:
+        if request.fresh_session or not self._uses_workspace_session(backend_name):
+            return False
+        try:
+            from services.execution_backends import SessionResumeFailedError
+        except Exception:
+            return False
+        return isinstance(error, SessionResumeFailedError)
 
     def _store_terminal_result(self, result: ExecutionResult) -> None:
         self._statuses[result.run_id] = result.status

@@ -219,13 +219,17 @@ async def test_trigger_agent_execution_completes_after_runtime_cancel(
 
     class FakeRunner:
         @staticmethod
-        def run_streamed(agent: object, input: str) -> BlockingResult:  # noqa: A002
+        def run_streamed(agent: object, input: str, session=None) -> BlockingResult:  # noqa: A002
             _ = (agent, input)
+            _ = session
             return result
 
     monkeypatch.setattr("infra.runtime.openai.Runner", FakeRunner)
 
-    runtime = OpenAIAgentsRuntime(tools=[])
+    runtime = OpenAIAgentsRuntime(
+        tools=[],
+        session_factory=lambda _request: object(),
+    )
     manager = FakeWebSocketManager()
 
     execution = asyncio.create_task(
@@ -318,13 +322,17 @@ async def test_trigger_agent_execution_timeout_cancels_active_openai_stream(
 
     class FakeRunner:
         @staticmethod
-        def run_streamed(agent: object, input: str) -> BlockingResult:  # noqa: A002
+        def run_streamed(agent: object, input: str, session=None) -> BlockingResult:  # noqa: A002
             _ = (agent, input)
+            _ = session
             return result
 
     monkeypatch.setattr("infra.runtime.openai.Runner", FakeRunner)
 
-    runtime = OpenAIAgentsRuntime(tools=[])
+    runtime = OpenAIAgentsRuntime(
+        tools=[],
+        session_factory=lambda _request: object(),
+    )
     manager = FakeWebSocketManager()
 
     run_id = await asyncio.wait_for(

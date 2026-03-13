@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from pathlib import Path
 import sys
 
@@ -135,6 +136,29 @@ class _BlockingCancelBackend:
     async def cancel(self, run_id: str) -> None:
         self.cancelled_run_ids.append(run_id)
         await asyncio.Future()
+
+
+class _SequentialBackend:
+    def __init__(self, outcomes: list[dict[str, object] | Exception]) -> None:
+        self.calls: list[dict[str, object]] = []
+        self._outcomes = deque(outcomes)
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        self.calls.append(
+            {
+                "run_id": run_id,
+                "group_folder": request.group_folder,
+                "prompt": request.prompt,
+                "session_id": session_id,
+            }
+        )
+        outcome = self._outcomes.popleft()
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    async def cancel(self, run_id: str) -> None:
+        _ = run_id
 
 
 @pytest.mark.asyncio
@@ -382,3 +406,84 @@ async def test_execution_coordinator_running_cancel_does_not_wait_for_blocking_b
     assert result is True
     assert terminal.status == "cancelled"
     assert backend.cancelled_run_ids == [handle.run_id]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_only_commits_fresh_session_after_success() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+    from services.workspace_lifecycle import WorkspaceSessionStore
+
+    session_store = WorkspaceSessionStore(
+        new_session_id_factory=lambda workspace_key: f"{workspace_key}:fresh"
+    )
+    backend = _SequentialBackend(
+        [
+            {"status": "completed", "final_output": "reply:first"},
+            RuntimeError("fresh failed"),
+            {"status": "completed", "final_output": "reply:third"},
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+        workspace_session_store=session_store,
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    await coordinator.wait_for_run(first.run_id)
+
+    second = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="second", fresh_session=True)
+    )
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    third = await coordinator.submit_execution(_request(group_folder="group-a", prompt="third"))
+    await coordinator.wait_for_run(third.run_id)
+
+    assert second_result.status == "failed"
+    assert [call["session_id"] for call in backend.calls] == [
+        "group-a",
+        "group-a:fresh",
+        "group-a",
+    ]
+    assert session_store.get_state("group-a").session_id == "group-a"
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_invalidates_stale_session_and_retries_once_fresh() -> None:
+    from services.execution_backends import SessionResumeFailedError
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+    from services.workspace_lifecycle import WorkspaceSessionStore
+
+    session_store = WorkspaceSessionStore(
+        new_session_id_factory=lambda workspace_key: f"{workspace_key}:fresh"
+    )
+    backend = _SequentialBackend(
+        [
+            {"status": "completed", "final_output": "reply:first"},
+            SessionResumeFailedError("resume failed"),
+            {"status": "completed", "final_output": "reply:second"},
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+        workspace_session_store=session_store,
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    await coordinator.wait_for_run(first.run_id)
+
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert second_result.status == "completed"
+    assert second_result.final_output == "reply:second"
+    assert [call["session_id"] for call in backend.calls] == [
+        "group-a",
+        "group-a",
+        "group-a:fresh",
+    ]
+    assert session_store.get_state("group-a").session_id == "group-a:fresh"
