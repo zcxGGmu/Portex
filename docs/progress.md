@@ -202,6 +202,7 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `af5e2be` `docs(handoff): record M7.2.5 cancel timeout boundary`
   - `f2c7c1d` `fix(execution): bound M7.2.5 cleanup waits`
   - `1ae86fb` `fix(execution): complete M7.2.5 cancel timeout boundary`
   - `9b741b0` `docs(plans): define M7.2.5 cancel timeout boundary`
