@@ -1,9 +1,11 @@
 """Group routes."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.middleware.auth import get_current_user, require_permission
 from app.openapi import openapi_error_responses
+from infra.db.database import get_db
 from domain.models.group_member import GroupMember
 from domain.schemas import (
     CreateGroupMemberRequest,
@@ -15,6 +17,7 @@ from domain.schemas import (
 )
 from services.auth import AuthUser, auth_service
 from services.group_member_service import group_member_service
+from services.group_registry import GroupRegistryService
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -26,6 +29,19 @@ def _to_group_member_response(member: GroupMember) -> GroupMemberResponse:
         role=member.role,
         joined_at=member.joined_at,
     )
+
+
+def _to_group_summary_response(group) -> GroupSummaryResponse:
+    return GroupSummaryResponse(
+        group_id=group.folder,
+        name=group.name,
+    )
+
+
+def get_group_registry_service(
+    db: AsyncSession = Depends(get_db),
+) -> GroupRegistryService:
+    return GroupRegistryService(db=db)
 
 
 def _require_group_membership(group_id: str, current_user: AuthUser) -> None:
@@ -76,10 +92,14 @@ def _ensure_owner_role_change_supported(
 )
 async def list_groups(
     current_user: AuthUser = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
 ) -> GroupListResponse:
     _ = current_user
     return GroupListResponse(
-        groups=[GroupSummaryResponse(group_id="group-demo", name="Demo Group")]
+        groups=[
+            _to_group_summary_response(group)
+            for group in await group_registry.list_registered_groups()
+        ]
     )
 
 
@@ -187,4 +207,4 @@ async def remove_group_member(
     return DeleteGroupMemberResponse(status="removed")
 
 
-__all__ = ["router"]
+__all__ = ["get_group_registry_service", "router"]

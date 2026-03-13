@@ -66,7 +66,8 @@
 - `M6` 已完成（`M6.1` ~ `M6.5`）。
 - `M7.1` 已完成（主运行链补齐，基于 parity backlog）。
 - `M7.2` 已完成（execution plane parity，`M7.2.1` ~ `M7.2.7`），包括 coordinator/status/recovery read 面与 focused parity behavior tests。
-- 当前起点：继续 parity backlog 时，从 `M7.3.1` 开始，推进 workspace/group model parity（真实持久化 group/workspace 列表与绑定模型）；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.3.1` 已完成（真实持久化 group/workspace 列表模型）。
+- 当前起点：继续 parity backlog 时，从 `M7.3.2` 开始，定义 Portex 版 main workspace / bound chat / per-user home workspace 模型；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -196,6 +197,9 @@
 - `M7.2.7`：新增 `docs/plans/2026-03-13-m7-2-7-focused-tests-design.md` 与 `docs/plans/2026-03-13-m7-2-7-focused-tests.md`，将该子步收紧为 focused behavior parity tests，不扩展运行时功能面。
 - `M7.2.7`：扩展 `tests/services/test_execution_coordinator.py`，补齐 queue ordering（含 head-failure continuation）、mixed-source serialization、requested-mode backend observability、cancel edge、recovery retry failure、fresh-session no-retry signaling 的 focused 契约。
 - `M7.2.7`：扩展 `tests/app/routes/test_websocket_routes.py`，补齐 timeout transport payload 契约（`run.timeout` + `status=timeout` + `timeout_ms`），并完成 `M7.2` 子步全链验证。
+- `M7.3.1`：新增 `docs/plans/2026-03-13-m7-3-1-persisted-group-listing-design.md` 与 `docs/plans/2026-03-13-m7-3-1-persisted-group-listing.md`，把这一子步收紧为“`registered_groups` 持久化列表 + lazy target registration”，明确不提前吞掉 `M7.3.2` home workspace / `M7.3.3` binding metadata / `M7.3.6` 管理 API。
+- `M7.3.1`：新增 `services/group_registry.py` 与 `tests/services/test_group_registry.py`，把 `RegisteredGroup` 提升为真实 async service 边界，提供确定性 `list_registered_groups()` 与幂等 `ensure_registered_group(...)`。
+- `M7.3.1`：重写 `GET /groups` 为 DB-backed 列表，并扩展 `services/message_dispatch.py` / `app/routes/im.py` 的默认依赖链，使 HTTP 与 IM dispatch 在继续执行前懒注册当前 `chat_jid -> group_folder` 目标到 `registered_groups`；补齐 route/service/integration 回归后确认 `M7.3.1` 完成，下一步切到 `M7.3.2`。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -434,7 +438,9 @@
 - `M7.1` 当前仍保持刻意收敛：浏览器 WebSocket 主链没有被强行统一进新 dispatch service，queue/execution plane lifecycle 仍留在 `M7.2`，workspace/group model 仍留在 `M7.3`。
 - `M7.2` 当前已完成 `M7.2.1` ~ `M7.2.7`：coordinator/policy core、backend adapters、Web/IM/task rewiring、workspace session lifecycle、cancel-timeout cleanup 边界、run snapshot + execution status 查询接口，以及 focused parity behavior tests 都已到位。
 - `M7.2` 当前仍刻意收敛：状态/恢复信号仍是 in-memory read 面，不含 DB 持久化、监控页或 operator dashboard；这些仍留给后续阶段（`M7.3` / `M7.4`）。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.1` workspace/group model parity。
+- `M7.3.1` 当前已完成：`registered_groups` 现在是 `/groups` 的真实持久化列表源，且默认 HTTP / IM dispatch 会在继续执行前懒注册当前 target。
+- `M7.3.1` 当前仍刻意收敛：只是把现有临时 `chat_jid -> group_folder` 规则持久化，并没有定义 HappyClaw 风格的 home workspace、bound chat、owner visibility 或多 JID 共享 folder 语义；这些仍留给 `M7.3.2` ~ `M7.3.6`。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.2` workspace topology parity。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -454,7 +460,9 @@
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.3.1` 开始：把当前 demo `group-demo` 组织模型推进为真实持久化的 workspace/group 列表与绑定语义
+   - 如果用户继续 parity backlog，优先从 `M7.3.2` 开始：在当前已持久化的 `registered_groups` 列表基础上，定义 Portex 版 main workspace / bound chat / per-user home workspace 模型
+   - 当前 `M7.3.1` 的直接相关文件是：`services/group_registry.py`、`app/routes/groups.py`、`app/routes/im.py`、`services/message_dispatch.py`、`domain/models/group.py`、`tests/services/test_group_registry.py`、`tests/services/test_message_dispatch.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_api_routes.py`、`tests/app/routes/test_im_routes.py`、`tests/integration/test_message_flow.py`
+   - 如果要继续 `M7.3` 设计面，先看：`docs/plans/2026-03-13-m7-3-1-persisted-group-listing-design.md`、`docs/plans/2026-03-13-m7-3-1-persisted-group-listing.md`
    - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`app/routes/executions.py`、`domain/schemas.py`、`app/openapi.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/app/routes/test_execution_routes.py`、`tests/infra/runtime/test_openai.py`
    - 如果需要继续维护 `M7.1` 代码面，先看 `app/routes/im.py`、`app/routes/messages.py`、`services/message_dispatch.py`、`services/message_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
@@ -478,4 +486,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2` 已完成；当前 parity backlog 的下一步是 `M7.3.1`（workspace/group model parity）。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` 已完成；当前 parity backlog 的下一步是 `M7.3.2`（workspace topology / binding parity）。

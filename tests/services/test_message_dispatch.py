@@ -84,6 +84,54 @@ async def test_dispatch_inbound_message_uses_explicit_group_folder() -> None:
 
 
 @pytest.mark.asyncio
+async def test_dispatch_inbound_message_registers_explicit_target_before_storage() -> None:
+    from infra.runtime.adapter import RunResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    registered_targets: list[tuple[object, object]] = []
+    store_calls: list[dict[str, object]] = []
+
+    def resolver(message):
+        return ResolvedMessageTarget(group_folder="resolved-group", chat_jid=message.chat_jid)
+
+    async def runtime_trigger(**kwargs):
+        return RunResult(
+            run_id=kwargs["request_id"],
+            status="completed",
+            final_output="agent reply",
+        )
+
+    async def register_target(message, target):
+        registered_targets.append((message, target))
+
+    async def store_message(**kwargs):
+        assert len(registered_targets) == 1
+        store_calls.append(kwargs)
+        return SimpleNamespace(id=f"db-{len(store_calls)}")
+
+    class Router:
+        async def route_message(self, message):
+            _ = message
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        runtime_trigger=runtime_trigger,
+        register_target=register_target,
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    await service.dispatch_inbound_message(_build_message())
+
+    assert len(registered_targets) == 1
+    message, target = registered_targets[0]
+    assert message.chat_jid == "telegram:chat-1"
+    assert target.chat_jid == "telegram:chat-1"
+    assert target.group_folder == "group-explicit"
+    assert store_calls[0]["group_folder"] == "group-explicit"
+
+
+@pytest.mark.asyncio
 async def test_dispatch_inbound_message_uses_resolver_when_group_folder_missing() -> None:
     from infra.runtime.adapter import RunResult
     from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
@@ -122,6 +170,51 @@ async def test_dispatch_inbound_message_uses_resolver_when_group_folder_missing(
     assert result.group_folder == "resolved-group"
     assert len(resolver_calls) == 1
     assert trigger_calls[0]["group_folder"] == "resolved-group"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_inbound_message_registers_resolved_target_before_storage() -> None:
+    from infra.runtime.adapter import RunResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    registered_targets: list[tuple[object, object]] = []
+
+    def resolver(message):
+        return ResolvedMessageTarget(group_folder="resolved-group", chat_jid=message.chat_jid)
+
+    async def runtime_trigger(**kwargs):
+        return RunResult(
+            run_id=kwargs["request_id"],
+            status="completed",
+            final_output="agent reply",
+        )
+
+    async def register_target(message, target):
+        registered_targets.append((message, target))
+
+    async def store_message(**kwargs):
+        assert len(registered_targets) == 1
+        return SimpleNamespace(id="db-message")
+
+    class Router:
+        async def route_message(self, message):
+            _ = message
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        runtime_trigger=runtime_trigger,
+        register_target=register_target,
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    await service.dispatch_inbound_message(_build_message(group_folder=None))
+
+    assert len(registered_targets) == 1
+    message, target = registered_targets[0]
+    assert message.chat_jid == "telegram:chat-1"
+    assert target.chat_jid == "telegram:chat-1"
+    assert target.group_folder == "resolved-group"
 
 
 @pytest.mark.asyncio

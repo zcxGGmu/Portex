@@ -20,6 +20,7 @@ from services.message_dispatch import (
     MessageDispatchService,
     ResolvedMessageTarget,
 )
+from services.group_registry import GroupRegistryService
 from services.message_router import MessageRouter
 from services.message_service import store_message
 
@@ -44,6 +45,15 @@ def _resolve_target(message: UnifiedMessage) -> ResolvedMessageTarget:
 
 async def _noop_web_handler(message: UnifiedMessage) -> None:
     _ = message
+
+
+def _build_registered_group_name(
+    message: UnifiedMessage,
+    target: ResolvedMessageTarget,
+) -> str:
+    if message.channel == "web":
+        return target.group_folder
+    return target.chat_jid
 
 
 def _require_env(name: str) -> str:
@@ -88,12 +98,25 @@ async def _send_telegram_message(message: UnifiedMessage) -> None:
     )
 
 
+def get_group_registry_service(
+    db: AsyncSession = Depends(get_db),
+) -> GroupRegistryService:
+    return GroupRegistryService(db=db)
+
+
 def get_message_dispatch_service(
     db: AsyncSession = Depends(get_db),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
 ) -> MessageDispatchService:
     return MessageDispatchService(
         target_resolver=_resolve_target,
         execution_coordinator=get_execution_coordinator(),
+        register_target=lambda message, target: group_registry.ensure_registered_group(
+            jid=target.chat_jid,
+            name=_build_registered_group_name(message, target),
+            folder=target.group_folder,
+            created_by=message.sender_id if message.channel == "web" else None,
+        ),
         store_message=lambda **kwargs: store_message(db=db, **kwargs),
         message_router=MessageRouter(
             feishu_handler=_send_feishu_message,
@@ -149,6 +172,7 @@ async def telegram_update(
 
 __all__ = [
     "get_feishu_client",
+    "get_group_registry_service",
     "get_message_dispatch_service",
     "get_telegram_client",
     "router",

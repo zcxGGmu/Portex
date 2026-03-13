@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 from typing import Iterator
 
 from fastapi.testclient import TestClient
@@ -127,6 +128,7 @@ def test_register_login_and_get_current_user_flow(api_client: TestClient) -> Non
 
 def test_groups_and_messages_require_authentication(api_client: TestClient) -> None:
     from app.main import app
+    from app.routes import groups as group_routes
     from app.routes import im as im_routes
 
     groups_unauthorized = api_client.get("/groups")
@@ -146,10 +148,24 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     token = login_response.json()["access_token"]
     auth_headers = {"Authorization": f"Bearer {token}"}
 
+    class FakeGroupRegistry:
+        async def list_registered_groups(self):
+            return [
+                SimpleNamespace(folder="group-alpha", name="Alpha Workspace"),
+                SimpleNamespace(folder="group-beta", name="Beta Workspace"),
+            ]
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
     groups_response = api_client.get("/groups", headers=auth_headers)
     assert groups_response.status_code == 200
     groups_payload = groups_response.json()
-    assert len(groups_payload["groups"]) >= 1
+    assert groups_payload == {
+        "groups": [
+            {"group_id": "group-alpha", "name": "Alpha Workspace"},
+            {"group_id": "group-beta", "name": "Beta Workspace"},
+        ]
+    }
 
     class FakeDispatchService:
         async def dispatch_inbound_message(self, message, *, execution_mode: str | None = None):

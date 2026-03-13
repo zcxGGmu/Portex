@@ -50,6 +50,7 @@ class MessageRouterProtocol(Protocol):
 StoreMessageCallable = Callable[..., Awaitable[Any]]
 TargetResolver = Callable[[UnifiedMessage], ResolvedMessageTarget]
 RuntimeTrigger = Callable[..., Awaitable[RunResult]]
+RegisterTargetCallable = Callable[[UnifiedMessage, ResolvedMessageTarget], Awaitable[Any]]
 
 
 class ExecutionSubmitter(Protocol):
@@ -71,6 +72,7 @@ class MessageDispatchService:
         runtime_trigger: RuntimeTrigger = run_agent_execution,
         runtime_factory: RuntimeFactory | None = None,
         session_id_factory: SessionIdFactory | None = None,
+        register_target: RegisterTargetCallable | None = None,
         store_message: StoreMessageCallable,
         message_router: MessageRouterProtocol,
         assistant_sender_id: str = DEFAULT_ASSISTANT_SENDER_ID,
@@ -80,6 +82,7 @@ class MessageDispatchService:
         self._runtime_trigger = runtime_trigger
         self._runtime_factory = runtime_factory or self._missing_runtime_factory
         self._session_id_factory = session_id_factory
+        self._register_target = register_target
         self._store_message = store_message
         self._message_router = message_router
         self._assistant_sender_id = assistant_sender_id
@@ -94,6 +97,8 @@ class MessageDispatchService:
             raise MessageDispatchError("message content cannot be empty")
 
         target = self._resolve_target(message)
+        if self._register_target is not None:
+            await self._register_target(message, target)
         run_id = uuid4().hex
 
         inbound_record = await self._store_message(

@@ -115,10 +115,12 @@ def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) 
 
 
 def test_post_messages_default_dependency_uses_execution_coordinator(api_client: TestClient) -> None:
+    from app.main import app
     from app.routes import im as im_routes
 
     submit_calls: list[object] = []
     store_calls: list[dict[str, object]] = []
+    registered_targets: list[dict[str, object]] = []
 
     class FakeCoordinator:
         async def submit_execution(self, request):
@@ -152,6 +154,34 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
         store_calls.append(kwargs)
         return type("StoredMessage", (), {"id": f"db-{len(store_calls)}"})()
 
+    class FakeGroupRegistry:
+        async def ensure_registered_group(
+            self,
+            *,
+            jid: str,
+            name: str,
+            folder: str,
+            created_by: str | None = None,
+        ):
+            registered_targets.append(
+                {
+                    "jid": jid,
+                    "name": name,
+                    "folder": folder,
+                    "created_by": created_by,
+                }
+            )
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": jid,
+                    "name": name,
+                    "folder": folder,
+                    "created_by": created_by,
+                },
+            )()
+
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(im_routes, "get_execution_coordinator", lambda: FakeCoordinator(), raising=False)
     monkeypatch.setattr(im_routes, "store_message", fake_store_message, raising=False)
@@ -159,6 +189,7 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
         "services.message_dispatch.run_agent_execution",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct runtime helper should not be used")),
     )
+    app.dependency_overrides[im_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
 
     try:
         response = api_client.post(
@@ -171,10 +202,19 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
             headers=_login_headers(api_client, "alice", "secret"),
         )
     finally:
+        app.dependency_overrides.clear()
         monkeypatch.undo()
 
     assert response.status_code == 200
     assert len(submit_calls) == 1
+    assert registered_targets == [
+        {
+            "jid": "group-demo",
+            "name": "group-demo",
+            "folder": "group-demo",
+            "created_by": submit_calls[0].user_id,
+        }
+    ]
     assert submit_calls[0].group_folder == "group-demo"
     assert submit_calls[0].source == "web"
     assert submit_calls[0].requested_mode == "host"

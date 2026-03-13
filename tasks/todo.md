@@ -610,7 +610,7 @@
 
 #### `M7.3` Workspace And Group Model Parity
 
-- [ ] `M7.3.1` Replace the current demo `group-demo` group list with a real persisted group/workspace listing model.
+- [x] `M7.3.1` Replace the current demo `group-demo` group list with a real persisted group/workspace listing model.
 - [ ] `M7.3.2` Define the Portex equivalent of HappyClaw’s main workspace / bound chat / per-user home workspace model.
 - [ ] `M7.3.3` Add explicit workspace ownership and binding metadata so IM chats can be attached to a user’s main workspace or future sub-workspaces.
 - [ ] `M7.3.4` Extend the current group/member model so it can represent real working sessions instead of only the minimal membership CRUD boundary.
@@ -880,3 +880,26 @@
 - No production-code changes were needed for `M7.2.7`; new focused tests passed on top of the `M7.2.6` implementation.
 - Fresh verification ran: `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_websocket_routes.py`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `git diff --check`.
 - Commit for this slice: `test(execution): complete M7.2.7 focused parity coverage`.
+
+# Session Plan (2026-03-13) - M7.3.1 Persisted Group Listing
+
+## Goal
+- Continue from the current parity handoff point by replacing the hard-coded `/groups` demo output with a real persisted registered-group listing model, and by lazily registering resolved HTTP/IM targets into that registry without defining the final workspace/home/binding topology.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, the `M7.1`/`M7.2` design docs, and current group/message/IM slices
+- [x] Compare the current Portex group/workspace surface against the HappyClaw reference implementation
+- [x] Write the focused `M7.3.1` design doc
+- [x] Write the focused `M7.3.1` implementation plan doc
+- [x] Add failing tests for the registry service, `/groups` listing, and dispatch registration hook
+- [x] Implement the minimal persisted registry service and route/dispatch wiring
+- [x] Run focused verification and broader regression
+- [x] Update `docs/progress.md` and this session review
+
+## Review
+- Added `docs/plans/2026-03-13-m7-3-1-persisted-group-listing-design.md` and `docs/plans/2026-03-13-m7-3-1-persisted-group-listing.md` to lock this slice as “DB-backed registered-group list + lazy auto-registration”, explicitly deferring home workspace, IM binding metadata, and richer workspace APIs.
+- Added `services/group_registry.py` plus `tests/services/test_group_registry.py`, turning `domain.models.group.RegisteredGroup` into a real async service boundary with `list_registered_groups()` and idempotent `ensure_registered_group(...)`.
+- Rewired `app/routes/groups.py` so `GET /groups` now reads the registry instead of returning hard-coded `group-demo`, while preserving the current `group_id/name` response shape by mapping `group_id` to the persisted `folder`.
+- Extended `services/message_dispatch.py` with an optional registration hook and rewired the default dependency path in `app/routes/im.py` so HTTP and IM dispatch lazily persist the current `chat_jid -> group_folder` target into `registered_groups` before execution continues.
+- Expanded `tests/services/test_message_dispatch.py`, `tests/app/routes/test_message_routes.py`, and `tests/app/routes/test_api_routes.py` to lock registration order, default HTTP dispatch wiring, and the route-level registry-backed list contract.
+- Fresh verification ran: `.venv/bin/pytest tests/services/test_group_registry.py tests/app/routes/test_api_routes.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py -q`; `.venv/bin/pytest tests/services/test_group_registry.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_im_routes.py tests/integration/test_message_flow.py tests/integration/test_api.py tests/integration/test_websocket.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `git diff --check`.
