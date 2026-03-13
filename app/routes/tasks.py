@@ -54,6 +54,7 @@ async def create_task(
             group_folder=request.group_folder,
             chat_jid=request.chat_jid,
             prompt=request.prompt,
+            execution_mode=request.execution_mode,
             schedule_type=request.schedule_type,
             schedule_value=request.schedule_value,
             next_run=request.next_run,

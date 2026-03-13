@@ -46,7 +46,13 @@ async def send_message(
     )
 
     try:
-        result = await dispatch_service.dispatch_inbound_message(normalized_message)
+        dispatch_kwargs: dict[str, str] = {}
+        if request.execution_mode is not None:
+            dispatch_kwargs["execution_mode"] = request.execution_mode
+        result = await dispatch_service.dispatch_inbound_message(
+            normalized_message,
+            **dispatch_kwargs,
+        )
     except MessageDispatchError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

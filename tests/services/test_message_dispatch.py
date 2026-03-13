@@ -281,3 +281,54 @@ async def test_dispatch_inbound_message_persists_inbound_before_coordinator_subm
     await service.dispatch_inbound_message(_build_message(group_folder=None))
 
     assert store_calls[0]["is_from_me"] is False
+
+
+@pytest.mark.asyncio
+async def test_dispatch_inbound_message_propagates_explicit_execution_mode() -> None:
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    submit_calls: list[object] = []
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id=request.request_id or "run-coordinator",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="resolved-group",
+                backend="host_process",
+                session_id="resolved-group",
+                final_output="reply from coordinator",
+            )
+
+    def resolver(message):
+        return ResolvedMessageTarget(group_folder="resolved-group", chat_jid=message.chat_jid)
+
+    async def store_message(**kwargs):
+        return SimpleNamespace(id="db-message")
+
+    class Router:
+        async def route_message(self, message):
+            _ = message
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        execution_coordinator=FakeCoordinator(),
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    await service.dispatch_inbound_message(
+        _build_message(group_folder=None),
+        execution_mode="host",
+    )
+
+    assert submit_calls[0].requested_mode == "host"

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from uuid import uuid4
 
 from domain.schemas import UnifiedMessage
@@ -14,6 +14,7 @@ from services.execution_coordinator import ExecutionRequest
 from services.agent_trigger import RuntimeFactory, SessionIdFactory, run_agent_execution
 
 DEFAULT_ASSISTANT_SENDER_ID = "portex"
+ExecutionMode = Literal["openai", "host", "container"]
 
 
 def _utcnow() -> datetime:
@@ -83,7 +84,12 @@ class MessageDispatchService:
         self._message_router = message_router
         self._assistant_sender_id = assistant_sender_id
 
-    async def dispatch_inbound_message(self, message: UnifiedMessage) -> DispatchResult:
+    async def dispatch_inbound_message(
+        self,
+        message: UnifiedMessage,
+        *,
+        execution_mode: ExecutionMode | None = None,
+    ) -> DispatchResult:
         if message.content.strip() == "":
             raise MessageDispatchError("message content cannot be empty")
 
@@ -103,7 +109,12 @@ class MessageDispatchService:
 
         if self._execution_coordinator is not None:
             handle = await self._execution_coordinator.submit_execution(
-                self._build_execution_request(target, message, run_id=run_id)
+                self._build_execution_request(
+                    target,
+                    message,
+                    run_id=run_id,
+                    execution_mode=execution_mode,
+                )
             )
             run_id = handle.run_id
             run_result = await self._execution_coordinator.wait_for_run(run_id)
@@ -175,6 +186,7 @@ class MessageDispatchService:
         message: UnifiedMessage,
         *,
         run_id: str,
+        execution_mode: ExecutionMode | None = None,
     ) -> ExecutionRequest:
         source = "web" if message.channel == "web" else "im"
         return ExecutionRequest(
@@ -184,6 +196,7 @@ class MessageDispatchService:
             user_id=message.sender_id,
             prompt=message.content,
             source=source,
+            requested_mode=execution_mode,
         )
 
     def _missing_runtime_factory(self, group_folder: str):

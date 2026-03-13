@@ -42,10 +42,17 @@ def test_post_messages_dispatches_through_real_service_boundary(api_client: Test
     from domain.schemas import UnifiedMessage
 
     dispatched_messages: list[UnifiedMessage] = []
+    received_modes: list[str | None] = []
 
     class FakeDispatchService:
-        async def dispatch_inbound_message(self, message: UnifiedMessage):
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
             dispatched_messages.append(message)
+            received_modes.append(execution_mode)
             return type(
                 "DispatchResult",
                 (),
@@ -78,6 +85,7 @@ def test_post_messages_dispatches_through_real_service_boundary(api_client: Test
     assert dispatched_messages[0].group_folder == "group-demo"
     assert dispatched_messages[0].chat_jid == "group-demo"
     assert dispatched_messages[0].content == "hello from http"
+    assert received_modes == [None]
 
 
 def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) -> None:
@@ -86,8 +94,9 @@ def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) 
     from services.message_dispatch import MessageDispatchError
 
     class FailingDispatchService:
-        async def dispatch_inbound_message(self, message):
+        async def dispatch_inbound_message(self, message, *, execution_mode: str | None = None):
             _ = message
+            _ = execution_mode
             raise MessageDispatchError("dispatch failed")
 
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FailingDispatchService()
@@ -154,7 +163,11 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
     try:
         response = api_client.post(
             "/messages",
-            json={"group_id": "group-demo", "content": "hello from http"},
+            json={
+                "group_id": "group-demo",
+                "content": "hello from http",
+                "execution_mode": "host",
+            },
             headers=_login_headers(api_client, "alice", "secret"),
         )
     finally:
@@ -164,6 +177,7 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
     assert len(submit_calls) == 1
     assert submit_calls[0].group_folder == "group-demo"
     assert submit_calls[0].source == "web"
+    assert submit_calls[0].requested_mode == "host"
     assert response.json()["run_id"] == submit_calls[0].request_id
     assert len(store_calls) == 2
     assert store_calls[0]["run_id"] == submit_calls[0].request_id

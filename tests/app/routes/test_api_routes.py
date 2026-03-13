@@ -152,8 +152,9 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     assert len(groups_payload["groups"]) >= 1
 
     class FakeDispatchService:
-        async def dispatch_inbound_message(self, message):
+        async def dispatch_inbound_message(self, message, *, execution_mode: str | None = None):
             _ = message
+            _ = execution_mode
             return type(
                 "DispatchResult",
                 (),
@@ -412,6 +413,7 @@ def test_admin_can_create_list_and_delete_tasks(api_client: TestClient) -> None:
             "group_folder": "group-demo",
             "chat_jid": "group-demo",
             "prompt": "send scheduled prompt",
+            "execution_mode": "host",
             "schedule_type": "once",
             "next_run": next_run.isoformat(),
         },
@@ -426,6 +428,7 @@ def test_admin_can_create_list_and_delete_tasks(api_client: TestClient) -> None:
     assert created_payload["prompt"] == "send scheduled prompt"
     assert created_payload["schedule_type"] == "once"
     assert created_payload["schedule_value"] is None
+    assert created_payload["execution_mode"] == "host"
     assert created_payload["status"] == "active"
     assert created_payload["next_run"]
     assert created_payload["created_at"]
@@ -435,6 +438,7 @@ def test_admin_can_create_list_and_delete_tasks(api_client: TestClient) -> None:
     assert list_response.status_code == 200
     list_payload = list_response.json()
     assert [task["id"] for task in list_payload["tasks"]] == [created_payload["id"]]
+    assert list_payload["tasks"][0]["execution_mode"] == "host"
 
     delete_response = api_client.delete(
         f"/tasks/{created_payload['id']}",
@@ -529,10 +533,32 @@ def test_member_can_list_tasks_but_cannot_create_or_delete_tasks(api_client: Tes
 
 def test_admin_can_list_task_logs(api_client: TestClient) -> None:
     from services.auth import auth_service
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
     from services.task_service import task_service
 
     auth_service.register_user("admin", "secret", role="admin")
     admin_headers = _login_headers(api_client, "admin", "secret")
+    monkeypatch = pytest.MonkeyPatch()
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            return ExecutionHandle(
+                run_id=request.request_id or "run-task-log",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="group-demo",
+                backend="openai_runtime",
+                session_id="group-demo",
+                final_output="scheduled reply",
+            )
+
+    monkeypatch.setattr(task_service, "_execution_coordinator", FakeCoordinator(), raising=False)
     task = task_service.create_task(
         group_folder="group-demo",
         chat_jid="group-demo",
@@ -541,7 +567,10 @@ def test_admin_can_list_task_logs(api_client: TestClient) -> None:
         next_run=datetime.now(timezone.utc) - timedelta(minutes=1),
     )
 
-    asyncio.run(task_service.run_pending())
+    try:
+        asyncio.run(task_service.run_pending())
+    finally:
+        monkeypatch.undo()
 
     response = api_client.get(f"/tasks/{task.id}/logs", headers=admin_headers)
 
@@ -554,11 +583,33 @@ def test_admin_can_list_task_logs(api_client: TestClient) -> None:
 
 def test_member_can_list_task_logs(api_client: TestClient) -> None:
     from services.auth import auth_service
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
     from services.task_service import task_service
 
     auth_service.register_user("admin", "secret", role="admin")
     auth_service.register_user("member", "secret")
     member_headers = _login_headers(api_client, "member", "secret")
+    monkeypatch = pytest.MonkeyPatch()
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            return ExecutionHandle(
+                run_id=request.request_id or "run-task-log",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="group-demo",
+                backend="openai_runtime",
+                session_id="group-demo",
+                final_output="scheduled reply",
+            )
+
+    monkeypatch.setattr(task_service, "_execution_coordinator", FakeCoordinator(), raising=False)
     task = task_service.create_task(
         group_folder="group-demo",
         chat_jid="group-demo",
@@ -567,7 +618,10 @@ def test_member_can_list_task_logs(api_client: TestClient) -> None:
         next_run=datetime.now(timezone.utc) - timedelta(minutes=1),
     )
 
-    asyncio.run(task_service.run_pending())
+    try:
+        asyncio.run(task_service.run_pending())
+    finally:
+        monkeypatch.undo()
 
     response = api_client.get(f"/tasks/{task.id}/logs", headers=member_headers)
 
@@ -1044,6 +1098,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert create_task_schema["properties"]["next_run"]["description"].startswith(
         "Required for one-off tasks"
     )
+    assert "execution_mode" in create_task_schema["properties"]
+
+    send_message_schema = schema["components"]["schemas"]["SendMessageRequest"]
+    assert "execution_mode" in send_message_schema["properties"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(

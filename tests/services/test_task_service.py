@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def _build_service(*, now: datetime, executor=None, task_log_service=None):
+def _build_service(*, now: datetime, executor=None, execution_coordinator=None, task_log_service=None):
     from services.scheduler import TaskScheduler
     from services.task_service import TaskService
 
@@ -20,6 +20,7 @@ def _build_service(*, now: datetime, executor=None, task_log_service=None):
     service = TaskService(
         scheduler=scheduler,
         executor=executor,
+        execution_coordinator=execution_coordinator,
         task_log_service=task_log_service,
         run_at_now_func=lambda: now,
     )
@@ -101,6 +102,23 @@ def test_create_task_normalizes_aware_next_run_to_internal_utc_naive() -> None:
     assert task.next_run.tzinfo is None
 
 
+def test_create_task_persists_execution_mode() -> None:
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    service, _scheduler = _build_service(now=now)
+
+    task = service.create_task(
+        group_folder="group-a",
+        chat_jid="chat-a",
+        prompt="run in host mode",
+        execution_mode="host",
+        schedule_type="once",
+        schedule_value=None,
+        next_run=now + timedelta(minutes=5),
+    )
+
+    assert task.execution_mode == "host"
+
+
 @pytest.mark.asyncio
 async def test_run_pending_records_success_log_for_due_task() -> None:
     from services.task_log_service import TaskLogService
@@ -166,6 +184,110 @@ async def test_run_pending_records_error_log_when_executor_fails() -> None:
     assert logs[0].status == "error"
     assert logs[0].result is None
     assert logs[0].error == "boom"
+
+
+@pytest.mark.asyncio
+async def test_run_pending_submits_due_task_through_execution_coordinator() -> None:
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
+    from services.task_log_service import TaskLogService
+
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    log_service = TaskLogService()
+    submit_calls: list[object] = []
+    wait_calls: list[str] = []
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id=request.request_id or "run-scheduled",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            wait_calls.append(run_id)
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="group-a",
+                backend="host_process",
+                session_id="group-a",
+                final_output="scheduled reply",
+            )
+
+    service, _scheduler = _build_service(
+        now=now,
+        execution_coordinator=FakeCoordinator(),
+        task_log_service=log_service,
+    )
+    task = service.create_task(
+        group_folder="group-a",
+        chat_jid="chat-a",
+        prompt="run scheduled task",
+        execution_mode="host",
+        schedule_type="once",
+        schedule_value=None,
+        next_run=now,
+    )
+
+    await service.run_pending()
+
+    assert submit_calls[0].source == "scheduled"
+    assert submit_calls[0].requested_mode == "host"
+    assert wait_calls == [submit_calls[0].request_id]
+    logs = log_service.list_logs(task.id)
+    assert logs[0].status == "success"
+    assert logs[0].result == "scheduled reply"
+
+
+@pytest.mark.asyncio
+async def test_run_pending_records_timeout_log_for_coordinator_timeout() -> None:
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
+    from services.task_log_service import TaskLogService
+
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    log_service = TaskLogService()
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            return ExecutionHandle(
+                run_id=request.request_id or "run-timeout",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="timeout",
+                group_folder="group-a",
+                backend="openai_runtime",
+                session_id="group-a",
+                timeout_ms=10,
+            )
+
+    service, _scheduler = _build_service(
+        now=now,
+        execution_coordinator=FakeCoordinator(),
+        task_log_service=log_service,
+    )
+    task = service.create_task(
+        group_folder="group-a",
+        chat_jid="chat-a",
+        prompt="timeout scheduled task",
+        schedule_type="once",
+        schedule_value=None,
+        next_run=now,
+    )
+
+    await service.run_pending()
+
+    logs = log_service.list_logs(task.id)
+    assert logs[0].status == "timeout"
+    assert logs[0].error == "execution timed out"
+    assert task.status == "active"
+    assert task.next_run == now
 
 
 def test_list_tasks_returns_tasks_in_scheduler_order() -> None:

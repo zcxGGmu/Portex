@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+ExecutionMode = Literal["openai", "host", "container"]
+
 
 def _normalize_utc_datetime(value: datetime | None) -> datetime | None:
     if value is None:
@@ -201,6 +203,14 @@ class SendMessageRequest(BaseModel):
         description="Message content to dispatch through the current runtime chain.",
         examples=["hello from HTTP"],
     )
+    execution_mode: ExecutionMode | None = Field(
+        default=None,
+        description=(
+            "Optional execution backend preference for this request. When omitted, "
+            "the current default execution policy is used."
+        ),
+        examples=["host"],
+    )
 
 
 class SendMessageResponse(BaseModel):
@@ -258,6 +268,14 @@ class CreateTaskRequest(BaseModel):
         description="Prompt that will be sent to the agent when the task runs.",
         examples=["send scheduled prompt"],
     )
+    execution_mode: ExecutionMode | None = Field(
+        default=None,
+        description=(
+            "Optional execution backend preference for this task. When omitted, the "
+            "task uses the default execution policy."
+        ),
+        examples=["container"],
+    )
     schedule_type: Literal["cron", "interval", "once"] = Field(
         description="Scheduling mode for the task.",
         examples=["once"],
@@ -296,6 +314,11 @@ class TaskResponse(BaseModel):
     prompt: str = Field(
         description="Prompt executed when the task runs.",
         examples=["send scheduled prompt"],
+    )
+    execution_mode: ExecutionMode | None = Field(
+        default=None,
+        description="Optional execution backend preference stored on the task.",
+        examples=["host"],
     )
     schedule_type: Literal["cron", "interval", "once"] = Field(
         description="Scheduling mode for the task.",

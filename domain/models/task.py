@@ -18,6 +18,7 @@ class ScheduledTask(Base):
     group_folder: Mapped[str] = mapped_column(String, nullable=False)
     chat_jid: Mapped[str] = mapped_column(String, nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    execution_mode: Mapped[str | None] = mapped_column(String)
     schedule_type: Mapped[str | None] = mapped_column(String)
     schedule_value: Mapped[str | None] = mapped_column(String)
     next_run: Mapped[datetime | None] = mapped_column(DateTime)

@@ -45,6 +45,7 @@ def test_model_key_fields_exist() -> None:
     invite_columns = InviteCode.__table__.columns.keys()
     message_columns = Message.__table__.columns.keys()
     session_columns = Session.__table__.columns.keys()
+    scheduled_task_columns = ScheduledTask.__table__.columns.keys()
     task_run_log_columns = task_run_log.__table__.columns.keys()
 
     assert "username" in user_columns
@@ -65,6 +66,7 @@ def test_model_key_fields_exist() -> None:
     assert "used_at" in invite_columns
     assert "attachments" in message_columns
     assert "group_folder" in session_columns
+    assert "execution_mode" in scheduled_task_columns
     assert "id" in task_run_log_columns
     assert "task_id" in task_run_log_columns
     assert "run_at" in task_run_log_columns
@@ -129,6 +131,12 @@ def test_task_run_log_model_fields_have_expected_nullability() -> None:
     assert status.nullable is False
     assert result.nullable is True
     assert error.nullable is True
+
+
+def test_scheduled_task_execution_mode_is_optional() -> None:
+    execution_mode = ScheduledTask.__table__.c.execution_mode
+
+    assert execution_mode.nullable is True
 
 
 def test_shared_metadata_contains_all_tables() -> None:
