@@ -120,6 +120,8 @@
 - Use `/commit <subject>` to ask Codex to run a commit-and-push flow for the current branch.
 - Optional description form: `/commit <subject> --desc <description>`.
 - Codex maps this shortcut to `scripts/commit_push.sh` for consistent behavior.
+- Use `/sync` to ask Codex to refresh `docs/progress.md` and `AGENTS.md` with the latest restart-oriented project state, run minimal diff hygiene, and create a local commit for that handoff update.
+- `/sync` is a chat workflow shortcut, not a shell command or repo script alias.
 - Commit subject should follow `type(scope): summary` when possible.
 
 ## Coding Style & Naming Conventions
