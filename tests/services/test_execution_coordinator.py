@@ -16,6 +16,7 @@ def _request(
     *,
     group_folder: str,
     prompt: str,
+    source: str = "web",
     requested_mode: str | None = None,
     timeout_ms: int | None = None,
     fresh_session: bool = False,
@@ -27,7 +28,7 @@ def _request(
         chat_jid=group_folder,
         user_id="user-a",
         prompt=prompt,
-        source="web",
+        source=source,
         requested_mode=requested_mode,
         timeout_ms=timeout_ms,
         fresh_session=fresh_session,
@@ -236,6 +237,69 @@ async def test_execution_coordinator_allows_different_groups_to_progress_indepen
 
 
 @pytest.mark.asyncio
+async def test_execution_coordinator_continues_same_group_queue_after_head_failure() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _SequentialBackend(
+        [
+            RuntimeError("head failed"),
+            {"status": "completed", "final_output": "reply:second"},
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+
+    first_result = await coordinator.wait_for_run(first.run_id)
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert first_result.status == "failed"
+    assert first_result.error == "head failed"
+    assert second_result.status == "completed"
+    assert second_result.final_output == "reply:second"
+    assert [call["prompt"] for call in backend.calls] == ["first", "second"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("second_source", ["scheduled", "im"])
+async def test_execution_coordinator_serializes_same_group_across_sources(
+    second_source: str,
+) -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="first", source="web")
+    )
+    second = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="second", source=second_source)
+    )
+
+    await asyncio.sleep(0)
+    assert coordinator.get_status(first.run_id) == "running"
+    assert coordinator.get_status(second.run_id) == "queued"
+
+    backend.release()
+    first_result = await coordinator.wait_for_run(first.run_id)
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert first_result.status == "completed"
+    assert second_result.status == "completed"
+    assert [call["prompt"] for call in backend.calls] == ["first", "second"]
+
+
+@pytest.mark.asyncio
 async def test_execution_coordinator_cancels_queued_run_without_executing_backend() -> None:
     from services.execution_coordinator import ExecutionCoordinator
     from services.execution_policy import ExecutionPolicy
@@ -403,6 +467,63 @@ async def test_execution_coordinator_invalid_requested_mode_returns_failed_resul
     assert result.status == "failed"
     assert result.error == "unsupported execution mode: unknown"
     assert backend.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("requested_mode", "expected_backend"),
+    [
+        ("host", "host_process"),
+        ("container", "docker_container"),
+    ],
+)
+async def test_execution_coordinator_snapshot_backend_matches_requested_mode(
+    requested_mode: str,
+    expected_backend: str,
+) -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _SequentialBackend([{"status": "completed", "final_output": "reply:mode"}])
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={
+            "openai_runtime": _RecordingBackend(),
+            expected_backend: backend,
+        },
+    )
+
+    handle = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="mode", requested_mode=requested_mode)
+    )
+    result = await coordinator.wait_for_run(handle.run_id)
+    snapshot = coordinator.get_run_snapshot(handle.run_id)
+
+    assert result.status == "completed"
+    assert result.backend == expected_backend
+    assert snapshot is not None
+    assert snapshot.backend == expected_backend
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_cancel_returns_false_for_unknown_and_terminal_runs() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _SequentialBackend([{"status": "completed", "final_output": "reply:done"}])
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    unknown_cancelled = await coordinator.cancel("unknown-run")
+    handle = await coordinator.submit_execution(_request(group_folder="group-a", prompt="done"))
+    result = await coordinator.wait_for_run(handle.run_id)
+    terminal_cancelled = await coordinator.cancel(handle.run_id)
+
+    assert unknown_cancelled is False
+    assert result.status == "completed"
+    assert terminal_cancelled is False
 
 
 @pytest.mark.asyncio
@@ -611,3 +732,81 @@ async def test_execution_coordinator_snapshot_marks_session_recovery_retry() -> 
     assert second_snapshot.recovery_attempted is True
     assert second_snapshot.recovery_reason == "resume failed"
     assert second_snapshot.recovery_succeeded is True
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_snapshot_marks_failed_recovery_retry() -> None:
+    from services.execution_backends import SessionResumeFailedError
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+    from services.workspace_lifecycle import WorkspaceSessionStore
+
+    session_store = WorkspaceSessionStore(
+        new_session_id_factory=lambda workspace_key: f"{workspace_key}:fresh"
+    )
+    backend = _SequentialBackend(
+        [
+            {"status": "completed", "final_output": "reply:first"},
+            SessionResumeFailedError("resume failed"),
+            RuntimeError("retry failed"),
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+        workspace_session_store=session_store,
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    await coordinator.wait_for_run(first.run_id)
+
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+    second_result = await coordinator.wait_for_run(second.run_id)
+    second_snapshot = coordinator.get_run_snapshot(second.run_id)
+
+    assert second_result.status == "failed"
+    assert second_result.error == "retry failed"
+    assert second_snapshot is not None
+    assert second_snapshot.recovery_attempted is True
+    assert second_snapshot.recovery_reason == "resume failed"
+    assert second_snapshot.recovery_succeeded is False
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_fresh_session_resume_failure_skips_recovery_retry_signal() -> None:
+    from services.execution_backends import SessionResumeFailedError
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+    from services.workspace_lifecycle import WorkspaceSessionStore
+
+    session_store = WorkspaceSessionStore(
+        new_session_id_factory=lambda workspace_key: f"{workspace_key}:fresh"
+    )
+    backend = _SequentialBackend(
+        [
+            {"status": "completed", "final_output": "reply:first"},
+            SessionResumeFailedError("fresh resume failed"),
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+        workspace_session_store=session_store,
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    await coordinator.wait_for_run(first.run_id)
+
+    second = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="second", fresh_session=True)
+    )
+    second_result = await coordinator.wait_for_run(second.run_id)
+    second_snapshot = coordinator.get_run_snapshot(second.run_id)
+
+    assert second_result.status == "failed"
+    assert second_result.error == "fresh resume failed"
+    assert second_snapshot is not None
+    assert second_snapshot.recovery_attempted is False
+    assert second_snapshot.recovery_reason is None
+    assert second_snapshot.recovery_succeeded is None
+    assert [call["session_id"] for call in backend.calls] == ["group-a", "group-a:fresh"]

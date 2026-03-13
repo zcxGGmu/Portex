@@ -259,3 +259,65 @@ def test_websocket_endpoint_emits_failed_terminal_event_for_openai_result_withou
             assert failed_payload["payload"] == {"error": "runtime exploded"}
     finally:
         monkeypatch.undo()
+
+
+def test_websocket_endpoint_emits_timeout_event_with_status_and_timeout_payload(
+    api_client: TestClient,
+) -> None:
+    from app.routes import websocket as websocket_routes
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            from infra.runtime.adapter import RunEvent
+            from services.execution_coordinator import ExecutionHandle
+
+            await request.request_metadata["event_handler"](
+                RunEvent(event_type="run.started", run_id="run-timeout")
+            )
+            return ExecutionHandle(
+                run_id="run-timeout",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            from services.execution_coordinator import ExecutionResult
+
+            return ExecutionResult(
+                run_id=run_id,
+                status="timeout",
+                group_folder="group-1",
+                backend="openai_runtime",
+                session_id="group-1",
+                timeout_ms=3210,
+            )
+
+        async def cancel(self, run_id: str) -> bool:
+            _ = run_id
+            return True
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        websocket_routes,
+        "get_execution_coordinator",
+        lambda: FakeCoordinator(),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        websocket_routes,
+        "trigger_agent_execution",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct trigger should not be used")),
+        raising=False,
+    )
+
+    try:
+        with api_client.websocket_connect("/ws/group-1") as websocket:
+            websocket.send_text("ping")
+            started_payload = json.loads(websocket.receive_text())
+            timeout_payload = json.loads(websocket.receive_text())
+            assert started_payload["event_type"] == "run.started"
+            assert timeout_payload["event_type"] == "run.timeout"
+            assert timeout_payload["payload"]["status"] == "timeout"
+            assert timeout_payload["payload"]["timeout_ms"] == 3210
+    finally:
+        monkeypatch.undo()

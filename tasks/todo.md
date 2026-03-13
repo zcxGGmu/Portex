@@ -606,7 +606,7 @@
 - [x] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
 - [x] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
 - [x] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
-- [ ] `M7.2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, timeout, and recovery behavior.
+- [x] `M7.2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, timeout, and recovery behavior.
 
 #### `M7.3` Workspace And Group Model Parity
 
@@ -857,3 +857,26 @@
 - Added resource-level read protection for execution snapshots: only the run owner or `owner/admin` role can read `/executions/{run_id}`; non-owner authenticated requests now return `404`, covered by `test_execution_status_route_hides_other_users_runs`.
 - Fresh verification ran: `.venv/bin/pytest tests/app/routes/test_execution_routes.py::test_execution_status_route_tolerates_unknown_requested_mode -q`; `.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_api_routes.py -q -ra`; `.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py -q`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `git diff --check`.
 - Commit for this slice: `feat(execution): complete M7.2.6 status recovery signaling`.
+
+# Session Plan (2026-03-13) - M7.2.7 Focused Execution-Plane Tests
+
+## Goal
+- Continue from `M7.2.6` by adding focused tests for queue ordering, executor selection, follow-up/session behavior, cancellation edges, timeout payload contract, and recovery signaling behavior, without expanding into new runtime features.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and current `M7.2` execution-plane slices
+- [x] Write the focused `M7.2.7` design doc
+- [x] Write the focused `M7.2.7` implementation plan doc
+- [x] Add failing tests for queue ordering, executor selection, cancellation edges, timeout payload, and recovery behavior
+- [x] Implement only minimal fixes required by red tests
+- [x] Run focused verification and broader regression
+- [x] Update `docs/progress.md` and this session review
+- [x] Commit the `M7.2.7` slice with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-13-m7-2-7-focused-tests-design.md` and `docs/plans/2026-03-13-m7-2-7-focused-tests.md` to lock this slice as “focused behavior parity tests” without expanding into new execution features.
+- Expanded `tests/services/test_execution_coordinator.py` with focused tests for same-group head-failure queue progression, cross-source serialization, requested-mode backend observability via snapshots, cancellation idempotent edges, recovery-retry failure signaling, and fresh-session no-retry signaling.
+- Expanded `tests/app/routes/test_websocket_routes.py` with timeout payload contract coverage (`run.timeout` with `status=timeout` and `timeout_ms`).
+- No production-code changes were needed for `M7.2.7`; new focused tests passed on top of the `M7.2.6` implementation.
+- Fresh verification ran: `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_websocket_routes.py`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `git diff --check`.
+- Commit for this slice: `test(execution): complete M7.2.7 focused parity coverage`.

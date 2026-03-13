@@ -65,8 +65,8 @@
 - `M6.5.3` 已完成（构建发布产物）。
 - `M6` 已完成（`M6.1` ~ `M6.5`）。
 - `M7.1` 已完成（主运行链补齐，基于 parity backlog）。
-- `M7.2` 进行中（execution plane parity，`M7.2.6` 已完成：coordinator run snapshot + `GET /executions/{run_id}` 已打通，queued/running/terminal 状态和最小 recovery 信号现在可在流外读取）。
-- 当前起点：继续 parity backlog 时，从 `M7.2.7` 开始，补齐 execution-plane focused tests（queue ordering、executor selection、follow-up injection、cancel/timeout/recovery 行为）；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.2` 已完成（execution plane parity，`M7.2.1` ~ `M7.2.7`），包括 coordinator/status/recovery read 面与 focused parity behavior tests。
+- 当前起点：继续 parity backlog 时，从 `M7.3.1` 开始，推进 workspace/group model parity（真实持久化 group/workspace 列表与绑定模型）；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -193,6 +193,9 @@
 - `M7.2.6`：新增 `tests/app/routes/test_execution_routes.py`，并扩展 `tests/services/test_execution_coordinator.py` 与 `tests/app/routes/test_api_routes.py`，锁定 snapshot 生命周期、recovery 标记和 execution-status 路由文档契约。
 - `M7.2.6`：补充 `requested_mode` 异常值回归修复：`GET /executions/{run_id}` 现在会把未知 mode 归一化为 `None`，避免响应模型校验触发 `500`；新增路由测试锁定该行为。
 - `M7.2.6`：补充 execution-status 资源级访问控制：只有 run 所属用户或 `owner/admin` 角色可读取快照，其他已登录用户返回 `404`；新增路由测试锁定该行为。
+- `M7.2.7`：新增 `docs/plans/2026-03-13-m7-2-7-focused-tests-design.md` 与 `docs/plans/2026-03-13-m7-2-7-focused-tests.md`，将该子步收紧为 focused behavior parity tests，不扩展运行时功能面。
+- `M7.2.7`：扩展 `tests/services/test_execution_coordinator.py`，补齐 queue ordering（含 head-failure continuation）、mixed-source serialization、requested-mode backend observability、cancel edge、recovery retry failure、fresh-session no-retry signaling 的 focused 契约。
+- `M7.2.7`：扩展 `tests/app/routes/test_websocket_routes.py`，补齐 timeout transport payload 契约（`run.timeout` + `status=timeout` + `timeout_ms`），并完成 `M7.2` 子步全链验证。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -208,6 +211,7 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `e8c6de6` `feat(execution): complete M7.2.6 status recovery signaling`
   - `af5e2be` `docs(handoff): record M7.2.5 cancel timeout boundary`
   - `f2c7c1d` `fix(execution): bound M7.2.5 cleanup waits`
   - `1ae86fb` `fix(execution): complete M7.2.5 cancel timeout boundary`
@@ -271,6 +275,10 @@
 
 ## 3. 最新验证证据
 
+- M7.2.7 focused verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_websocket_routes.py` -> `29 passed, 1 warning in 3.58s`
+- M7.2.7 behavior-focused regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py` -> `39 passed, 1 warning in 4.04s`
+- M7.2.7 broader regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q` -> `136 passed, 38 warnings in 7.43s`
+- M7.2.7 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `384 passed, 53 warnings in 11.14s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.2.6 TDD red：`.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_api_routes.py -q` -> `7 failed, 55 passed`（缺失 `get_run_snapshot`、`/executions/{run_id}` 与 OpenAPI 契约）
 - M7.2.6 focused verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_api_routes.py` -> `64 passed, 26 warnings in 6.76s`
 - M7.2.6 behavior-focused regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py` -> `30 passed, 1 warning in 3.59s`
@@ -423,9 +431,9 @@
 - `M6` 当前已全部完成，`docs/TODO.md` 的正式路线也已执行到末尾。
 - `M7.1` 当前已完成：真实 `/messages` dispatch、最小 Feishu/Telegram ingress、Telegram outbound text send、结构化 runtime-result、最小消息关联元数据，以及 focused + integration coverage 均已到位。
 - `M7.1` 当前仍保持刻意收敛：浏览器 WebSocket 主链没有被强行统一进新 dispatch service，queue/execution plane lifecycle 仍留在 `M7.2`，workspace/group model 仍留在 `M7.3`。
-- `M7.2` 当前已完成 `M7.2.1` ~ `M7.2.6`：coordinator/policy core、backend adapters、Web/IM/task rewiring、workspace session lifecycle、cancel-timeout cleanup 边界，以及 run snapshot + execution status 查询接口都已到位。
+- `M7.2` 当前已完成 `M7.2.1` ~ `M7.2.7`：coordinator/policy core、backend adapters、Web/IM/task rewiring、workspace session lifecycle、cancel-timeout cleanup 边界、run snapshot + execution status 查询接口，以及 focused parity behavior tests 都已到位。
 - `M7.2` 当前仍刻意收敛：状态/恢复信号仍是 in-memory read 面，不含 DB 持久化、监控页或 operator dashboard；这些仍留给后续阶段（`M7.3` / `M7.4`）。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.2.7` focused tests。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.1` workspace/group model parity。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -440,12 +448,12 @@
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
    - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
    - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
-2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.2.6` 已完成：
+2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.2` 已完成：
    - 如需复现当前 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.2.7` 开始：补 focused tests（queue ordering、executor selection、follow-up injection、cancel/timeout/recovery 行为）并巩固 `M7.2.6` 新增的状态查询契约
+   - 如果用户继续 parity backlog，优先从 `M7.3.1` 开始：把当前 demo `group-demo` 组织模型推进为真实持久化的 workspace/group 列表与绑定语义
    - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`app/routes/executions.py`、`domain/schemas.py`、`app/openapi.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/app/routes/test_execution_routes.py`、`tests/infra/runtime/test_openai.py`
    - 如果需要继续维护 `M7.1` 代码面，先看 `app/routes/im.py`、`app/routes/messages.py`、`services/message_dispatch.py`、`services/message_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
@@ -469,4 +477,4 @@
 
 ## 5. 一句话版
 
-> `M6` 与 `M7.1` 已完成；当前暂停点是 `M7.2` in progress，其中 `M7.2.6` 已完成，下一步是推进 `M7.2.7` focused tests。
+> `M6`、`M7.1`、`M7.2` 已完成；当前 parity backlog 的下一步是 `M7.3.1`（workspace/group model parity）。
