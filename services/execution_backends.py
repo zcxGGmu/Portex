@@ -20,6 +20,7 @@ from services.execution_coordinator import ExecutionRequest
 OUTPUT_START_MARKER = "---PORTEX_OUTPUT_START---"
 OUTPUT_END_MARKER = "---PORTEX_OUTPUT_END---"
 DEFAULT_DOCKER_EXECUTABLE = "docker"
+BACKEND_CLEANUP_WAIT_TIMEOUT_SECONDS = 5.0
 
 _REQUEST_METADATA_STORE: dict[int, Mapping[str, Any] | None] = {}
 
@@ -278,7 +279,7 @@ class ContainerBackend:
         try:
             stdout, stderr = await process.communicate(payload.model_dump_json().encode("utf-8"))
         except asyncio.CancelledError:
-            self._ensure_cleanup_task(run_id, process)
+            self._ensure_cleanup_task(run_id, process, container_name)
             raise
         else:
             self._clear_active_run(run_id)
@@ -292,48 +293,62 @@ class ContainerBackend:
 
     async def cancel(self, run_id: str) -> None:
         cleanup_task = self._cleanup_tasks.get(run_id)
-        container_name = self._container_names.get(run_id)
-        process = self._active_processes.get(run_id)
-        if container_name is not None:
-            try:
-                await self._container_manager.stop_container(container_name)
-            except Exception:
-                pass
-
-        if process is not None and hasattr(process, "kill"):
-            process.kill()
-            if cleanup_task is not None and not cleanup_task.done():
-                await asyncio.gather(cleanup_task, return_exceptions=True)
-            else:
-                wait = getattr(process, "wait", None)
-                if callable(wait):
-                    maybe_awaitable = wait()
-                    if hasattr(maybe_awaitable, "__await__"):
-                        await maybe_awaitable
-                self._clear_active_run(run_id)
-            return None
-
         if cleanup_task is not None and not cleanup_task.done():
             await asyncio.gather(cleanup_task, return_exceptions=True)
-        else:
-            self._clear_active_run(run_id)
+            return None
 
-    def _ensure_cleanup_task(self, run_id: str, process: Any) -> None:
+        await self._stop_active_run(run_id)
+        self._clear_active_run(run_id)
+
+    def _ensure_cleanup_task(self, run_id: str, process: Any, container_name: str) -> None:
         existing = self._cleanup_tasks.get(run_id)
         if existing is None or existing.done():
             self._cleanup_tasks[run_id] = asyncio.create_task(
-                self._cleanup_after_cancellation(run_id, process)
+                self._cleanup_after_cancellation(run_id, process, container_name)
             )
 
-    async def _cleanup_after_cancellation(self, run_id: str, process: Any) -> None:
+    async def _cleanup_after_cancellation(
+        self,
+        run_id: str,
+        process: Any,
+        container_name: str,
+    ) -> None:
         try:
-            wait = getattr(process, "wait", None)
+            await self._stop_active_run(run_id, process=process, container_name=container_name)
+        finally:
+            self._clear_active_run(run_id)
+
+    async def _stop_active_run(
+        self,
+        run_id: str,
+        *,
+        process: Any | None = None,
+        container_name: str | None = None,
+    ) -> None:
+        resolved_container_name = container_name or self._container_names.get(run_id)
+        resolved_process = process or self._active_processes.get(run_id)
+        if resolved_container_name is not None:
+            try:
+                await asyncio.wait_for(
+                    self._container_manager.stop_container(resolved_container_name),
+                    timeout=BACKEND_CLEANUP_WAIT_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                pass
+
+        if resolved_process is not None and hasattr(resolved_process, "kill"):
+            resolved_process.kill()
+            wait = getattr(resolved_process, "wait", None)
             if callable(wait):
                 maybe_awaitable = wait()
                 if hasattr(maybe_awaitable, "__await__"):
-                    await maybe_awaitable
-        finally:
-            self._clear_active_run(run_id)
+                    try:
+                        await asyncio.wait_for(
+                            maybe_awaitable,
+                            timeout=BACKEND_CLEANUP_WAIT_TIMEOUT_SECONDS,
+                        )
+                    except asyncio.TimeoutError:
+                        return None
 
     def _clear_active_run(self, run_id: str) -> None:
         self._active_processes.pop(run_id, None)

@@ -22,6 +22,7 @@ DEFAULT_FORBIDDEN_COMMANDS = (
     ("dd", "if="),
 )
 DEFAULT_MAX_EXECUTION_TIME = 3600
+PROCESS_CLEANUP_WAIT_TIMEOUT_SECONDS = 5.0
 HOST_MODE_RESTRICTIONS = {
     "allowed_directories": [str(path.resolve()) for path in DEFAULT_ALLOWED_DIRECTORIES],
     "forbidden_commands": ["rm -rf /", "dd if="],
@@ -229,6 +230,7 @@ class ProcessExecutor:
                 timeout=effective_timeout,
             )
         except asyncio.CancelledError:
+            process.kill()
             if run_id is not None:
                 self._ensure_cleanup_task(run_id, process)
             raise
@@ -260,7 +262,10 @@ class ProcessExecutor:
         if cleanup_task is not None and not cleanup_task.done():
             await asyncio.gather(cleanup_task, return_exceptions=True)
         else:
-            await self._await_process_wait(process)
+            await self._await_process_wait(
+                process,
+                timeout=PROCESS_CLEANUP_WAIT_TIMEOUT_SECONDS,
+            )
             self._clear_active_run(run_id)
         return True
 
@@ -281,16 +286,30 @@ class ProcessExecutor:
         process: asyncio.subprocess.Process,
     ) -> None:
         try:
-            await self._await_process_wait(process)
+            await self._await_process_wait(
+                process,
+                timeout=PROCESS_CLEANUP_WAIT_TIMEOUT_SECONDS,
+            )
         finally:
             self._clear_active_run(run_id)
 
-    async def _await_process_wait(self, process: asyncio.subprocess.Process) -> None:
+    async def _await_process_wait(
+        self,
+        process: asyncio.subprocess.Process,
+        *,
+        timeout: float | None = None,
+    ) -> None:
         wait = getattr(process, "wait", None)
         if callable(wait):
             maybe_awaitable = wait()
             if hasattr(maybe_awaitable, "__await__"):
-                await maybe_awaitable
+                if timeout is None:
+                    await maybe_awaitable
+                else:
+                    try:
+                        await asyncio.wait_for(maybe_awaitable, timeout=timeout)
+                    except asyncio.TimeoutError:
+                        return None
 
     def _clear_active_run(self, run_id: str) -> None:
         self._active_processes.pop(run_id, None)
@@ -305,6 +324,7 @@ __all__ = [
     "DEFAULT_DATA_ROOT",
     "DEFAULT_FORBIDDEN_COMMANDS",
     "DEFAULT_MAX_EXECUTION_TIME",
+    "PROCESS_CLEANUP_WAIT_TIMEOUT_SECONDS",
     "DEFAULT_RUNNER_ROOT",
     "HostModeRestrictions",
     "HOST_MODE_RESTRICTIONS",

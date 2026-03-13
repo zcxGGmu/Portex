@@ -277,6 +277,7 @@ async def test_execution_coordinator_marks_timeout_and_calls_backend_cancel() ->
         _request(group_folder="group-a", prompt="slow", timeout_ms=10)
     )
     result = await coordinator.wait_for_run(handle.run_id)
+    await asyncio.sleep(0)
 
     assert result.status == "timeout"
     assert result.timeout_ms == 10

@@ -202,6 +202,49 @@ async def test_container_backend_cancel_still_reaches_process_after_execute_task
 
 
 @pytest.mark.asyncio
+async def test_container_backend_cancel_returns_even_if_process_wait_hangs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services import execution_backends as backends_module
+    from services.execution_backends import ContainerBackend
+
+    stop_calls: list[str] = []
+
+    class HangingProcess:
+        def __init__(self) -> None:
+            self.returncode = None
+            self.kill_calls = 0
+
+        def kill(self) -> None:
+            self.kill_calls += 1
+
+        async def wait(self) -> int:
+            await asyncio.Future()
+
+    class FakeContainerManager:
+        container_image = "portex/agent-runner:test"
+
+        async def stop_container(self, container_id: str, *, timeout: int = 30) -> None:
+            _ = timeout
+            stop_calls.append(container_id)
+
+    monkeypatch.setattr(
+        backends_module,
+        "BACKEND_CLEANUP_WAIT_TIMEOUT_SECONDS",
+        0.01,
+        raising=False,
+    )
+
+    backend = ContainerBackend(container_manager=FakeContainerManager())
+    backend._active_processes["run-hang"] = HangingProcess()
+    backend._container_names["run-hang"] = "container-hang"
+
+    await asyncio.wait_for(backend.cancel("run-hang"), timeout=0.05)
+
+    assert stop_calls == ["container-hang"]
+
+
+@pytest.mark.asyncio
 async def test_host_process_backend_parses_runner_output() -> None:
     from infra.exec.process import ProcessRunResult
     from services.execution_backends import HostProcessBackend
