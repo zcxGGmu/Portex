@@ -1,7 +1,7 @@
 # Portex 开发进度上下文（重启续做入口）
 
 最后更新: 2026-03-13 (Asia/Shanghai)
-仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
+仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
 
 ---
@@ -220,6 +220,10 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `e565c72` `feat(groups): complete M7.3.2 workspace topology parity`
+  - `da09862` `docs(plans): define M7.3.2 workspace topology`
+  - `b50d4db` `feat(groups): complete M7.3.1 persisted group listing`
+  - `fe06923` `docs(handoff): sync baseline after M7.2 completion`
   - `1c47021` `test(execution): complete M7.2.7 focused parity coverage`
   - `e8c6de6` `feat(execution): complete M7.2.6 status recovery signaling`
   - `af5e2be` `docs(handoff): record M7.2.5 cancel timeout boundary`
