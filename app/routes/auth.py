@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.openapi import openapi_error_responses
 from domain.schemas import (
@@ -11,7 +12,9 @@ from domain.schemas import (
     RegisterResponse,
     TokenResponse,
 )
+from infra.db.database import get_db
 from services.auth import InviteCodeUnavailableError, UserAlreadyExistsError, auth_service
+from services.group_registry import GroupRegistryService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -20,6 +23,12 @@ def _user_attr(user: Any, field: str) -> Any:
     if isinstance(user, dict):
         return user.get(field)
     return getattr(user, field, None)
+
+
+def get_group_registry_service(
+    db: AsyncSession = Depends(get_db),
+) -> GroupRegistryService:
+    return GroupRegistryService(db=db)
 
 
 @router.post(
@@ -36,7 +45,10 @@ def _user_attr(user: Any, field: str) -> Any:
         status.HTTP_409_CONFLICT,
     ),
 )
-async def register(request: RegisterRequest) -> RegisterResponse:
+async def register(
+    request: RegisterRequest,
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+) -> RegisterResponse:
     try:
         user = auth_service.register_user(
             username=request.username,
@@ -54,6 +66,11 @@ async def register(request: RegisterRequest) -> RegisterResponse:
             detail="invite code is invalid, expired, or already used",
         ) from exc
 
+    await group_registry.ensure_home_workspace(
+        user_id=_user_attr(user, "id"),
+        role=_user_attr(user, "role"),
+        username=_user_attr(user, "username"),
+    )
     return RegisterResponse(user_id=_user_attr(user, "id"))
 
 
@@ -82,4 +99,4 @@ async def login(request: LoginRequest) -> TokenResponse:
     return TokenResponse(access_token=access_token)
 
 
-__all__ = ["router"]
+__all__ = ["get_group_registry_service", "router"]

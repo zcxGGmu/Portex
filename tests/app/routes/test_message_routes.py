@@ -39,6 +39,7 @@ def _login_headers(api_client: TestClient, username: str, password: str) -> dict
 def test_post_messages_dispatches_through_real_service_boundary(api_client: TestClient) -> None:
     from app.main import app
     from app.routes import im as im_routes
+    from app.routes import messages as message_routes
     from domain.schemas import UnifiedMessage
 
     dispatched_messages: list[UnifiedMessage] = []
@@ -63,7 +64,19 @@ def test_post_messages_dispatches_through_real_service_boundary(api_client: Test
                 },
             )()
 
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return None
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            _ = folder
+            return None
+
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
 
     try:
         response = api_client.post(
@@ -91,6 +104,7 @@ def test_post_messages_dispatches_through_real_service_boundary(api_client: Test
 def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) -> None:
     from app.main import app
     from app.routes import im as im_routes
+    from app.routes import messages as message_routes
     from services.message_dispatch import MessageDispatchError
 
     class FailingDispatchService:
@@ -99,7 +113,19 @@ def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) 
             _ = execution_mode
             raise MessageDispatchError("dispatch failed")
 
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return None
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            _ = folder
+            return None
+
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FailingDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
 
     try:
         response = api_client.post(
@@ -117,10 +143,12 @@ def test_post_messages_maps_dispatch_errors_to_http_400(api_client: TestClient) 
 def test_post_messages_default_dependency_uses_execution_coordinator(api_client: TestClient) -> None:
     from app.main import app
     from app.routes import im as im_routes
+    from app.routes import messages as message_routes
 
     submit_calls: list[object] = []
     store_calls: list[dict[str, object]] = []
     registered_targets: list[dict[str, object]] = []
+    ensured_workspaces: list[dict[str, str]] = []
 
     class FakeCoordinator:
         async def submit_execution(self, request):
@@ -155,6 +183,30 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
         return type("StoredMessage", (), {"id": f"db-{len(store_calls)}"})()
 
     class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            ensured_workspaces.append(
+                {
+                    "user_id": user_id,
+                    "role": role,
+                    "username": username,
+                }
+            )
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": f"web:home-{user_id}",
+                    "name": f"{username} Home",
+                    "folder": f"home-{user_id}",
+                    "created_by": user_id,
+                    "is_home": True,
+                },
+            )()
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            _ = folder
+            return None
+
         async def ensure_registered_group(
             self,
             *,
@@ -189,7 +241,9 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
         "services.message_dispatch.run_agent_execution",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct runtime helper should not be used")),
     )
-    app.dependency_overrides[im_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+    fake_group_registry = FakeGroupRegistry()
+    app.dependency_overrides[im_routes.get_group_registry_service] = lambda: fake_group_registry
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: fake_group_registry
 
     try:
         response = api_client.post(
@@ -207,6 +261,7 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
 
     assert response.status_code == 200
     assert len(submit_calls) == 1
+    assert ensured_workspaces[0]["role"] == "member"
     assert registered_targets == [
         {
             "jid": "group-demo",
@@ -221,3 +276,177 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
     assert response.json()["run_id"] == submit_calls[0].request_id
     assert len(store_calls) == 2
     assert store_calls[0]["run_id"] == submit_calls[0].request_id
+
+
+def test_post_messages_resolves_main_folder_to_canonical_web_jid(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+    from services.auth import auth_service
+
+    dispatched_messages: list[UnifiedMessage] = []
+    ensured_workspaces: list[dict[str, str]] = []
+    owner = auth_service.register_user("owner", "secret", role="owner")
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-main-workspace",
+                    "status": "completed",
+                    "final_output": "main reply",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            ensured_workspaces.append(
+                {
+                    "user_id": user_id,
+                    "role": role,
+                    "username": username,
+                }
+            )
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": "web:main",
+                    "folder": "main",
+                    "name": "Main",
+                    "created_by": owner.id,
+                    "is_home": True,
+                },
+            )()
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder != "main":
+                return None
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": "web:main",
+                    "folder": "main",
+                    "name": "Main",
+                    "created_by": owner.id,
+                    "is_home": True,
+                },
+            )()
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "main", "content": "hello main"},
+            headers={"Authorization": f"Bearer {auth_service.create_access_token(owner.id)}"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert len(dispatched_messages) == 1
+    assert dispatched_messages[0].chat_jid == "web:main"
+    assert dispatched_messages[0].group_folder == "main"
+    assert ensured_workspaces == [
+        {
+            "user_id": owner.id,
+            "role": "owner",
+            "username": "owner",
+        }
+    ]
+
+
+def test_post_messages_resolves_personal_home_folder_to_canonical_web_jid(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+
+    dispatched_messages: list[UnifiedMessage] = []
+    register_response = api_client.post(
+        "/auth/register",
+        json={"username": "alice", "password": "secret"},
+    )
+    user_id = register_response.json()["user_id"]
+    home_folder = f"home-{user_id}"
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-home-workspace",
+                    "status": "completed",
+                    "final_output": "home reply",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = role
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": f"web:home-{user_id}",
+                    "folder": f"home-{user_id}",
+                    "name": f"{username} Home",
+                    "created_by": user_id,
+                    "is_home": True,
+                },
+            )()
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder != home_folder:
+                return None
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": f"web:home-{user_id}",
+                    "folder": home_folder,
+                    "name": "Alice Home",
+                    "created_by": user_id,
+                    "is_home": True,
+                },
+            )()
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": home_folder, "content": "hello home"},
+            headers=_login_headers(api_client, "alice", "secret"),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert len(dispatched_messages) == 1
+    assert dispatched_messages[0].chat_jid == f"web:home-{user_id}"
+    assert dispatched_messages[0].group_folder == home_folder

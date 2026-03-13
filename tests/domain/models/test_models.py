@@ -115,6 +115,14 @@ def test_group_member_model_fields_have_expected_defaults() -> None:
     assert joined_at.default is not None
 
 
+def test_registered_group_has_home_workspace_flag() -> None:
+    is_home = RegisteredGroup.__table__.c.is_home
+
+    assert is_home.nullable is False
+    assert is_home.default is not None
+    assert is_home.default.arg is False
+
+
 def test_task_run_log_model_fields_have_expected_nullability() -> None:
     task_run_log = _task_run_log_model()
 

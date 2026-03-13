@@ -85,6 +85,35 @@ async def test_ensure_registered_group_is_idempotent_and_preserves_added_at(
 
 
 @pytest.mark.asyncio
+async def test_ensure_registered_group_does_not_clear_home_or_created_by_on_repeat_write(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+
+    original = await service.ensure_registered_group(
+        jid="web:home-user-1",
+        name="Alice Home",
+        folder="home-user-1",
+        created_by="user-1",
+        is_home=True,
+    )
+
+    updated = await service.ensure_registered_group(
+        jid="web:home-user-1",
+        name="Alice Home Updated",
+        folder="home-user-1",
+        created_by="user-2",
+    )
+
+    assert updated.jid == original.jid
+    assert updated.name == "Alice Home Updated"
+    assert updated.created_by == "user-1"
+    assert updated.is_home is True
+
+
+@pytest.mark.asyncio
 async def test_list_registered_groups_returns_persisted_rows_in_deterministic_order(
     db_session: AsyncSession,
 ) -> None:
@@ -116,3 +145,79 @@ async def test_list_registered_groups_returns_persisted_rows_in_deterministic_or
         ("telegram:chat-1", "chat-111"),
         ("telegram:chat-2", "chat-222"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_ensure_home_workspace_creates_personal_home_for_member(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+
+    home = await service.ensure_home_workspace(
+        user_id="user-1",
+        role="member",
+        username="alice",
+    )
+
+    assert home.jid == "web:home-user-1"
+    assert home.folder == "home-user-1"
+    assert home.name == "alice Home"
+    assert home.created_by == "user-1"
+    assert home.is_home is True
+
+
+@pytest.mark.asyncio
+async def test_ensure_home_workspace_reuses_shared_main_for_owner(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+
+    first = await service.ensure_home_workspace(
+        user_id="owner-1",
+        role="owner",
+        username="owner-one",
+    )
+    second = await service.ensure_home_workspace(
+        user_id="owner-2",
+        role="owner",
+        username="owner-two",
+    )
+
+    assert first.jid == "web:main"
+    assert first.folder == "main"
+    assert first.is_home is True
+    assert second.jid == "web:main"
+    assert second.folder == "main"
+    assert second.created_by == "owner-1"
+
+
+@pytest.mark.asyncio
+async def test_get_web_workspace_by_folder_prefers_canonical_web_row(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+    await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="home-user-1",
+        created_by=None,
+    )
+    await service.ensure_registered_group(
+        jid="web:home-user-1",
+        name="Alice Home",
+        folder="home-user-1",
+        created_by="user-1",
+        is_home=True,
+    )
+
+    resolved = await service.get_web_workspace_by_folder("home-user-1")
+
+    assert resolved is not None
+    assert resolved.jid == "web:home-user-1"
+    assert resolved.is_home is True

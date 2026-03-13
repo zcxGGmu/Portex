@@ -4,14 +4,40 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.routes.im import get_message_dispatch_service
 from app.middleware.auth import get_current_user
 from app.openapi import openapi_error_responses
+from infra.db.database import get_db
 from domain.schemas import SendMessageRequest, SendMessageResponse, UnifiedMessage, UserResponse
+from services.group_registry import GroupRegistryService
 from services.message_dispatch import MessageDispatchError, MessageDispatchService
 
 router = APIRouter(prefix="/messages", tags=["messages"])
+
+
+def get_group_registry_service(
+    db: AsyncSession = Depends(get_db),
+) -> GroupRegistryService:
+    return GroupRegistryService(db=db)
+
+
+async def _resolve_http_message_target(
+    *,
+    group_id: str,
+    current_user: UserResponse,
+    group_registry: GroupRegistryService,
+) -> tuple[str, str]:
+    await group_registry.ensure_home_workspace(
+        user_id=current_user.id,
+        role=current_user.role,
+        username=current_user.username,
+    )
+    workspace = await group_registry.get_web_workspace_by_folder(group_id)
+    if workspace is not None:
+        return workspace.jid, workspace.folder
+    return group_id, group_id
 
 
 @router.post(
@@ -32,14 +58,20 @@ router = APIRouter(prefix="/messages", tags=["messages"])
 async def send_message(
     request: SendMessageRequest,
     current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
     dispatch_service: MessageDispatchService = Depends(get_message_dispatch_service),
 ) -> SendMessageResponse:
     message_id = f"msg-{uuid4().hex[:12]}"
+    chat_jid, group_folder = await _resolve_http_message_target(
+        group_id=request.group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
     normalized_message = UnifiedMessage(
         channel="web",
-        chat_jid=request.group_id,
+        chat_jid=chat_jid,
         sender_id=current_user.id,
-        group_folder=request.group_id,
+        group_folder=group_folder,
         content=request.content,
         message_id=message_id,
         timestamp=datetime.now(timezone.utc),
@@ -64,4 +96,4 @@ async def send_message(
     )
 
 
-__all__ = ["router"]
+__all__ = ["get_group_registry_service", "router"]

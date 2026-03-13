@@ -177,3 +177,45 @@ def test_init_db_backfills_missing_indexes_for_existing_tables(tmp_path: Path) -
     assert "idx_messages_chat_jid" in message_indexes
     assert "idx_messages_timestamp" in message_indexes
     assert "idx_tasks_next_run" in task_indexes
+
+
+def test_init_db_backfills_registered_groups_home_flag_for_existing_tables(tmp_path: Path) -> None:
+    from scripts import init_db
+
+    database_path = tmp_path / "portex-registered-groups.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE registered_groups (
+                jid VARCHAR PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                folder VARCHAR NOT NULL,
+                added_at DATETIME NOT NULL,
+                container_config TEXT,
+                created_by VARCHAR
+            )
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    exit_code = init_db.main(["--database-url", database_url])
+
+    assert exit_code == 0
+
+    connection = sqlite3.connect(database_path)
+    try:
+        columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info('registered_groups')").fetchall()
+        }
+    finally:
+        connection.close()
+
+    assert "is_home" in columns
+    assert columns["is_home"][3] == 1
+    assert columns["is_home"][4] == "0"

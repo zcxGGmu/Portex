@@ -126,10 +126,56 @@ def test_register_login_and_get_current_user_flow(api_client: TestClient) -> Non
     assert me_payload["notes"] is None
 
 
+def test_register_ensures_home_workspace_for_new_user(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import auth as auth_routes
+
+    ensure_calls: list[dict[str, str]] = []
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(
+            self,
+            *,
+            user_id: str,
+            role: str,
+            username: str,
+        ):
+            ensure_calls.append(
+                {
+                    "user_id": user_id,
+                    "role": role,
+                    "username": username,
+                }
+            )
+            return None
+
+    app.dependency_overrides[auth_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/auth/register",
+            json={"username": "alice", "password": "secret"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert ensure_calls == [
+        {
+            "user_id": payload["user_id"],
+            "role": "member",
+            "username": "alice",
+        }
+    ]
+
+
 def test_groups_and_messages_require_authentication(api_client: TestClient) -> None:
     from app.main import app
+    from app.routes import auth as auth_routes
     from app.routes import groups as group_routes
     from app.routes import im as im_routes
+    from app.routes import messages as message_routes
 
     groups_unauthorized = api_client.get("/groups")
     assert groups_unauthorized.status_code == 401
@@ -149,19 +195,62 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     auth_headers = {"Authorization": f"Bearer {token}"}
 
     class FakeGroupRegistry:
+        def __init__(self) -> None:
+            self._home_owner_id: str | None = None
+
+        async def ensure_home_workspace(
+            self,
+            *,
+            user_id: str,
+            role: str,
+            username: str,
+        ):
+            _ = role
+            _ = username
+            self._home_owner_id = user_id
+            return SimpleNamespace(
+                jid="web:home-bob",
+                folder="home-bob",
+                name="Bob Home",
+                created_by=user_id,
+                is_home=True,
+            )
+
         async def list_registered_groups(self):
             return [
+                SimpleNamespace(
+                    jid="web:home-bob",
+                    folder="home-bob",
+                    name="Bob Home",
+                    created_by=self._home_owner_id,
+                    is_home=True,
+                ),
+                SimpleNamespace(
+                    jid="web:home-other",
+                    folder="home-other",
+                    name="Other Home",
+                    created_by="user-other",
+                    is_home=True,
+                ),
                 SimpleNamespace(folder="group-alpha", name="Alpha Workspace"),
                 SimpleNamespace(folder="group-beta", name="Beta Workspace"),
             ]
 
-    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+        async def get_web_workspace_by_folder(self, folder: str):
+            _ = folder
+            return None
+
+    fake_group_registry = FakeGroupRegistry()
+    app.dependency_overrides[auth_routes.get_group_registry_service] = lambda: fake_group_registry
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: fake_group_registry
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: fake_group_registry
 
     groups_response = api_client.get("/groups", headers=auth_headers)
     assert groups_response.status_code == 200
     groups_payload = groups_response.json()
     assert groups_payload == {
         "groups": [
+            {"group_id": "home-bob", "name": "Bob Home"},
             {"group_id": "group-alpha", "name": "Alpha Workspace"},
             {"group_id": "group-beta", "name": "Beta Workspace"},
         ]
@@ -196,6 +285,152 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     assert message_payload["message_id"]
     assert message_payload["status"] == "completed"
     assert message_payload["run_id"] == "run-auth-check"
+
+
+def test_groups_route_ensures_home_workspace_and_hides_other_users_home_rows(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    current_user = auth_service.register_user("alice", "secret")
+    auth_service.register_user("other", "secret")
+    auth_headers = _login_headers(api_client, "alice", "secret")
+    ensure_calls: list[dict[str, str]] = []
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(
+            self,
+            *,
+            user_id: str,
+            role: str,
+            username: str,
+        ):
+            ensure_calls.append(
+                {
+                    "user_id": user_id,
+                    "role": role,
+                    "username": username,
+                }
+            )
+            return SimpleNamespace(
+                jid=f"web:home-{user_id}",
+                folder=f"home-{user_id}",
+                name=f"{username} Home",
+                created_by=user_id,
+                is_home=True,
+            )
+
+        async def list_registered_groups(self):
+            return [
+                SimpleNamespace(
+                    jid=f"web:home-{current_user.id}",
+                    folder=f"home-{current_user.id}",
+                    name="alice Home",
+                    created_by=current_user.id,
+                    is_home=True,
+                ),
+                SimpleNamespace(
+                    jid="web:home-other-user",
+                    folder="home-other-user",
+                    name="other Home",
+                    created_by="other-user-id",
+                    is_home=True,
+                ),
+                SimpleNamespace(
+                    jid="telegram:chat-1",
+                    folder="chat-1",
+                    name="Shared Chat",
+                    created_by=None,
+                    is_home=False,
+                ),
+            ]
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.get("/groups", headers=auth_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert ensure_calls == [
+        {
+            "user_id": current_user.id,
+            "role": "member",
+            "username": "alice",
+        }
+    ]
+    assert response.json() == {
+        "groups": [
+            {"group_id": f"home-{current_user.id}", "name": "alice Home"},
+            {"group_id": "chat-1", "name": "Shared Chat"},
+        ]
+    }
+
+
+def test_owner_can_list_shared_main_workspace_created_by_another_owner(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    first_owner = auth_service.register_user("owner-one", "secret", role="owner")
+    second_owner = auth_service.register_user("owner-two", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner-two", "secret")
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(
+            self,
+            *,
+            user_id: str,
+            role: str,
+            username: str,
+        ):
+            assert user_id == second_owner.id
+            assert role == "owner"
+            assert username == "owner-two"
+            return SimpleNamespace(
+                jid="web:main",
+                folder="main",
+                name="Main",
+                created_by=first_owner.id,
+                is_home=True,
+            )
+
+        async def list_registered_groups(self):
+            return [
+                SimpleNamespace(
+                    jid="web:main",
+                    folder="main",
+                    name="Main",
+                    created_by=first_owner.id,
+                    is_home=True,
+                ),
+                SimpleNamespace(
+                    jid=f"web:home-{first_owner.id}",
+                    folder=f"home-{first_owner.id}",
+                    name="owner-one Home",
+                    created_by=first_owner.id,
+                    is_home=True,
+                ),
+            ]
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.get("/groups", headers=owner_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "groups": [
+            {"group_id": "main", "name": "Main"},
+        ]
+    }
 
 
 def test_group_member_routes_require_authentication(api_client: TestClient) -> None:

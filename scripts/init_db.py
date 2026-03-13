@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, inspect
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -33,6 +33,19 @@ def _create_missing_indexes(connection: Connection, metadata: MetaData) -> None:
             index.create(bind=connection, checkfirst=True)
 
 
+def _backfill_registered_group_columns(connection: Connection) -> None:
+    inspector = inspect(connection)
+    if "registered_groups" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("registered_groups")}
+    if "is_home" not in columns:
+        connection.exec_driver_sql(
+            "ALTER TABLE registered_groups "
+            "ADD COLUMN is_home BOOLEAN NOT NULL DEFAULT 0"
+        )
+
+
 async def init_db(database_url: str | None = None) -> None:
     """Create all tables defined in the unified metadata."""
     metadata = get_model_metadata()
@@ -46,6 +59,7 @@ async def init_db(database_url: str | None = None) -> None:
     try:
         async with db_engine.begin() as connection:
             await connection.run_sync(metadata.create_all)
+            await connection.run_sync(_backfill_registered_group_columns)
             await connection.run_sync(lambda sync_connection: _create_missing_indexes(sync_connection, metadata))
     finally:
         if should_dispose:

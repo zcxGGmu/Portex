@@ -44,6 +44,14 @@ def get_group_registry_service(
     return GroupRegistryService(db=db)
 
 
+def _is_group_visible_to_user(group, current_user: AuthUser) -> bool:
+    if not bool(getattr(group, "is_home", False)):
+        return True
+    if current_user.role == "owner":
+        return group.folder == "main"
+    return getattr(group, "created_by", None) == current_user.id
+
+
 def _require_group_membership(group_id: str, current_user: AuthUser) -> None:
     if group_member_service.get_member(group_id, current_user.id) is None:
         raise HTTPException(
@@ -94,11 +102,16 @@ async def list_groups(
     current_user: AuthUser = Depends(get_current_user),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
 ) -> GroupListResponse:
-    _ = current_user
+    await group_registry.ensure_home_workspace(
+        user_id=current_user.id,
+        role=current_user.role,
+        username=current_user.username,
+    )
     return GroupListResponse(
         groups=[
             _to_group_summary_response(group)
             for group in await group_registry.list_registered_groups()
+            if _is_group_visible_to_user(group, current_user)
         ]
     )
 

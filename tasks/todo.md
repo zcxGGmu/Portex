@@ -611,7 +611,7 @@
 #### `M7.3` Workspace And Group Model Parity
 
 - [x] `M7.3.1` Replace the current demo `group-demo` group list with a real persisted group/workspace listing model.
-- [ ] `M7.3.2` Define the Portex equivalent of HappyClaw’s main workspace / bound chat / per-user home workspace model.
+- [x] `M7.3.2` Define the Portex equivalent of HappyClaw’s main workspace / bound chat / per-user home workspace model.
 - [ ] `M7.3.3` Add explicit workspace ownership and binding metadata so IM chats can be attached to a user’s main workspace or future sub-workspaces.
 - [ ] `M7.3.4` Extend the current group/member model so it can represent real working sessions instead of only the minimal membership CRUD boundary.
 - [ ] `M7.3.5` Decide whether Portex will support sub-agent / multi-session tabs like HappyClaw, and if yes, add the minimal data model needed for that.
