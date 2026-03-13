@@ -605,7 +605,7 @@
 - [x] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
 - [x] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
 - [x] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
-- [ ] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
+- [x] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
 - [ ] `M7.2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, timeout, and recovery behavior.
 
 #### `M7.3` Workspace And Group Model Parity
@@ -832,3 +832,28 @@
 - Multi-agent review found two real follow-ups after the first implementation: cleanup waits were still unbounded, and outer host cancellation still depended on a second-step cancel call to stop the child. Both were fixed before final verification. An additional coordinator review pointed out that the old timeout test had become timing-dependent after moving cancel to the background, so the assertion was stabilized accordingly.
 - Fresh verification ran: `git diff --check`; `.venv/bin/pytest tests/services/test_execution_backends.py tests/services/test_execution_coordinator.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest tests/integration/test_websocket.py tests/app/routes/test_websocket_routes.py tests/services/test_task_service.py -q`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
 - Session commits completed: `docs(plans): define M7.2.5 cancel timeout boundary`, `fix(execution): complete M7.2.5 cancel timeout boundary`, `fix(execution): bound M7.2.5 cleanup waits`.
+
+# Session Plan (2026-03-13) - M7.2.6 Status Recovery Signaling
+
+## Goal
+- Continue from the current parity handoff point by exposing execution status and minimal recovery signals outside the current direct WebSocket stream, without expanding into `M7.3` workspace persistence or `M7.4` operator dashboards.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, the `M7.2` docs, and current execution/runtime/routes slices
+- [x] Write the focused `M7.2.6` design doc
+- [x] Write the focused `M7.2.6` implementation plan doc
+- [x] Add failing tests for coordinator run snapshots and external status query route
+- [x] Implement minimal coordinator status/recovery snapshot surface and read-only execution status API
+- [x] Run focused verification and broader regression
+- [x] Update `docs/progress.md` and this session review
+- [x] Commit the `M7.2.6` slice with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-13-m7-2-6-status-recovery-signaling-design.md` and `docs/plans/2026-03-13-m7-2-6-status-recovery-signaling.md` to lock this slice as “coordinator snapshot + read-only status query”, explicitly deferring monitor surfaces and run persistence.
+- Extended `services/execution_coordinator.py` with `ExecutionRunSnapshot` plus `get_run_snapshot()` and lifecycle updates (`queued/running/terminal`) including minimal recovery signaling (`recovery_attempted/recovery_reason/recovery_succeeded`) on resume-retry paths.
+- Added `app/routes/executions.py` (`GET /executions/{run_id}`) and wired it through `app/main.py`/`app/routes/__init__.py`; extended `domain/schemas.py` and `app/openapi.py` with execution-status response contracts and OpenAPI tag metadata.
+- Expanded `tests/services/test_execution_coordinator.py`, added `tests/app/routes/test_execution_routes.py`, and extended `tests/app/routes/test_api_routes.py` to lock snapshot lifecycle, recovery flags, auth/404 behavior, and OpenAPI contracts.
+- Added a regression guard for invalid `requested_mode` snapshots: `GET /executions/{run_id}` now normalizes unknown mode values to `None` instead of throwing a response-validation `500`; covered by `test_execution_status_route_tolerates_unknown_requested_mode`.
+- Added resource-level read protection for execution snapshots: only the run owner or `owner/admin` role can read `/executions/{run_id}`; non-owner authenticated requests now return `404`, covered by `test_execution_status_route_hides_other_users_runs`.
+- Fresh verification ran: `.venv/bin/pytest tests/app/routes/test_execution_routes.py::test_execution_status_route_tolerates_unknown_requested_mode -q`; `.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_api_routes.py -q -ra`; `.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py -q`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`; `git diff --check`.
+- Commit for this slice: `feat(execution): complete M7.2.6 status recovery signaling`.

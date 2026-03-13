@@ -42,6 +42,11 @@ OPENAPI_TAGS = [
         "runtime-chain orchestration boundary.",
     },
     {
+        "name": "executions",
+        "description": "Execution run status query endpoints exposing coordinator "
+        "run-state and minimal recovery signals.",
+    },
+    {
         "name": "tasks",
         "description": "Scheduled task CRUD and run-log inspection. Datetime fields "
         "are documented and returned in UTC while execution state remains backed by "

@@ -535,3 +535,79 @@ async def test_execution_coordinator_invalidates_stale_session_and_retries_once_
         "group-a:fresh",
     ]
     assert session_store.get_state("group-a").session_id == "group-a:fresh"
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_exposes_run_snapshot_lifecycle() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    handle = await coordinator.submit_execution(_request(group_folder="group-a", prompt="snapshot"))
+    queued_snapshot = coordinator.get_run_snapshot(handle.run_id)
+
+    assert queued_snapshot is not None
+    assert queued_snapshot.status == "queued"
+    assert queued_snapshot.created_at is not None
+    assert queued_snapshot.started_at is None
+    assert queued_snapshot.finished_at is None
+
+    await asyncio.sleep(0)
+    running_snapshot = coordinator.get_run_snapshot(handle.run_id)
+    assert running_snapshot is not None
+    assert running_snapshot.status == "running"
+    assert running_snapshot.started_at is not None
+    assert running_snapshot.backend == "openai_runtime"
+
+    backend.release()
+    result = await coordinator.wait_for_run(handle.run_id)
+    completed_snapshot = coordinator.get_run_snapshot(handle.run_id)
+
+    assert result.status == "completed"
+    assert completed_snapshot is not None
+    assert completed_snapshot.status == "completed"
+    assert completed_snapshot.finished_at is not None
+    assert completed_snapshot.final_output == "reply:snapshot"
+    assert completed_snapshot.session_id == "group-a"
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_snapshot_marks_session_recovery_retry() -> None:
+    from services.execution_backends import SessionResumeFailedError
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+    from services.workspace_lifecycle import WorkspaceSessionStore
+
+    session_store = WorkspaceSessionStore(
+        new_session_id_factory=lambda workspace_key: f"{workspace_key}:fresh"
+    )
+    backend = _SequentialBackend(
+        [
+            {"status": "completed", "final_output": "reply:first"},
+            SessionResumeFailedError("resume failed"),
+            {"status": "completed", "final_output": "reply:second"},
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+        workspace_session_store=session_store,
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    await coordinator.wait_for_run(first.run_id)
+
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+    second_result = await coordinator.wait_for_run(second.run_id)
+    second_snapshot = coordinator.get_run_snapshot(second.run_id)
+
+    assert second_result.status == "completed"
+    assert second_snapshot is not None
+    assert second_snapshot.recovery_attempted is True
+    assert second_snapshot.recovery_reason == "resume failed"
+    assert second_snapshot.recovery_succeeded is True

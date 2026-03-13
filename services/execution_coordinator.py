@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
 from typing import Any, Literal, Protocol
 from uuid import uuid4
 
@@ -17,6 +18,10 @@ from services.workspace_lifecycle import (
 
 ExecutionSource = Literal["web", "im", "scheduled"]
 ExecutionStatus = Literal["queued", "running", "completed", "failed", "cancelled", "timeout"]
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 @dataclass(slots=True)
@@ -50,6 +55,28 @@ class ExecutionResult:
     final_output: str | None = None
     error: str | None = None
     timeout_ms: int | None = None
+
+
+@dataclass(slots=True)
+class ExecutionRunSnapshot:
+    run_id: str
+    group_folder: str
+    chat_jid: str
+    user_id: str
+    source: ExecutionSource
+    requested_mode: str | None
+    status: ExecutionStatus
+    backend: str | None = None
+    session_id: str | None = None
+    created_at: datetime = field(default_factory=_utcnow)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    final_output: str | None = None
+    error: str | None = None
+    timeout_ms: int | None = None
+    recovery_attempted: bool = False
+    recovery_reason: str | None = None
+    recovery_succeeded: bool | None = None
 
 
 class ExecutionBackend(Protocol):
@@ -99,6 +126,7 @@ class ExecutionCoordinator:
         self._cancelled_run_ids: set[str] = set()
         self._completed_results: dict[str, ExecutionResult] = {}
         self._completed_order: deque[str] = deque()
+        self._run_snapshots: dict[str, ExecutionRunSnapshot] = {}
 
     async def submit_execution(self, request: ExecutionRequest) -> ExecutionHandle:
         run_id = request.request_id or uuid4().hex
@@ -106,6 +134,15 @@ class ExecutionCoordinator:
         self._run_futures[run_id] = future
         self._run_requests[run_id] = request
         self._statuses[run_id] = "queued"
+        self._run_snapshots[run_id] = ExecutionRunSnapshot(
+            run_id=run_id,
+            group_folder=request.group_folder,
+            chat_jid=request.chat_jid,
+            user_id=request.user_id,
+            source=request.source,
+            requested_mode=request.requested_mode,
+            status="queued",
+        )
         queue = self._group_queues.setdefault(request.group_folder, deque())
         queue.append((run_id, request))
         self._ensure_worker(request.group_folder)
@@ -117,6 +154,12 @@ class ExecutionCoordinator:
 
     def get_status(self, run_id: str) -> ExecutionStatus | None:
         return self._statuses.get(run_id)
+
+    def get_run_snapshot(self, run_id: str) -> ExecutionRunSnapshot | None:
+        snapshot = self._run_snapshots.get(run_id)
+        if snapshot is None:
+            return None
+        return replace(snapshot)
 
     async def wait_for_run(self, run_id: str) -> ExecutionResult:
         completed = self._completed_results.get(run_id)
@@ -233,6 +276,11 @@ class ExecutionCoordinator:
         session_id = self._resolve_session_id(request, backend_name)
         self._run_session_ids[run_id] = session_id
         self._statuses[run_id] = "running"
+        self._mark_running(
+            run_id,
+            backend=backend_name,
+            session_id=session_id,
+        )
         self._running_backends[run_id] = backend
         execution_task = asyncio.create_task(
             self._execute_backend_with_lifecycle(
@@ -287,6 +335,7 @@ class ExecutionCoordinator:
                 request=request,
                 error=exc,
             ):
+                self._mark_recovery_attempt(run_id, reason=str(exc))
                 self._workspace_session_store.invalidate(workspace_key, reason=str(exc))
                 retry_session_id = self._resolve_session_id(
                     request,
@@ -303,6 +352,7 @@ class ExecutionCoordinator:
                         session_id=retry_session_id,
                     )
                 except RuntimeError as retry_exc:
+                    self._mark_recovery_result(run_id, succeeded=False)
                     return self._build_result(
                         run_id=run_id,
                         group_folder=request.group_folder,
@@ -311,6 +361,7 @@ class ExecutionCoordinator:
                         status="failed",
                         error=str(retry_exc),
                     )
+                self._mark_recovery_result(run_id, succeeded=True)
             else:
                 return self._build_result(
                     run_id=run_id,
@@ -441,19 +492,56 @@ class ExecutionCoordinator:
             return False
         return isinstance(error, SessionResumeFailedError)
 
+    def _mark_running(self, run_id: str, *, backend: str, session_id: str) -> None:
+        snapshot = self._run_snapshots.get(run_id)
+        if snapshot is None:
+            return
+        snapshot.status = "running"
+        snapshot.backend = backend
+        snapshot.session_id = session_id
+        snapshot.started_at = _utcnow()
+
+    def _mark_recovery_attempt(self, run_id: str, *, reason: str) -> None:
+        snapshot = self._run_snapshots.get(run_id)
+        if snapshot is None:
+            return
+        snapshot.recovery_attempted = True
+        snapshot.recovery_reason = reason
+        snapshot.recovery_succeeded = None
+
+    def _mark_recovery_result(self, run_id: str, *, succeeded: bool) -> None:
+        snapshot = self._run_snapshots.get(run_id)
+        if snapshot is None:
+            return
+        snapshot.recovery_succeeded = succeeded
+
     def _store_terminal_result(self, result: ExecutionResult) -> None:
         self._statuses[result.run_id] = result.status
         self._completed_results[result.run_id] = result
         self._completed_order.append(result.run_id)
+        self._mark_terminal(result)
         while len(self._completed_order) > self._max_completed_runs:
             stale_run_id = self._completed_order.popleft()
             self._completed_results.pop(stale_run_id, None)
             self._statuses.pop(stale_run_id, None)
+            self._run_snapshots.pop(stale_run_id, None)
 
         future = self._run_futures.pop(result.run_id, None)
         if future is not None and not future.done():
             future.set_result(result)
         self._run_requests.pop(result.run_id, None)
+
+    def _mark_terminal(self, result: ExecutionResult) -> None:
+        snapshot = self._run_snapshots.get(result.run_id)
+        if snapshot is None:
+            return
+        snapshot.status = result.status
+        snapshot.backend = result.backend
+        snapshot.session_id = result.session_id
+        snapshot.final_output = result.final_output
+        snapshot.error = result.error
+        snapshot.timeout_ms = result.timeout_ms
+        snapshot.finished_at = _utcnow()
 
     def _build_result(
         self,
@@ -485,6 +573,7 @@ __all__ = [
     "ExecutionHandle",
     "ExecutionRequest",
     "ExecutionResult",
+    "ExecutionRunSnapshot",
     "ExecutionSource",
     "ExecutionStatus",
 ]

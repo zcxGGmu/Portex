@@ -234,6 +234,100 @@ class SendMessageResponse(BaseModel):
     )
 
 
+class ExecutionRecoveryResponse(BaseModel):
+    attempted: bool = Field(
+        description="Whether coordinator recovery logic was attempted for this run.",
+        examples=[False],
+    )
+    reason: str | None = Field(
+        default=None,
+        description="Recovery trigger reason when a retry path was attempted.",
+        examples=["resume failed"],
+    )
+    succeeded: bool | None = Field(
+        default=None,
+        description="Recovery outcome when attempted: true for recovered, false for unrecovered.",
+        examples=[True],
+    )
+
+
+class ExecutionRunStatusResponse(BaseModel):
+    run_id: str = Field(
+        description="Execution run identifier.",
+        examples=["run-abcdef123456"],
+    )
+    status: Literal["queued", "running", "completed", "failed", "cancelled", "timeout"] = Field(
+        description="Current execution status tracked by the execution coordinator.",
+        examples=["running"],
+    )
+    group_folder: str = Field(
+        description="Group/workspace folder associated with this run.",
+        examples=["group-demo"],
+    )
+    chat_jid: str = Field(
+        description="Chat identifier associated with this run.",
+        examples=["group-demo"],
+    )
+    user_id: str = Field(
+        description="Caller user identifier carried by the execution request.",
+        examples=["user-1234567890ab"],
+    )
+    source: Literal["web", "im", "scheduled"] = Field(
+        description="Execution source that submitted the run.",
+        examples=["web"],
+    )
+    requested_mode: ExecutionMode | None = Field(
+        default=None,
+        description="Optional backend preference from the original request.",
+        examples=["host"],
+    )
+    backend: str | None = Field(
+        default=None,
+        description="Selected backend once execution has started.",
+        examples=["openai_runtime"],
+    )
+    session_id: str | None = Field(
+        default=None,
+        description="Session identifier used by the selected backend.",
+        examples=["group-demo"],
+    )
+    created_at: datetime = Field(
+        description="Coordinator timestamp when the run entered the queue.",
+        examples=["2026-03-13T08:00:00Z"],
+    )
+    started_at: datetime | None = Field(
+        default=None,
+        description="Timestamp when the run entered execution.",
+        examples=["2026-03-13T08:00:01Z"],
+    )
+    finished_at: datetime | None = Field(
+        default=None,
+        description="Timestamp when the run reached a terminal state.",
+        examples=["2026-03-13T08:00:05Z"],
+    )
+    final_output: str | None = Field(
+        default=None,
+        description="Final output for successful runs when available.",
+        examples=["hello from Portex"],
+    )
+    error: str | None = Field(
+        default=None,
+        description="Error text for failed or timeout runs when available.",
+        examples=["execution failed"],
+    )
+    timeout_ms: int | None = Field(
+        default=None,
+        description="Requested timeout in milliseconds for timeout runs.",
+        examples=[30000],
+    )
+    recovery: ExecutionRecoveryResponse
+
+    @field_validator("created_at", "started_at", "finished_at", mode="after")
+    @classmethod
+    def normalize_execution_datetimes(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
 class UnifiedMessage(BaseModel):
     channel: Literal["web", "feishu", "telegram"]
     chat_jid: str = Field(min_length=1)
@@ -385,6 +479,8 @@ __all__ = [
     "CreateGroupMemberRequest",
     "DeleteTaskResponse",
     "DeleteGroupMemberResponse",
+    "ExecutionRecoveryResponse",
+    "ExecutionRunStatusResponse",
     "GroupListResponse",
     "GroupMemberListResponse",
     "GroupMemberResponse",

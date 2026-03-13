@@ -1061,6 +1061,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "auth" in tags
     assert "tasks" in tags
     assert "messages" in tags
+    assert "executions" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -1082,6 +1083,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     send_message_operation = schema["paths"]["/messages"]["post"]
     assert "dispatch" in send_message_operation["description"].lower()
 
+    execution_status_operation = schema["paths"]["/executions/{run_id}"]["get"]
+    assert "status" in execution_status_operation["summary"].lower()
+    assert "404" in execution_status_operation["responses"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -1102,6 +1107,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
 
     send_message_schema = schema["components"]["schemas"]["SendMessageRequest"]
     assert "execution_mode" in send_message_schema["properties"]
+    assert "ExecutionRunStatusResponse" in schema["components"]["schemas"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(
