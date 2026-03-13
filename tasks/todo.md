@@ -602,7 +602,7 @@
 
 - [x] `M7.2.1` Replace `services/group_queue.py` placeholder logic with a real per-group queue and lifecycle coordinator.
 - [x] `M7.2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
-- [ ] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
+- [x] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
 - [ ] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
 - [ ] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
 - [ ] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
@@ -781,3 +781,22 @@
 - Expanded `tests/services/test_message_dispatch.py`, `tests/services/test_task_service.py`, `tests/app/routes/test_message_routes.py`, `tests/app/routes/test_api_routes.py`, and `tests/domain/models/test_models.py` to lock explicit mode propagation, task execution-plane wiring, task-log timeout/error mapping, and the persisted task `execution_mode` contract.
 - Fresh verification ran: `git diff --check`; `.venv/bin/pytest tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py -q` (`75 passed, 38 warnings in 8.12s`); `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py tests/integration/test_message_flow.py -q` (`98 passed, 38 warnings in 10.03s`); `.venv/bin/pytest -o addopts='' -q` (`353 passed, 53 warnings in 13.90s`); `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
 - Commit for this slice: `feat(execution): complete M7.2.3 scheduled task mode inputs`.
+
+# Session Plan (2026-03-13) - M7.2.4 Session Workspace Lifecycle
+
+## Goal
+- Continue from the current parity handoff point by introducing a minimal coordinator-owned workspace/session lifecycle so follow-up turns reuse a real persisted execution session in the default OpenAI path, without expanding into `M7.3`'s persistent workspace model or new reset APIs.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, the `M7.2` docs, and the current execution/runtime slices
+- [x] Compare the current Portex lifecycle behavior against the HappyClaw reference implementation
+- [x] Write the focused `M7.2.4` design doc
+- [x] Write the focused `M7.2.4` implementation plan doc
+- [ ] Add failing tests for workspace lifecycle state and real session persistence
+- [ ] Implement coordinator-owned lifecycle state plus OpenAI session persistence/retry
+- [ ] Run focused verification and broader regression
+- [ ] Update `docs/progress.md` and this session review
+- [ ] Commit the `M7.2.4` slice with a detailed message
+
+## Review
+- Pending.

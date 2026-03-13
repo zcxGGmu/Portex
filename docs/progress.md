@@ -192,6 +192,8 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `e871504` `feat(execution): complete M7.2.3 scheduled task mode inputs`
+  - `02c1446` `feat(execution): complete M7.2.3 scheduled task mode inputs`
   - `b92cf71` `docs(handoff): record M7.2 coordinator core`
   - `2de078e` `fix(execution): harden coordinator cancellation`
   - `718aca5` `feat(execution): add M7.2 coordinator core`
@@ -252,7 +254,7 @@
 - M7.2 core commit chain：`git log --oneline --decorate -4` -> `b92cf71 docs(handoff): record M7.2 coordinator core`, `2de078e fix(execution): harden coordinator cancellation`, `718aca5 feat(execution): add M7.2 coordinator core`, `8e5ea65 docs(plans): define M7.2 execution plane parity`
 - M7.2.3 focused verification：`.venv/bin/pytest tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py -q` -> `75 passed, 38 warnings in 8.12s`
 - M7.2.3 broader regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py tests/integration/test_message_flow.py -q` -> `98 passed, 38 warnings in 10.03s`
-- M7.2.3 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `353 passed, 53 warnings in 12.79s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
+- M7.2.3 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `353 passed, 53 warnings in 13.90s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.2.2 focused verification：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_im_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py -q` -> `86 passed, 1 warning in 5.39s`
 - M7.2.2 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `348 passed, 50 warnings in 15.65s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.1 focused/runtime+dispatch：`.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `15 passed, 1 warning in 2.97s`
