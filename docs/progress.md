@@ -1,7 +1,7 @@
 # Portex 开发进度上下文（重启续做入口）
 
 最后更新: 2026-03-13 (Asia/Shanghai)
-仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
+仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
 
 ---
@@ -250,8 +250,9 @@
 - M7.2 core verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py -q` -> `15 passed in 0.13s`
 - M7.2 core regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `20 passed, 1 warning in 2.88s`
 - M7.2 core commit chain：`git log --oneline --decorate -4` -> `b92cf71 docs(handoff): record M7.2 coordinator core`, `2de078e fix(execution): harden coordinator cancellation`, `718aca5 feat(execution): add M7.2 coordinator core`, `8e5ea65 docs(plans): define M7.2 execution plane parity`
-- M7.2.3 focused verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py -q` -> `91 passed, 38 warnings in 7.52s`
-- M7.2.3 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `353 passed, 53 warnings in 15.65s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
+- M7.2.3 focused verification：`.venv/bin/pytest tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py -q` -> `75 passed, 38 warnings in 8.12s`
+- M7.2.3 broader regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py tests/integration/test_message_flow.py -q` -> `98 passed, 38 warnings in 10.03s`
+- M7.2.3 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `353 passed, 53 warnings in 12.79s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.2.2 focused verification：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_im_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py -q` -> `86 passed, 1 warning in 5.39s`
 - M7.2.2 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `348 passed, 50 warnings in 15.65s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.1 focused/runtime+dispatch：`.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `15 passed, 1 warning in 2.97s`

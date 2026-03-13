@@ -760,25 +760,6 @@
 - Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_im_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
 - Session commit completed: `feat(execution): complete M7.2.2 backend adapters`.
 
-# Session Plan (2026-03-13) - M7.2.3 Scheduled Tasks And Mode Inputs
-
-## Goal
-- Continue from the documented restart point by routing scheduled tasks through the shared execution coordinator and by letting HTTP/task callers provide explicit `execution_mode` input, without widening into source-aware policy redesign or `M7.3` workspace state.
-
-## Checklist
-- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, the `M7.2` design docs, and the current scheduler / execution entrypoints
-- [x] Use parallel subagents to inspect the local scheduler gap and HappyClaw parity evidence
-- [x] Write the focused `M7.2.3` design doc
-- [x] Write the focused `M7.2.3` implementation plan doc
-- [ ] Add failing tests for HTTP/task `execution_mode` inputs and scheduled-task coordinator execution
-- [ ] Implement the minimal schema/model/service/route wiring
-- [ ] Run focused verification and broader regression
-- [ ] Update `docs/progress.md` and this session review
-- [x] Commit the `M7.2.3` slice with a detailed message
-
-## Review
-- In progress.
-
 # Session Plan (2026-03-13) - M7.2.3 Execution Selection And Scheduled Tasks
 
 ## Goal
@@ -792,12 +773,11 @@
 - [x] Implement the minimal schema/service/route updates
 - [x] Run focused verification and broader regression
 - [x] Update `docs/progress.md` and this session review
-- [ ] Commit the `M7.2.3` slice with a detailed message
+- [x] Commit the `M7.2.3` slice with a detailed message
 
 ## Review
-- Added `docs/plans/2026-03-13-m7-2-3-scheduled-tasks-and-mode-inputs-design.md` to lock this slice as “request-level execution-mode propagation + scheduled-task coordinator wiring”, explicitly deferring group/workspace execution-mode persistence and WebSocket payload changes.
-- Added `docs/plans/2026-03-13-m7-2-3-scheduled-tasks-and-mode-inputs.md` with a TDD-first implementation order: request-contract tests first, then minimal propagation, then scheduled-task coordinator tests and implementation, then verification and handoff refresh.
+- Added `docs/plans/2026-03-13-m7-2-3-scheduled-tasks-and-mode-inputs-design.md` and `docs/plans/2026-03-13-m7-2-3-scheduled-tasks-and-mode-inputs.md` to lock this slice as “request-level execution-mode propagation + scheduled-task coordinator wiring”, explicitly deferring group/workspace execution-mode persistence and WebSocket payload changes.
 - Extended `domain/models/task.py`, `domain/schemas.py`, `app/routes/messages.py`, `app/routes/tasks.py`, `services/message_dispatch.py`, and `services/task_service.py` so HTTP `/messages` plus scheduled-task contracts now accept optional `execution_mode`, and scheduled tasks execute through `ExecutionCoordinator` with `source="scheduled"`.
 - Expanded `tests/services/test_message_dispatch.py`, `tests/services/test_task_service.py`, `tests/app/routes/test_message_routes.py`, `tests/app/routes/test_api_routes.py`, and `tests/domain/models/test_models.py` to lock explicit mode propagation, task execution-plane wiring, task-log timeout/error mapping, and the persisted task `execution_mode` contract.
-- Fresh verification ran: `git diff --check`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
+- Fresh verification ran: `git diff --check`; `.venv/bin/pytest tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py -q` (`75 passed, 38 warnings in 8.12s`); `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/domain/models/test_models.py tests/integration/test_message_flow.py -q` (`98 passed, 38 warnings in 10.03s`); `.venv/bin/pytest -o addopts='' -q` (`353 passed, 53 warnings in 13.90s`); `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
 - Commit for this slice: `feat(execution): complete M7.2.3 scheduled task mode inputs`.
