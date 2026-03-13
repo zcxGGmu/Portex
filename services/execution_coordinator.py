@@ -348,7 +348,7 @@ class ExecutionCoordinator:
                     timeout=timeout_seconds,
                 )
         except asyncio.TimeoutError:
-            await backend.cancel(run_id)
+            asyncio.create_task(self._best_effort_backend_cancel(backend, run_id))
             return self._build_result(
                 run_id=run_id,
                 group_folder=request.group_folder,

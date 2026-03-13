@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 import sys
 
@@ -95,6 +96,109 @@ async def test_openai_runtime_backend_translates_session_resume_failures(
             run_id="run-openai",
             session_id="session-a",
         )
+
+
+@pytest.mark.asyncio
+async def test_host_process_backend_maps_executor_timeout_to_timeout() -> None:
+    from infra.exec.process import ProcessExecutionTimeoutError
+    from services.execution_backends import HostProcessBackend
+
+    class FakeProcessExecutor:
+        async def run_agent(self, group_folder, payload, *, timeout=None, run_id=None):
+            _ = (group_folder, payload, timeout, run_id)
+            raise ProcessExecutionTimeoutError("timed out")
+
+        async def cancel(self, run_id: str) -> bool:
+            _ = run_id
+            return True
+
+    backend = HostProcessBackend(process_executor=FakeProcessExecutor())
+
+    result = await backend.execute(
+        _request(),
+        run_id="run-host-timeout",
+        session_id="session-a",
+    )
+
+    assert result["status"] == "timeout"
+
+
+@pytest.mark.asyncio
+async def test_container_backend_cancel_still_reaches_process_after_execute_task_is_cancelled() -> None:
+    stop_calls: list[str] = []
+    kill_calls: list[str] = []
+    wait_calls: list[str] = []
+    started = asyncio.Event()
+    released = asyncio.Event()
+
+    class BlockingProcess:
+        def __init__(self) -> None:
+            self.returncode = None
+
+        async def communicate(self, payload: bytes) -> tuple[bytes, bytes]:
+            _ = payload
+            started.set()
+            await released.wait()
+            return b"", b""
+
+        def kill(self) -> None:
+            kill_calls.append("kill")
+            self.returncode = -9
+            released.set()
+
+        async def wait(self) -> int:
+            wait_calls.append("wait")
+            await released.wait()
+            return self.returncode or 0
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> BlockingProcess:
+        _ = (command, kwargs)
+        return BlockingProcess()
+
+    from services.execution_backends import ContainerBackend
+
+    class FakeContainerManager:
+        container_image = "portex/agent-runner:test"
+
+        def build_container_name(self, group_folder: str, payload) -> str:
+            _ = (group_folder, payload)
+            return "portex-agent-group-a-session-a"
+
+        def build_environment(self, group_folder: str, payload) -> dict[str, str]:
+            _ = payload
+            return {"PORTEX_GROUP_FOLDER": group_folder}
+
+        def build_runner_volumes(self, group_folder: str, user_id: str) -> dict[str, dict[str, str]]:
+            _ = (group_folder, user_id)
+            return {}
+
+        async def stop_container(self, container_id: str, *, timeout: int = 30) -> None:
+            _ = timeout
+            stop_calls.append(container_id)
+            released.set()
+
+    backend = ContainerBackend(
+        container_manager=FakeContainerManager(),
+        create_subprocess_exec=fake_create_subprocess_exec,
+    )
+
+    execution = asyncio.create_task(
+        backend.execute(
+            _request(),
+            run_id="run-container-cancel",
+            session_id="session-a",
+        )
+    )
+    await started.wait()
+    execution.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await execution
+
+    await backend.cancel("run-container-cancel")
+
+    assert stop_calls == ["portex-agent-group-a-session-a"]
+    assert kill_calls == ["kill"]
+    assert wait_calls == ["wait"]
 
 
 @pytest.mark.asyncio

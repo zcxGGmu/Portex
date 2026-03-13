@@ -138,6 +138,25 @@ class _BlockingCancelBackend:
         await asyncio.Future()
 
 
+class _TimeoutCleanupBackend:
+    def __init__(self) -> None:
+        self.cancelled_run_ids: list[str] = []
+        self.cancel_gate = asyncio.Event()
+        self.calls: list[str] = []
+
+    async def execute(self, request, *, run_id: str, session_id: str):
+        _ = (run_id, session_id)
+        self.calls.append(request.prompt)
+        if request.prompt == "first":
+            await asyncio.sleep(0.05)
+            return {"status": "completed", "final_output": "too-late"}
+        return {"status": "completed", "final_output": f"reply:{request.prompt}"}
+
+    async def cancel(self, run_id: str) -> None:
+        self.cancelled_run_ids.append(run_id)
+        await self.cancel_gate.wait()
+
+
 class _SequentialBackend:
     def __init__(self, outcomes: list[dict[str, object] | Exception]) -> None:
         self.calls: list[dict[str, object]] = []
@@ -406,6 +425,34 @@ async def test_execution_coordinator_running_cancel_does_not_wait_for_blocking_b
     assert result is True
     assert terminal.status == "cancelled"
     assert backend.cancelled_run_ids == [handle.run_id]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_timeout_releases_queue_before_backend_cleanup_finishes() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _TimeoutCleanupBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="first", timeout_ms=10)
+    )
+    second = await coordinator.submit_execution(_request(group_folder="group-a", prompt="second"))
+
+    first_result = await asyncio.wait_for(coordinator.wait_for_run(first.run_id), timeout=0.05)
+    second_result = await asyncio.wait_for(coordinator.wait_for_run(second.run_id), timeout=0.05)
+
+    backend.cancel_gate.set()
+    await asyncio.sleep(0)
+
+    assert first_result.status == "timeout"
+    assert second_result.status == "completed"
+    assert backend.calls == ["first", "second"]
+    assert backend.cancelled_run_ids == [first.run_id]
 
 
 @pytest.mark.asyncio

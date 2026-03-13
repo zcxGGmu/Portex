@@ -313,6 +313,64 @@ async def test_process_executor_cancel_kills_active_run(
 
 
 @pytest.mark.asyncio
+async def test_process_executor_cancel_still_reaches_run_after_outer_task_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from infra.exec.process import ProcessExecutor
+    from src.types import ContainerInput
+
+    class BlockingProcess(FakeProcess):
+        def __init__(self) -> None:
+            super().__init__()
+            self.started = asyncio.Event()
+            self.released = asyncio.Event()
+
+        async def communicate(self, input: bytes | None = None) -> tuple[bytes, bytes]:
+            self.communicate_calls.append(input)
+            self.started.set()
+            await self.released.wait()
+            return self._stdout, self._stderr
+
+        def kill(self) -> None:
+            super().kill()
+            self.released.set()
+
+        async def wait(self) -> int:
+            self.wait_calls += 1
+            await self.released.wait()
+            return self.returncode
+
+    fake_process = BlockingProcess()
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> BlockingProcess:
+        _ = (command, kwargs)
+        return fake_process
+
+    monkeypatch.setattr(
+        "infra.exec.process.asyncio.create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    executor = ProcessExecutor(data_root=tmp_path / "data", runner_root=tmp_path / "runner-root")
+    payload = ContainerInput(prompt="hello", group_folder="group-a")
+
+    execution = asyncio.create_task(
+        executor.run_agent("group-a", payload, run_id="run-outer-cancel")
+    )
+    await fake_process.started.wait()
+    execution.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await execution
+
+    cancelled = await executor.cancel("run-outer-cancel")
+
+    assert cancelled is True
+    assert fake_process.kill_calls == 1
+    assert fake_process.wait_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_process_executor_rejects_runner_root_outside_allowed_roots(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

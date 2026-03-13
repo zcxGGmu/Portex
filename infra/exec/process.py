@@ -51,6 +51,10 @@ class ProcessExecutionError(RuntimeError):
     """Raised when host process execution fails before normal completion."""
 
 
+class ProcessExecutionTimeoutError(ProcessExecutionError):
+    """Raised when host process execution exceeds its safety timeout."""
+
+
 @dataclass(slots=True, frozen=True)
 class HostModeRestrictions:
     """Security restrictions applied to host-mode process execution."""
@@ -141,6 +145,7 @@ class ProcessExecutor:
             runner_root=self.runner_root,
         )
         self._active_processes: dict[str, asyncio.subprocess.Process] = {}
+        self._cleanup_tasks: dict[str, asyncio.Task[None]] = {}
 
     def build_command(self) -> list[str]:
         """Build the subprocess argv for the local runner."""
@@ -223,14 +228,21 @@ class ProcessExecutor:
                 process.communicate(self.serialize_input(payload)),
                 timeout=effective_timeout,
             )
+        except asyncio.CancelledError:
+            if run_id is not None:
+                self._ensure_cleanup_task(run_id, process)
+            raise
         except asyncio.TimeoutError as exc:
             process.kill()
-            raise ProcessExecutionError(
+            await self._await_process_wait(process)
+            if run_id is not None:
+                self._clear_active_run(run_id)
+            raise ProcessExecutionTimeoutError(
                 f"Host process runner timed out after {effective_timeout} seconds for group '{group_folder}'"
             ) from exc
-        finally:
+        else:
             if run_id is not None:
-                self._active_processes.pop(run_id, None)
+                self._clear_active_run(run_id)
 
         return ProcessRunResult(
             returncode=process.returncode or 0,
@@ -243,13 +255,46 @@ class ProcessExecutor:
         process = self._active_processes.get(run_id)
         if process is None:
             return False
+        cleanup_task = self._cleanup_tasks.get(run_id)
         process.kill()
+        if cleanup_task is not None and not cleanup_task.done():
+            await asyncio.gather(cleanup_task, return_exceptions=True)
+        else:
+            await self._await_process_wait(process)
+            self._clear_active_run(run_id)
+        return True
+
+    def _ensure_cleanup_task(
+        self,
+        run_id: str,
+        process: asyncio.subprocess.Process,
+    ) -> None:
+        existing = self._cleanup_tasks.get(run_id)
+        if existing is None or existing.done():
+            self._cleanup_tasks[run_id] = asyncio.create_task(
+                self._cleanup_after_cancellation(run_id, process)
+            )
+
+    async def _cleanup_after_cancellation(
+        self,
+        run_id: str,
+        process: asyncio.subprocess.Process,
+    ) -> None:
+        try:
+            await self._await_process_wait(process)
+        finally:
+            self._clear_active_run(run_id)
+
+    async def _await_process_wait(self, process: asyncio.subprocess.Process) -> None:
         wait = getattr(process, "wait", None)
         if callable(wait):
             maybe_awaitable = wait()
             if hasattr(maybe_awaitable, "__await__"):
                 await maybe_awaitable
-        return True
+
+    def _clear_active_run(self, run_id: str) -> None:
+        self._active_processes.pop(run_id, None)
+        self._cleanup_tasks.pop(run_id, None)
 
 
 ProcessRunner = ProcessExecutor
@@ -264,6 +309,7 @@ __all__ = [
     "HostModeRestrictions",
     "HOST_MODE_RESTRICTIONS",
     "ProcessExecutionError",
+    "ProcessExecutionTimeoutError",
     "ProcessExecutor",
     "ProcessRunResult",
     "ProcessRunner",

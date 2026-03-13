@@ -11,7 +11,7 @@ import sys
 from typing import Any
 
 from infra.exec.container_manager import CONTAINER_COMMAND, CONTAINER_WORKDIR, ContainerManager
-from infra.exec.process import ProcessExecutor
+from infra.exec.process import ProcessExecutionTimeoutError, ProcessExecutor
 from infra.runtime.adapter import AgentRuntime, RunEvent
 from infra.runtime.openai import OpenAIRuntimeSessionError
 from services.agent_trigger import RuntimeFactory, RunEventHandler, run_agent_execution
@@ -207,12 +207,19 @@ class HostProcessBackend:
             group_folder=request.group_folder,
             session_id=session_id,
         )
-        result = await self._process_executor.run_agent(
-            request.group_folder,
-            payload,
-            timeout=_timeout_seconds(request.timeout_ms),
-            run_id=run_id,
-        )
+        try:
+            result = await self._process_executor.run_agent(
+                request.group_folder,
+                payload,
+                timeout=None,
+                run_id=run_id,
+            )
+        except ProcessExecutionTimeoutError as exc:
+            return {
+                "status": "timeout",
+                "error": str(exc),
+                "timeout_ms": request.timeout_ms,
+            }
         return parse_runner_output(
             stdout=result.stdout,
             stderr=result.stderr,
@@ -239,6 +246,7 @@ class ContainerBackend:
         self._create_subprocess_exec = create_subprocess_exec or asyncio.create_subprocess_exec
         self._active_processes: dict[str, Any] = {}
         self._container_names: dict[str, str] = {}
+        self._cleanup_tasks: dict[str, asyncio.Task[None]] = {}
 
     async def execute(
         self,
@@ -269,9 +277,11 @@ class ContainerBackend:
         self._container_names[run_id] = container_name
         try:
             stdout, stderr = await process.communicate(payload.model_dump_json().encode("utf-8"))
-        finally:
-            self._active_processes.pop(run_id, None)
-            self._container_names.pop(run_id, None)
+        except asyncio.CancelledError:
+            self._ensure_cleanup_task(run_id, process)
+            raise
+        else:
+            self._clear_active_run(run_id)
 
         return parse_runner_output(
             stdout=stdout.decode("utf-8"),
@@ -281,16 +291,54 @@ class ContainerBackend:
         )
 
     async def cancel(self, run_id: str) -> None:
+        cleanup_task = self._cleanup_tasks.get(run_id)
         container_name = self._container_names.get(run_id)
+        process = self._active_processes.get(run_id)
         if container_name is not None:
             try:
                 await self._container_manager.stop_container(container_name)
             except Exception:
                 pass
 
-        process = self._active_processes.get(run_id)
         if process is not None and hasattr(process, "kill"):
             process.kill()
+            if cleanup_task is not None and not cleanup_task.done():
+                await asyncio.gather(cleanup_task, return_exceptions=True)
+            else:
+                wait = getattr(process, "wait", None)
+                if callable(wait):
+                    maybe_awaitable = wait()
+                    if hasattr(maybe_awaitable, "__await__"):
+                        await maybe_awaitable
+                self._clear_active_run(run_id)
+            return None
+
+        if cleanup_task is not None and not cleanup_task.done():
+            await asyncio.gather(cleanup_task, return_exceptions=True)
+        else:
+            self._clear_active_run(run_id)
+
+    def _ensure_cleanup_task(self, run_id: str, process: Any) -> None:
+        existing = self._cleanup_tasks.get(run_id)
+        if existing is None or existing.done():
+            self._cleanup_tasks[run_id] = asyncio.create_task(
+                self._cleanup_after_cancellation(run_id, process)
+            )
+
+    async def _cleanup_after_cancellation(self, run_id: str, process: Any) -> None:
+        try:
+            wait = getattr(process, "wait", None)
+            if callable(wait):
+                maybe_awaitable = wait()
+                if hasattr(maybe_awaitable, "__await__"):
+                    await maybe_awaitable
+        finally:
+            self._clear_active_run(run_id)
+
+    def _clear_active_run(self, run_id: str) -> None:
+        self._active_processes.pop(run_id, None)
+        self._container_names.pop(run_id, None)
+        self._cleanup_tasks.pop(run_id, None)
 
     def _build_command(
         self,
