@@ -603,7 +603,7 @@
 - [x] `M7.2.1` Replace `services/group_queue.py` placeholder logic with a real per-group queue and lifecycle coordinator.
 - [x] `M7.2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
 - [x] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
-- [ ] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
+- [x] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
 - [ ] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
 - [ ] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
 - [ ] `M7.2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, timeout, and recovery behavior.
@@ -792,11 +792,17 @@
 - [x] Compare the current Portex lifecycle behavior against the HappyClaw reference implementation
 - [x] Write the focused `M7.2.4` design doc
 - [x] Write the focused `M7.2.4` implementation plan doc
-- [ ] Add failing tests for workspace lifecycle state and real session persistence
-- [ ] Implement coordinator-owned lifecycle state plus OpenAI session persistence/retry
-- [ ] Run focused verification and broader regression
-- [ ] Update `docs/progress.md` and this session review
-- [ ] Commit the `M7.2.4` slice with a detailed message
+- [x] Add failing tests for workspace lifecycle state and real session persistence
+- [x] Implement coordinator-owned lifecycle state plus OpenAI session persistence/retry
+- [x] Run focused verification and broader regression
+- [x] Update `docs/progress.md` and this session review
+- [x] Commit the `M7.2.4` slice with a detailed message
 
 ## Review
-- Pending.
+- Added `docs/plans/2026-03-13-m7-2-4-session-workspace-lifecycle-design.md` and `docs/plans/2026-03-13-m7-2-4-session-workspace-lifecycle.md` to lock this slice as “coordinator-owned workspace/session lifecycle + default OpenAI runtime real session persistence”, explicitly deferring `M7.3` persistent workspace topology and any new reset API.
+- Added `services/workspace_lifecycle.py` and rewired `services/execution_coordinator.py` to replace the old `_session_ids` string cache with explicit workspace lifecycle state: preview session, success-only commit, invalidate, and one fresh retry after session-resume failure.
+- Extended `infra/runtime/openai.py` to pass a real Agents SDK `SQLiteSession` into `Runner.run_streamed(...)`, storing session data under `data/sessions/{group_folder}/agents-sdk.sqlite3`; `services/execution_backends.py` now maps startup-time session-resume failures into a dedicated lifecycle error without misclassifying stream-time tool errors.
+- Added `tests/services/test_workspace_lifecycle.py`, and expanded `tests/services/test_execution_coordinator.py`, `tests/infra/runtime/test_openai.py`, `tests/services/test_execution_backends.py`, and `tests/services/test_agent_trigger.py` to lock success-only commit, invalidate+retry, real session injection, and hermetic test behavior without repo-local `data/sessions/` pollution.
+- Multi-agent review found one real risk in the first draft: stream-time `OSError/sqlite3.Error` was too broad and could trigger a false session reset. The implementation was tightened so only session initialization/startup failures can drive the fresh-retry path; no additional findings remained in the coordinator/workspace slice.
+- Fresh verification ran: `git diff --check`; `.venv/bin/pytest tests/services/test_workspace_lifecycle.py tests/services/test_execution_coordinator.py tests/services/test_execution_backends.py tests/infra/runtime/test_openai.py tests/services/test_message_dispatch.py tests/services/test_task_service.py -q`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
+- Session commits completed: `docs(plans): define M7.2.4 session workspace lifecycle`, `feat(execution): complete M7.2.4 workspace session lifecycle`.
