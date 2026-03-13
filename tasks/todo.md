@@ -604,7 +604,7 @@
 - [x] `M7.2.2` Connect the existing host/container execution slices to the actual runtime trigger flow instead of leaving them as mostly isolated adapters.
 - [x] `M7.2.3` Define the runtime selection contract so Web chat, IM chat, scheduled tasks, and future sub-session flows all resolve through one execution-plane rule set.
 - [x] `M7.2.4` Introduce session/workspace lifecycle state so one running workspace can accept follow-up messages instead of always behaving like a fresh stateless trigger.
-- [ ] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
+- [x] `M7.2.5` Implement safe cancellation and timeout handling across the real queue + executor boundary, not only the direct `OpenAIAgentsRuntime` path.
 - [ ] `M7.2.6` Add execution status and recovery signals so queued/running/failed states are observable outside the current direct WebSocket stream.
 - [ ] `M7.2.7` Add focused tests for queue ordering, executor selection, follow-up injection, cancellation, timeout, and recovery behavior.
 
@@ -817,11 +817,18 @@
 - [x] Compare the current Portex cancel/timeout boundary against the HappyClaw reference implementation
 - [x] Write the focused `M7.2.5` design doc
 - [x] Write the focused `M7.2.5` implementation plan doc
-- [ ] Add failing tests for cleanup-aware cancel/timeout handling
-- [ ] Implement backend handle retention plus timeout normalization
-- [ ] Run focused verification and broader regression
-- [ ] Update `docs/progress.md` and this session review
-- [ ] Commit the `M7.2.5` slice with a detailed message
+- [x] Add failing tests for cleanup-aware cancel/timeout handling
+- [x] Implement backend handle retention plus timeout normalization
+- [x] Run focused verification and broader regression
+- [x] Update `docs/progress.md` and this session review
+- [x] Commit the `M7.2.5` slice with a detailed message
 
 ## Review
-- Pending.
+- Added `docs/plans/2026-03-13-m7-2-5-cancel-timeout-boundary-design.md` and `docs/plans/2026-03-13-m7-2-5-cancel-timeout-boundary.md` to lock this slice as “cleanup-aware queue/executor boundary”, explicitly deferring `M7.2.6` state/recovery surfaces and HappyClaw’s wider `_interrupt` / `_close` protocol.
+- Extended `services/execution_coordinator.py` so timeout no longer blocks on synchronous `await backend.cancel(...)`; the user-visible `timeout` result is now stored immediately and backend cleanup continues in the background, matching the existing running-cancel queue-release rule.
+- Extended `infra/exec/process.py` and `services/execution_backends.py` so host/container cleanup remains reachable after outer coroutine cancellation: host outer cancel now sends an immediate kill signal, host/container active handles survive long enough for cleanup, and cleanup waits are bounded instead of hanging indefinitely on `process.wait()` / docker wrapper waits.
+- Added `ProcessExecutionTimeoutError` and normalized host executor timeout into a real `timeout` result in `HostProcessBackend`, rather than leaking back out as a generic `failed`.
+- Expanded `tests/services/test_execution_coordinator.py`, `tests/services/test_execution_backends.py`, and `tests/infra/exec/test_process.py` to lock timeout queue release, outer-cancel cleanup reachability, bounded cleanup waits, and stable timeout background-cancel assertions.
+- Multi-agent review found two real follow-ups after the first implementation: cleanup waits were still unbounded, and outer host cancellation still depended on a second-step cancel call to stop the child. Both were fixed before final verification. An additional coordinator review pointed out that the old timeout test had become timing-dependent after moving cancel to the background, so the assertion was stabilized accordingly.
+- Fresh verification ran: `git diff --check`; `.venv/bin/pytest tests/services/test_execution_backends.py tests/services/test_execution_coordinator.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest tests/integration/test_websocket.py tests/app/routes/test_websocket_routes.py tests/services/test_task_service.py -q`; `.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `cd web && npm run lint`; `cd web && npm run build`.
+- Session commits completed: `docs(plans): define M7.2.5 cancel timeout boundary`, `fix(execution): complete M7.2.5 cancel timeout boundary`, `fix(execution): bound M7.2.5 cleanup waits`.

@@ -65,8 +65,8 @@
 - `M6.5.3` 已完成（构建发布产物）。
 - `M6` 已完成（`M6.1` ~ `M6.5`）。
 - `M7.1` 已完成（主运行链补齐，基于 parity backlog）。
-- `M7.2` 进行中（execution plane parity，`M7.2.4` 已完成：coordinator 现在拥有最小 workspace/session lifecycle，默认 `openai_runtime` 路径会通过 Agents SDK 持久 session 真实复用 follow-up turn）。
-- 当前起点：继续 parity backlog 时，从 `M7.2.5` 开始，继续收紧 queue + executor 边界上的取消/超时语义，并补齐当前 lifecycle/恢复链路之外仍缺的真实 execution-plane parity；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.2` 进行中（execution plane parity，`M7.2.5` 已完成：host/container cancel/timeout cleanup 现在不会再依赖已经丢失的 executor handle，timeout 语义也已在 queue/executor 边界上收紧）。
+- 当前起点：继续 parity backlog 时，从 `M7.2.6` 开始，补齐 execution-plane 的状态、恢复和外部可观察信号，避免当前 `queued/running/failed` 仍主要停留在 coordinator 内部；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -182,6 +182,11 @@
 - `M7.2.4`：扩展 `services/execution_coordinator.py`，用 workspace lifecycle store 替换原来的 `_session_ids` 临时字典；默认 `openai_runtime` 会复用已提交 session，`fresh_session=True` 仅在成功后推进新 session，session-resume failure 会 invalidate 旧 session 并 fresh retry 一次。
 - `M7.2.4`：扩展 `infra/runtime/openai.py` 与 `services/execution_backends.py`，让 `OpenAIAgentsRuntime` 真实把 `RunRequest.session_id` 接到 Agents SDK `SQLiteSession`，存储路径为 `data/sessions/{group_folder}/agents-sdk.sqlite3`；同时把 session-resume failure 单独映射为 coordinator 可识别的 lifecycle 错误，而不把流式阶段普通工具 `OSError/sqlite3.Error` 误判成 resume failure。
 - `M7.2.4`：新增 `tests/services/test_workspace_lifecycle.py`，并扩展 `tests/services/test_execution_coordinator.py`、`tests/infra/runtime/test_openai.py`、`tests/services/test_execution_backends.py`、`tests/services/test_agent_trigger.py`，锁定 success-only commit、resume failure invalidate+retry、真实 session 注入 Runner、以及测试不污染仓库 `data/sessions/` 的约束。
+- `M7.2.5`：新增 `docs/plans/2026-03-13-m7-2-5-cancel-timeout-boundary-design.md` 与 `docs/plans/2026-03-13-m7-2-5-cancel-timeout-boundary.md`，把这一子步收紧为“cleanup-aware queue/executor boundary”，明确不在同一轮吞掉 `M7.2.6` 的状态/恢复接口或 HappyClaw 更大的 `_interrupt` / `_close` 协议面。
+- `M7.2.5`：扩展 `services/execution_coordinator.py`，把 timeout 路径从同步 `await backend.cancel(...)` 改成后台 cleanup，保证 queue 上的用户可见 `timeout` 终态不再被 backend cleanup 卡住。
+- `M7.2.5`：扩展 `infra/exec/process.py` 与 `services/execution_backends.py`，为 host/container 加入 cleanup-aware active run handles：外层协程取消后仍保留 cleanup reachability；host 外层取消会先发 kill，host/container cleanup wait 都有明确上界，避免 hanging wait future 把 cleanup 无限挂住。
+- `M7.2.5`：host inner timeout 现在通过 `ProcessExecutionTimeoutError` 归一化成真正的 `timeout` 结果，不再在 backend 边界上降级成 generic `failed`；`HostProcessBackend` 也不再把请求超时同时下沉为第二套 runtime timeout 语义。
+- `M7.2.5`：扩展 `tests/services/test_execution_coordinator.py`、`tests/services/test_execution_backends.py` 与 `tests/infra/exec/test_process.py`，锁定 timeout 不阻塞队列推进、host/container 在 outer cancel 后仍可 cleanup、cleanup wait 有上界、以及 timeout background cancel 的稳定断言。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -197,6 +202,9 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `f2c7c1d` `fix(execution): bound M7.2.5 cleanup waits`
+  - `1ae86fb` `fix(execution): complete M7.2.5 cancel timeout boundary`
+  - `9b741b0` `docs(plans): define M7.2.5 cancel timeout boundary`
   - `ee2a04d` `feat(execution): complete M7.2.4 workspace session lifecycle`
   - `670f826` `docs(plans): define M7.2.4 session workspace lifecycle`
   - `e871504` `feat(execution): complete M7.2.3 scheduled task mode inputs`
@@ -265,6 +273,9 @@
 - M7.2.4 focused verification：`.venv/bin/pytest tests/services/test_workspace_lifecycle.py tests/services/test_execution_coordinator.py tests/services/test_execution_backends.py tests/infra/runtime/test_openai.py tests/services/test_message_dispatch.py tests/services/test_task_service.py -q` -> `43 passed, 12 warnings in 4.74s`
 - M7.2.4 broader regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py -q` -> `105 passed, 38 warnings in 9.70s`
 - M7.2.4 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `361 passed, 53 warnings in 14.50s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
+- M7.2.5 focused verification：`.venv/bin/pytest tests/services/test_execution_backends.py tests/services/test_execution_coordinator.py tests/infra/exec/test_process.py -q` -> `33 passed in 3.90s`; `.venv/bin/pytest tests/integration/test_websocket.py tests/app/routes/test_websocket_routes.py tests/services/test_task_service.py -q` -> `20 passed, 13 warnings in 4.66s`
+- M7.2.5 broader regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/services/test_scheduler.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q` -> `127 passed, 38 warnings in 11.22s`
+- M7.2.5 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `368 passed, 53 warnings in 17.35s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.2.2 focused verification：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_im_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/exec/test_process.py tests/infra/exec/test_container_manager.py tests/infra/exec/test_docker.py -q` -> `86 passed, 1 warning in 5.39s`
 - M7.2.2 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `348 passed, 50 warnings in 15.65s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - M7.1 focused/runtime+dispatch：`.venv/bin/pytest -o addopts='' tests/services/test_agent_trigger.py tests/services/test_message_dispatch.py tests/integration/test_websocket.py -q` -> `15 passed, 1 warning in 2.97s`
@@ -422,7 +433,7 @@
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.2.5` 开始：继续收紧真实 queue + executor boundary 上的取消/超时语义，并补 execution-plane 状态/恢复信号
+   - 如果用户继续 parity backlog，优先从 `M7.2.6` 开始：补 execution-plane 的状态与恢复信号，让当前 coordinator/backends 的 queued/running/failed/timeout/cancelled 语义能被更稳定地观察与消费
    - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/infra/runtime/test_openai.py`
    - 如果需要继续维护 `M7.1` 代码面，先看 `app/routes/im.py`、`app/routes/messages.py`、`services/message_dispatch.py`、`services/message_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
@@ -446,4 +457,4 @@
 
 ## 5. 一句话版
 
-> `M6` 与 `M7.1` 已完成；当前暂停点是 `M7.2` in progress，其中 `M7.2.4` 已完成，下一步是继续推进 `M7.2.5` 的 queue/executor 取消与超时语义收紧。
+> `M6` 与 `M7.1` 已完成；当前暂停点是 `M7.2` in progress，其中 `M7.2.5` 已完成，下一步是推进 `M7.2.6` 的 execution-plane 状态与恢复信号。
