@@ -451,3 +451,69 @@ async def test_runtime_schema_healing_backfills_binding_columns_for_older_tables
 
     assert "is_home" in columns
     assert "target_workspace_jid" in columns
+
+
+@pytest.mark.asyncio
+async def test_user_can_access_non_home_workspace_as_owner_or_member(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_member_service import GroupMemberService
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    members = GroupMemberService(db=db_session)
+    workspace = await registry.ensure_registered_group(
+        jid="web:project-alpha",
+        name="Project Alpha",
+        folder="project-alpha",
+        created_by="owner-1",
+    )
+    await members.add_member("project-alpha", "member-1", role="member", added_by="owner-1")
+
+    assert await registry.user_can_access_group(user_id="owner-1", group=workspace) is True
+    assert await registry.user_can_access_group(user_id="member-1", group=workspace) is True
+    assert await registry.user_can_access_group(user_id="outsider-1", group=workspace) is False
+
+
+@pytest.mark.asyncio
+async def test_user_can_access_bound_im_endpoint_through_target_workspace_membership(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_member_service import GroupMemberService
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    members = GroupMemberService(db=db_session)
+    await registry.ensure_registered_group(
+        jid="web:project-alpha",
+        name="Project Alpha",
+        folder="project-alpha",
+        created_by="owner-1",
+    )
+    endpoint = await registry.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-abc123",
+        created_by="owner-1",
+        target_workspace_jid="web:project-alpha",
+    )
+    await members.add_member("project-alpha", "member-1", role="member", added_by="owner-1")
+
+    assert await registry.user_can_access_group(user_id="member-1", group=endpoint) is True
+    assert await registry.user_can_access_group(user_id="outsider-1", group=endpoint) is False
+
+
+@pytest.mark.asyncio
+async def test_home_workspace_never_becomes_member_manageable(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    home = await registry.ensure_home_workspace(
+        user_id="user-1",
+        role="member",
+        username="alice",
+    )
+
+    assert await registry.user_can_manage_members(user_id="user-1", group=home) is False

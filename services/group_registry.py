@@ -9,6 +9,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.group import RegisteredGroup
+from services.group_member_service import GroupMemberService
 
 _UNSET: Final = object()
 
@@ -140,6 +141,41 @@ class GroupRegistryService:
                 return bound_workspace
         return endpoint
 
+    async def user_can_access_group(
+        self,
+        *,
+        user_id: str,
+        group: RegisteredGroup,
+    ) -> bool:
+        await self._ensure_schema()
+        if group.is_home:
+            return group.created_by == user_id
+
+        if group.jid.startswith("web:"):
+            if group.created_by == user_id:
+                return True
+            return await self._is_member(group.folder, user_id)
+
+        if group.target_workspace_jid:
+            bound_workspace = await self.resolve_im_workspace(jid=group.jid)
+            if bound_workspace is not None and bound_workspace.jid != group.jid:
+                return await self.user_can_access_group(user_id=user_id, group=bound_workspace)
+
+        return group.created_by == user_id
+
+    async def user_can_manage_members(
+        self,
+        *,
+        user_id: str,
+        group: RegisteredGroup,
+    ) -> bool:
+        await self._ensure_schema()
+        if group.is_home:
+            return False
+        if not group.jid.startswith("web:"):
+            return False
+        return group.created_by == user_id
+
     async def _ensure_schema(self) -> None:
         await self._db.execute(
             text(
@@ -174,6 +210,10 @@ class GroupRegistryService:
                 )
             )
             await self._db.commit()
+
+    async def _is_member(self, group_folder: str, user_id: str) -> bool:
+        member_service = GroupMemberService(db=self._db)
+        return await member_service.get_member(group_folder, user_id) is not None
 
 
 __all__ = ["GroupRegistryService"]
