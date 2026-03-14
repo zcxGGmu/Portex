@@ -336,3 +336,113 @@ async def test_search_memory_excludes_other_groups_and_user_agents_files(
     results = await service.search_memory("group-a", "shared")
 
     assert results == [str(group_match)]
+
+
+@pytest.mark.asyncio
+async def test_list_group_memory_files_returns_markdown_files_only(
+    tmp_path: Path,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    group_root = data_dir / "memory" / "group-a"
+    (group_root / "nested").mkdir(parents=True, exist_ok=True)
+    (group_root / "2026-03-08.md").write_text("daily", encoding="utf-8")
+    (group_root / "nested" / "notes.md").write_text("nested", encoding="utf-8")
+    (group_root / "ignore.txt").write_text("ignored", encoding="utf-8")
+
+    files = await service.list_group_memory_files("group-a")
+
+    assert [entry.path for entry in files] == ["2026-03-08.md", "nested/notes.md"]
+    assert [entry.name for entry in files] == ["2026-03-08.md", "notes.md"]
+    assert all(entry.size > 0 for entry in files)
+    assert all(entry.updated_at is not None for entry in files)
+
+
+@pytest.mark.asyncio
+async def test_list_group_memory_files_rejects_symlink_escape(
+    tmp_path: Path,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    group_root = data_dir / "memory" / "group-a"
+    outside_root = data_dir / "outside"
+    outside_root.mkdir(parents=True, exist_ok=True)
+    (outside_root / "secret.md").write_text("secret", encoding="utf-8")
+    group_root.mkdir(parents=True, exist_ok=True)
+    (group_root / "link.md").symlink_to(outside_root / "secret.md")
+
+    with pytest.raises(ValueError, match="symlink traversal detected"):
+        await service.list_group_memory_files("group-a")
+
+
+@pytest.mark.asyncio
+async def test_get_group_memory_file_returns_empty_for_missing_but_valid_path(
+    tmp_path: Path,
+) -> None:
+    service, _data_dir = _build_service(tmp_path)
+
+    memory_file = await service.get_group_memory_file("group-a", "2026-03-08.md")
+
+    assert memory_file.path == "2026-03-08.md"
+    assert memory_file.content == ""
+    assert memory_file.size == 0
+    assert memory_file.updated_at is None
+
+
+@pytest.mark.asyncio
+async def test_update_group_memory_file_writes_and_get_reads_back(
+    tmp_path: Path,
+) -> None:
+    service, _data_dir = _build_service(tmp_path)
+
+    updated = await service.update_group_memory_file("group-a", "notes/today.md", "remember this")
+    fetched = await service.get_group_memory_file("group-a", "notes/today.md")
+
+    assert updated.path == "notes/today.md"
+    assert updated.content == "remember this"
+    assert updated.size == len("remember this".encode("utf-8"))
+    assert updated.updated_at is not None
+    assert fetched.path == "notes/today.md"
+    assert fetched.content == "remember this"
+    assert fetched.size == len("remember this".encode("utf-8"))
+    assert fetched.updated_at is not None
+
+
+@pytest.mark.asyncio
+async def test_group_memory_file_rejects_path_traversal(
+    tmp_path: Path,
+) -> None:
+    service, _data_dir = _build_service(tmp_path)
+
+    with pytest.raises(ValueError, match="path traversal detected"):
+        await service.get_group_memory_file("group-a", "../escape.md")
+
+    with pytest.raises(ValueError, match="path traversal detected"):
+        await service.update_group_memory_file("group-a", "../escape.md", "x")
+
+
+@pytest.mark.asyncio
+async def test_group_memory_file_rejects_symlink_escape_for_direct_read(
+    tmp_path: Path,
+) -> None:
+    service, data_dir = _build_service(tmp_path)
+    group_root = data_dir / "memory" / "group-a"
+    outside_root = data_dir / "outside"
+    outside_root.mkdir(parents=True, exist_ok=True)
+    (outside_root / "secret.md").write_text("secret", encoding="utf-8")
+    group_root.mkdir(parents=True, exist_ok=True)
+    (group_root / "link.md").symlink_to(outside_root / "secret.md")
+
+    with pytest.raises(ValueError, match="symlink traversal detected"):
+        await service.get_group_memory_file("group-a", "link.md")
+
+
+@pytest.mark.asyncio
+async def test_group_memory_file_rejects_non_markdown_extension(
+    tmp_path: Path,
+) -> None:
+    service, _data_dir = _build_service(tmp_path)
+
+    with pytest.raises(ValueError, match="only markdown memory files are supported"):
+        await service.get_group_memory_file("group-a", "notes.txt")
+
+    with pytest.raises(ValueError, match="only markdown memory files are supported"):
+        await service.update_group_memory_file("group-a", "notes.txt", "x")

@@ -2231,6 +2231,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "executions" in tags
     assert "monitor" in tags
     assert "files" in tags
+    assert "memory" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2281,6 +2282,30 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     upload_files_operation = schema["paths"]["/groups/{group_id}/files"]["post"]
     assert "multipart/form-data" in upload_files_operation["requestBody"]["content"]
 
+    global_memory_get_operation = schema["paths"]["/memory/global"]["get"]
+    assert "global" in global_memory_get_operation["summary"].lower()
+    assert "401" in global_memory_get_operation["responses"]
+
+    global_memory_put_operation = schema["paths"]["/memory/global"]["put"]
+    assert "update" in global_memory_put_operation["summary"].lower()
+    assert "401" in global_memory_put_operation["responses"]
+
+    workspace_memory_files_operation = schema["paths"]["/memory/workspaces/{group_id}/files"]["get"]
+    assert "workspace" in workspace_memory_files_operation["summary"].lower()
+    assert "404" in workspace_memory_files_operation["responses"]
+
+    workspace_memory_read_operation = schema["paths"]["/memory/workspaces/{group_id}/file"]["get"]
+    assert "read" in workspace_memory_read_operation["summary"].lower()
+    assert "400" in workspace_memory_read_operation["responses"]
+
+    workspace_memory_write_operation = schema["paths"]["/memory/workspaces/{group_id}/file"]["put"]
+    assert "write" in workspace_memory_write_operation["summary"].lower()
+    assert "400" in workspace_memory_write_operation["responses"]
+
+    workspace_memory_search_operation = schema["paths"]["/memory/workspaces/{group_id}/search"]["get"]
+    assert "search" in workspace_memory_search_operation["summary"].lower()
+    assert "400" in workspace_memory_search_operation["responses"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -2308,6 +2333,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "MonitorResponse" in schema["components"]["schemas"]
     assert "WorkspaceFileListResponse" in schema["components"]["schemas"]
     assert "ExecutionRunStatusResponse" in schema["components"]["schemas"]
+    assert "MemoryGlobalResponse" in schema["components"]["schemas"]
+    assert "WorkspaceMemoryFileListResponse" in schema["components"]["schemas"]
+    assert "WorkspaceMemoryFileResponse" in schema["components"]["schemas"]
+    assert "WorkspaceMemorySearchResponse" in schema["components"]["schemas"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(
