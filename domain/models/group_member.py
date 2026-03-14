@@ -13,7 +13,8 @@ class GroupMember(Base):
 
     __tablename__ = "group_members"
 
-    group_jid: Mapped[str] = mapped_column(String, primary_key=True)
+    group_folder: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[str] = mapped_column(String, primary_key=True)
     role: Mapped[str] = mapped_column(String, nullable=False)
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    added_by: Mapped[str | None] = mapped_column(String, nullable=True)

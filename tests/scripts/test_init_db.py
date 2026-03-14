@@ -224,3 +224,80 @@ def test_init_db_backfills_registered_groups_binding_columns_for_existing_tables
     assert "target_workspace_jid" in columns
     assert columns["target_workspace_jid"][3] == 0
     assert columns["target_workspace_jid"][4] is None
+
+
+def test_init_db_backfills_group_members_workspace_columns_for_existing_tables(
+    tmp_path: Path,
+) -> None:
+    from scripts import init_db
+
+    database_path = tmp_path / "portex-group-members.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE group_members (
+                group_jid VARCHAR NOT NULL,
+                user_id VARCHAR NOT NULL,
+                role VARCHAR NOT NULL,
+                joined_at DATETIME NOT NULL,
+                PRIMARY KEY (group_jid, user_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO group_members (group_jid, user_id, role, joined_at)
+            VALUES ('group-demo', 'user-1', 'owner', '2026-03-14T10:00:00')
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    exit_code = init_db.main(["--database-url", database_url])
+
+    assert exit_code == 0
+
+    connection = sqlite3.connect(database_path)
+    try:
+        columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info('group_members')").fetchall()
+        }
+        row = connection.execute(
+            "SELECT group_folder, added_by FROM group_members WHERE group_jid = ? AND user_id = ?",
+            ("group-demo", "user-1"),
+        ).fetchone()
+    finally:
+        connection.close()
+
+    assert "group_folder" in columns
+    assert columns["group_folder"][3] == 0
+    assert "added_by" in columns
+    assert columns["added_by"][3] == 0
+    assert row == ("group-demo", None)
+    assert "group_jid" not in columns
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            INSERT INTO group_members (group_folder, user_id, role, joined_at, added_by)
+            VALUES ('project-alpha', 'user-2', 'member', '2026-03-14T10:05:00', 'user-1')
+            """
+        )
+        inserted = connection.execute(
+            """
+            SELECT group_folder, user_id, role, added_by
+            FROM group_members
+            WHERE group_folder = 'project-alpha' AND user_id = 'user-2'
+            """
+        ).fetchone()
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert inserted == ("project-alpha", "user-2", "member", "user-1")

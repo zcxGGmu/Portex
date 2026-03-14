@@ -58,10 +58,11 @@ def test_model_key_fields_exist() -> None:
     assert "last_login_at" in user_columns
     assert "disable_reason" in user_columns
     assert "notes" in user_columns
-    assert "group_jid" in group_member_columns
+    assert "group_folder" in group_member_columns
     assert "user_id" in group_member_columns
     assert "role" in group_member_columns
     assert "joined_at" in group_member_columns
+    assert "added_by" in group_member_columns
     assert "role" in invite_columns
     assert "permission_template" in invite_columns
     assert "used_at" in invite_columns
@@ -109,12 +110,16 @@ def test_invite_code_model_fields_have_expected_defaults() -> None:
 
 
 def test_group_member_model_fields_have_expected_defaults() -> None:
+    group_folder = GroupMember.__table__.c.group_folder
     role = GroupMember.__table__.c.role
     joined_at = GroupMember.__table__.c.joined_at
+    added_by = GroupMember.__table__.c.added_by
 
+    assert group_folder.nullable is False
     assert role.nullable is False
     assert joined_at.nullable is False
     assert joined_at.default is not None
+    assert added_by.nullable is True
 
 
 def test_registered_group_has_home_workspace_flag() -> None:
