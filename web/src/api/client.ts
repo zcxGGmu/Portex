@@ -67,6 +67,25 @@ export interface WorkspaceMemorySearchResponse {
   hits: { path: string }[]
 }
 
+export interface SkillSummary {
+  skill_id: string
+  enabled: boolean
+  updated_at: string
+  size: number
+}
+
+export interface SkillListResponse {
+  skills: SkillSummary[]
+}
+
+export interface SkillDetailResponse {
+  skill_id: string
+  enabled: boolean
+  updated_at: string
+  size: number
+  content: string
+}
+
 export interface MonitorBackendHealth {
   backend: string
   status: 'ok' | 'error'
@@ -293,6 +312,32 @@ export const apiClient = {
       `/memory/workspaces/${encodeURIComponent(groupId)}/search?q=${encodeURIComponent(query)}`,
       { token },
     )
+  },
+  listSkills(token: string): Promise<SkillListResponse> {
+    return request<SkillListResponse>('/skills', { token })
+  },
+  getSkill(token: string, skillId: string): Promise<SkillDetailResponse> {
+    return request<SkillDetailResponse>(`/skills/${encodeURIComponent(skillId)}`, { token })
+  },
+  updateSkill(token: string, skillId: string, content: string): Promise<SkillDetailResponse> {
+    return request<SkillDetailResponse>(`/skills/${encodeURIComponent(skillId)}`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({ content }),
+    })
+  },
+  updateSkillState(token: string, skillId: string, enabled: boolean): Promise<SkillDetailResponse> {
+    return request<SkillDetailResponse>(`/skills/${encodeURIComponent(skillId)}/state`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ enabled }),
+    })
+  },
+  deleteSkill(token: string, skillId: string): Promise<{ status: string }> {
+    return request<{ status: string }>(`/skills/${encodeURIComponent(skillId)}`, {
+      method: 'DELETE',
+      token,
+    })
   },
   listWorkspaceFiles(token: string, groupId: string, currentPath = ''): Promise<WorkspaceFileListResponse> {
     const query = currentPath ? `?path=${encodeURIComponent(currentPath)}` : ''

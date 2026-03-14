@@ -17,6 +17,7 @@ export function AppLayout({ title, children }: AppLayoutProps) {
     { to: '/chat', label: 'Chat' },
     { to: '/files', label: 'Files' },
     { to: '/memory', label: 'Memory' },
+    { to: '/skills', label: 'Skills' },
     ...(currentUser?.role === 'owner' || currentUser?.role === 'admin'
       ? [{ to: '/monitor', label: 'Monitor' }]
       : []),

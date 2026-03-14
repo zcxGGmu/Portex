@@ -8,6 +8,7 @@ import { Memory } from './pages/Memory'
 import { Monitor } from './pages/Monitor'
 import { Register } from './pages/Register'
 import { Settings } from './pages/Settings'
+import { Skills } from './pages/Skills'
 import { useAuthStore } from './stores/auth'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -75,6 +76,14 @@ function App() {
           </ProtectedRoute>
         }
         path="/memory"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Skills />
+          </ProtectedRoute>
+        }
+        path="/skills"
       />
       <Route
         element={

@@ -140,6 +140,40 @@ export function useWorkspaceMemorySearchQuery(
   })
 }
 
+export function useSkillsQuery() {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['skills', token],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.listSkills(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useSkillDetailQuery(skillId: string | null, enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['skill-detail', token, skillId],
+    enabled: Boolean(token && skillId && enabled),
+    queryFn: async () => {
+      if (!token || !skillId) {
+        throw new Error('Missing token or skill id')
+      }
+
+      return apiClient.getSkill(token, skillId)
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useWorkspaceFilesQuery(groupId: string | null, currentPath: string) {
   const token = useAuthStore((state) => state.token)
 
