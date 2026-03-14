@@ -121,10 +121,8 @@ class SkillsService:
         existing_file, existing_enabled = self._resolve_skill_file(skill_dir)
         if existing_file is not None:
             target = existing_file
-            enabled = existing_enabled
         else:
             target = skill_dir / SKILL_FILENAME
-            enabled = True
 
         if target.exists() and target.is_dir():
             raise IsADirectoryError("skill path is a directory")
