@@ -2229,6 +2229,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "tasks" in tags
     assert "messages" in tags
     assert "executions" in tags
+    assert "monitor" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2253,6 +2254,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     execution_status_operation = schema["paths"]["/executions/{run_id}"]["get"]
     assert "status" in execution_status_operation["summary"].lower()
     assert "404" in execution_status_operation["responses"]
+
+    monitor_operation = schema["paths"]["/monitor"]["get"]
+    assert "monitor" in monitor_operation["summary"].lower()
+    assert "403" in monitor_operation["responses"]
 
     create_group_operation = schema["paths"]["/groups"]["post"]
     assert "workspace" in create_group_operation["summary"].lower()
@@ -2293,6 +2298,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "UpdateGroupRequest" in schema["components"]["schemas"]
     assert "ConversationSlotResponse" in schema["components"]["schemas"]
     assert "GroupIMBindingResponse" in schema["components"]["schemas"]
+    assert "MonitorResponse" in schema["components"]["schemas"]
     assert "ExecutionRunStatusResponse" in schema["components"]["schemas"]
 
 

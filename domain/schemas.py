@@ -371,6 +371,147 @@ class ExecutionRecoveryResponse(BaseModel):
     )
 
 
+class MonitorBackendHealthResponse(BaseModel):
+    backend: str = Field(
+        description="Execution backend identifier.",
+        examples=["openai_runtime"],
+    )
+    status: Literal["ok", "error"] = Field(
+        description="Best-effort health state for the backend.",
+        examples=["ok"],
+    )
+    detail: str = Field(
+        description="Human-readable backend health detail.",
+        examples=["runtime factory available"],
+    )
+
+
+class MonitorHealthResponse(BaseModel):
+    api_status: str = Field(
+        description="Top-level API process health summary.",
+        examples=["ok"],
+    )
+    version: str = Field(
+        description="Current Portex API version string.",
+        examples=["0.1.0"],
+    )
+    coordinator_status: str = Field(
+        description="Execution coordinator read-side availability summary.",
+        examples=["ok"],
+    )
+    backends: list[MonitorBackendHealthResponse]
+
+
+class MonitorQueueGroupResponse(BaseModel):
+    group_id: str = Field(
+        description="Workspace folder currently represented in the execution queue snapshot.",
+        examples=["project-alpha"],
+    )
+    queued_runs: int = Field(
+        description="Number of queued runs waiting behind the active run for this workspace.",
+        examples=[2],
+    )
+    running_runs: int = Field(
+        description="Number of currently running runs for this workspace.",
+        examples=[1],
+    )
+    active_run_id: str | None = Field(
+        default=None,
+        description="Current active run identifier for this workspace when one exists.",
+        examples=["run-abcdef123456"],
+    )
+    active_backend: str | None = Field(
+        default=None,
+        description="Backend currently executing the active run when one exists.",
+        examples=["openai_runtime"],
+    )
+
+
+class MonitorQueueResponse(BaseModel):
+    groups: list[MonitorQueueGroupResponse]
+
+
+class MonitorRunSummaryResponse(BaseModel):
+    run_id: str = Field(
+        description="Execution run identifier.",
+        examples=["run-abcdef123456"],
+    )
+    group_id: str = Field(
+        description="Workspace folder associated with the run.",
+        examples=["project-alpha"],
+    )
+    chat_jid: str = Field(
+        description="Transport chat identifier associated with the run.",
+        examples=["web:project-alpha"],
+    )
+    user_id: str = Field(
+        description="Caller user identifier carried by the run request.",
+        examples=["user-1234567890ab"],
+    )
+    source: Literal["web", "im", "scheduled"] = Field(
+        description="Execution source that submitted the run.",
+        examples=["web"],
+    )
+    slot_id: str = Field(
+        description="Conversation slot identifier for the run.",
+        examples=["main"],
+    )
+    status: Literal["queued", "running", "completed", "failed", "cancelled", "timeout"] = Field(
+        description="Current or terminal execution status.",
+        examples=["running"],
+    )
+    backend: str | None = Field(
+        default=None,
+        description="Selected execution backend when known.",
+        examples=["host_process"],
+    )
+    requested_mode: ExecutionMode | None = Field(
+        default=None,
+        description="Requested execution mode when one was supplied and recognized.",
+        examples=["host"],
+    )
+    created_at: datetime = Field(
+        description="Coordinator timestamp when the run entered tracking.",
+        examples=["2026-03-14T08:00:00Z"],
+    )
+    started_at: datetime | None = Field(
+        default=None,
+        description="Timestamp when execution started.",
+        examples=["2026-03-14T08:00:01Z"],
+    )
+    finished_at: datetime | None = Field(
+        default=None,
+        description="Timestamp when execution reached a terminal state.",
+        examples=["2026-03-14T08:00:05Z"],
+    )
+    error: str | None = Field(
+        default=None,
+        description="Error detail for failed or timeout runs when available.",
+        examples=["docker unavailable"],
+    )
+    timeout_ms: int | None = Field(
+        default=None,
+        description="Requested timeout in milliseconds for timeout runs.",
+        examples=[30000],
+    )
+    recovery: ExecutionRecoveryResponse
+
+    @field_validator("created_at", "started_at", "finished_at", mode="after")
+    @classmethod
+    def normalize_monitor_datetimes(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class MonitorRunListResponse(BaseModel):
+    items: list[MonitorRunSummaryResponse]
+
+
+class MonitorResponse(BaseModel):
+    health: MonitorHealthResponse
+    queue: MonitorQueueResponse
+    runs: MonitorRunListResponse
+
+
 class ExecutionRunStatusResponse(BaseModel):
     run_id: str = Field(
         description="Execution run identifier.",

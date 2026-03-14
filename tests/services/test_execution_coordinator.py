@@ -890,3 +890,67 @@ def test_execution_request_defaults_slot_id_to_main() -> None:
 
     assert request.requested_mode is None
     assert request.slot_id == "main"
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_exposes_monitor_queue_snapshot() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    running = await coordinator.submit_execution(_request(group_folder="group-a", prompt="running"))
+    queued = await coordinator.submit_execution(_request(group_folder="group-a", prompt="queued"))
+    other = await coordinator.submit_execution(_request(group_folder="group-b", prompt="other"))
+
+    await asyncio.sleep(0)
+    queue_snapshot = coordinator.get_monitor_queue_snapshot()
+
+    assert [(item.group_id, item.queued_runs, item.running_runs) for item in queue_snapshot] == [
+        ("group-a", 1, 1),
+        ("group-b", 0, 1),
+    ]
+    assert queue_snapshot[0].active_run_id == running.run_id
+    assert queue_snapshot[0].active_backend == "openai_runtime"
+    assert queue_snapshot[1].active_run_id == other.run_id
+
+    backend.release()
+    await coordinator.wait_for_run(running.run_id)
+    await coordinator.wait_for_run(queued.run_id)
+    await coordinator.wait_for_run(other.run_id)
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_lists_recent_run_snapshots_newest_first() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _SequentialBackend(
+        [
+            {"status": "completed", "final_output": "reply:first"},
+            {"status": "failed", "error": "boom"},
+            {"status": "completed", "final_output": "reply:third"},
+        ]
+    )
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(_request(group_folder="group-a", prompt="first"))
+    second = await coordinator.submit_execution(_request(group_folder="group-b", prompt="second"))
+    third = await coordinator.submit_execution(_request(group_folder="group-c", prompt="third"))
+
+    await coordinator.wait_for_run(first.run_id)
+    await coordinator.wait_for_run(second.run_id)
+    await coordinator.wait_for_run(third.run_id)
+
+    snapshots = coordinator.list_run_snapshots(limit=2)
+
+    assert [snapshot.run_id for snapshot in snapshots] == [third.run_id, second.run_id]
+    assert snapshots[0].group_folder == "group-c"
+    assert snapshots[1].status == "failed"

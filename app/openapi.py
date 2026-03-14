@@ -18,6 +18,10 @@ OPENAPI_TAGS = [
         "description": "Service health and readiness checks.",
     },
     {
+        "name": "monitor",
+        "description": "Operator-facing queue, run-status, and backend-health monitor endpoints.",
+    },
+    {
         "name": "auth",
         "description": "Register users and exchange username/password credentials for "
         "bearer tokens.",

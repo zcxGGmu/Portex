@@ -9,15 +9,17 @@ interface AppLayoutProps {
   children: ReactNode
 }
 
-const navItems = [
-  { to: '/chat', label: 'Chat' },
-  { to: '/settings', label: 'Settings' },
-]
-
 export function AppLayout({ title, children }: AppLayoutProps) {
   const location = useLocation()
   const logout = useAuthStore((state) => state.logout)
   const currentUser = useAuthStore((state) => state.currentUser)
+  const navItems = [
+    { to: '/chat', label: 'Chat' },
+    ...(currentUser?.role === 'owner' || currentUser?.role === 'admin'
+      ? [{ to: '/monitor', label: 'Monitor' }]
+      : []),
+    { to: '/settings', label: 'Settings' },
+  ]
 
   return (
     <div className="app-shell">

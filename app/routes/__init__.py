@@ -2,6 +2,7 @@
 
 __all__ = [
     "health",
+    "monitor",
     "auth",
     "users",
     "groups",

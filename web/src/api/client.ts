@@ -15,6 +15,61 @@ export interface HealthResponse {
   version: string
 }
 
+export interface MonitorBackendHealth {
+  backend: string
+  status: 'ok' | 'error'
+  detail: string
+}
+
+export interface MonitorHealth {
+  api_status: string
+  version: string
+  coordinator_status: string
+  backends: MonitorBackendHealth[]
+}
+
+export interface MonitorQueueGroup {
+  group_id: string
+  queued_runs: number
+  running_runs: number
+  active_run_id: string | null
+  active_backend: string | null
+}
+
+export interface MonitorRunRecovery {
+  attempted: boolean
+  reason: string | null
+  succeeded: boolean | null
+}
+
+export interface MonitorRunSummary {
+  run_id: string
+  group_id: string
+  chat_jid: string
+  user_id: string
+  source: 'web' | 'im' | 'scheduled'
+  slot_id: string
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout'
+  backend: string | null
+  requested_mode: 'openai' | 'host' | 'container' | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+  timeout_ms: number | null
+  recovery: MonitorRunRecovery
+}
+
+export interface MonitorResponse {
+  health: MonitorHealth
+  queue: {
+    groups: MonitorQueueGroup[]
+  }
+  runs: {
+    items: MonitorRunSummary[]
+  }
+}
+
 interface RequestOptions extends RequestInit {
   token?: string | null
 }
@@ -86,5 +141,8 @@ export const apiClient = {
   },
   getHealth(): Promise<HealthResponse> {
     return request<HealthResponse>('/health')
+  },
+  getMonitor(token: string): Promise<MonitorResponse> {
+    return request<MonitorResponse>('/monitor', { token })
   },
 }

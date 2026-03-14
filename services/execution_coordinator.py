@@ -82,6 +82,15 @@ class ExecutionRunSnapshot:
     recovery_succeeded: bool | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class MonitorQueueGroupSnapshot:
+    group_id: str
+    queued_runs: int
+    running_runs: int
+    active_run_id: str | None = None
+    active_backend: str | None = None
+
+
 class ExecutionBackend(Protocol):
     async def execute(
         self,
@@ -164,6 +173,51 @@ class ExecutionCoordinator:
         if snapshot is None:
             return None
         return replace(snapshot)
+
+    def get_monitor_queue_snapshot(self) -> list[MonitorQueueGroupSnapshot]:
+        groups: dict[str, dict[str, int | str | None]] = {}
+        for run_id, request in self._run_requests.items():
+            status = self._statuses.get(run_id)
+            if status not in {"queued", "running"}:
+                continue
+            current = groups.setdefault(
+                request.group_folder,
+                {
+                    "queued_runs": 0,
+                    "running_runs": 0,
+                    "active_run_id": None,
+                    "active_backend": None,
+                },
+            )
+            if status == "queued":
+                current["queued_runs"] = int(current["queued_runs"]) + 1
+                continue
+            current["running_runs"] = int(current["running_runs"]) + 1
+            current["active_run_id"] = run_id
+            snapshot = self._run_snapshots.get(run_id)
+            current["active_backend"] = None if snapshot is None else snapshot.backend
+
+        return [
+            MonitorQueueGroupSnapshot(
+                group_id=group_id,
+                queued_runs=int(values["queued_runs"]),
+                running_runs=int(values["running_runs"]),
+                active_run_id=values["active_run_id"],
+                active_backend=values["active_backend"],
+            )
+            for group_id, values in sorted(groups.items())
+        ]
+
+    def list_run_snapshots(self, limit: int = 50) -> list[ExecutionRunSnapshot]:
+        snapshots = [replace(snapshot) for snapshot in self._run_snapshots.values()]
+        snapshots.sort(key=lambda snapshot: snapshot.created_at, reverse=True)
+        return snapshots[:limit]
+
+    def list_backend_names(self) -> list[str]:
+        return sorted(self._backends.keys())
+
+    def get_backend(self, backend_name: str) -> ExecutionBackend | None:
+        return self._backends.get(backend_name)
 
     async def wait_for_run(self, run_id: str) -> ExecutionResult:
         completed = self._completed_results.get(run_id)
@@ -592,4 +646,5 @@ __all__ = [
     "ExecutionRunSnapshot",
     "ExecutionSource",
     "ExecutionStatus",
+    "MonitorQueueGroupSnapshot",
 ]

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import setup_logging
 from app.middleware import SecurityHeadersMiddleware
 from app.openapi import OPENAPI_DESCRIPTION, OPENAPI_TAGS
-from app.routes import auth, executions, groups, health, im, messages, tasks, users, websocket
+from app.routes import auth, executions, groups, health, im, messages, monitor, tasks, users, websocket
 
 
 setup_logging()
@@ -28,6 +28,7 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(health.router)
+app.include_router(monitor.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)

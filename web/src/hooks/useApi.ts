@@ -27,3 +27,21 @@ export function useCurrentUserQuery() {
     staleTime: 60_000,
   })
 }
+
+export function useMonitorQuery(enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['monitor', token],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getMonitor(token)
+    },
+    staleTime: 5_000,
+    refetchInterval: 5_000,
+  })
+}
