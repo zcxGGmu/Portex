@@ -36,6 +36,14 @@ async def _resolve_http_message_target(
     )
     workspace = await group_registry.get_web_workspace_by_folder(group_id)
     if workspace is not None:
+        if not await group_registry.user_can_access_group(
+            user_id=current_user.id,
+            group=workspace,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="group not found",
+            )
         return workspace.jid, workspace.folder
     return group_id, group_id
 
@@ -53,6 +61,7 @@ async def _resolve_http_message_target(
     responses=openapi_error_responses(
         status.HTTP_400_BAD_REQUEST,
         status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_404_NOT_FOUND,
     ),
 )
 async def send_message(

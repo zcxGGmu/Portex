@@ -2,7 +2,7 @@
 
 最后更新: 2026-03-14 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
-当前分支: `main`
+当前分支: `feat/m7-3-3-im-workspace-binding`
 
 ---
 
@@ -69,7 +69,8 @@
 - `M7.3.1` 已完成（真实持久化 group/workspace 列表模型）。
 - `M7.3.2` 已完成（workspace topology / per-user home workspace parity）。
 - `M7.3.3` 已完成（IM workspace binding metadata parity）。
-- 当前起点：继续 parity backlog 时，从 `M7.3.4` 开始，把当前最小 group/member 模型推进到真实 working-session / workspace membership 边界；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.3.4` 已完成（workspace membership / working-session parity）。
+- 当前起点：继续 parity backlog 时，从 `M7.3.5` 开始，决定 Portex 是否需要 HappyClaw 风格的 sub-agent / multi-session tabs，以及最小数据模型；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -211,6 +212,11 @@
 - `M7.3.3`：扩展 `app/routes/im.py` 与 `services/message_dispatch.py`，让默认 IM ingress 在提交 coordinator 前先 ensure IM endpoint row，再按 binding metadata 解析 execution `group_folder`；bound IM chat 现在可复用 canonical workspace folder，但 outbound reply 仍保持原始 IM `chat_jid`。
 - `M7.3.3`：扩展 `app/routes/groups.py` 与 `tests/app/routes/test_api_routes.py`，将 `/groups` 收紧为 workspace list，继续保留 `M7.3.2` 的 main/home 可见性规则，同时不再暴露原始 `telegram:*` / `feishu:*` endpoint rows。
 - `M7.3.3`：fresh verification 已完成：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_registry.py tests/services/test_message_dispatch.py tests/app/routes/test_im_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check` 全部通过；下一步切到 `M7.3.4`。
+- `M7.3.4`：新增 `docs/plans/2026-03-14-m7-3-4-workspace-membership-design.md` 与 `docs/plans/2026-03-14-m7-3-4-workspace-membership.md`，将这一子步固定为“`group_members` 成为真实 workspace membership source of truth”，明确 `registered_groups` 继续只承载 workspace / endpoint registry 与 IM binding metadata。
+- `M7.3.4`：扩展 `domain/models/group_member.py`、`scripts/init_db.py` 与 `services/group_member_service.py`，把成员关系正式锚定到 `group_folder`，补齐旧 SQLite 表 `group_jid -> group_folder` / `added_by` backfill、自愈 schema 检查，以及 DB-backed `GroupMemberService`。
+- `M7.3.4`：扩展 `services/group_registry.py`、`app/routes/groups.py`、`app/routes/messages.py` 与 `app/routes/executions.py`，让 canonical `web:*` workspace 成为真正的访问控制入口：home workspace 继续私有且不可做 member management，只有非-home workspace 可共享，IM endpoint row 仅通过绑定目标 workspace 继承访问权限，`/messages` 与 `/executions/{run_id}` 现已按 membership 返回 `404/200`。
+- `M7.3.4`：扩展 `tests/services/test_group_member_service.py`、`tests/services/test_group_registry.py`、`tests/app/routes/test_api_routes.py`、`tests/app/routes/test_message_routes.py` 与 `tests/app/routes/test_execution_routes.py`，锁定 shared-workspace member read/write、outsider `404`、home workspace member-management `400`、以及 execution snapshot 的 membership-aware 读取契约。
+- `M7.3.4`：fresh verification 已完成：focused suite `tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_member_service.py tests/services/test_group_registry.py tests/app/routes/test_api_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_execution_routes.py -q`、repo regression `.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check` 全部通过；下一步切到 `M7.3.5`。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -301,6 +307,8 @@
 
 ## 3. 最新验证证据
 
+- M7.3.4 focused verification：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_member_service.py tests/services/test_group_registry.py tests/app/routes/test_api_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_execution_routes.py -q` -> `110 passed, 1 warning in 17.90s`
+- M7.3.4 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `428 passed, 1 warning in 20.76s`; `.venv/bin/ruff check .` -> `All checks passed!`
 - M7.2.7 focused verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_websocket_routes.py` -> `29 passed, 1 warning in 3.58s`
 - M7.2.7 behavior-focused regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_websocket.py` -> `39 passed, 1 warning in 4.04s`
 - M7.2.7 broader regression：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/services/test_execution_policy.py tests/services/test_execution_backends.py tests/services/test_workspace_lifecycle.py tests/services/test_message_dispatch.py tests/services/test_task_service.py tests/app/routes/test_execution_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_websocket_routes.py tests/integration/test_message_flow.py tests/integration/test_websocket.py tests/infra/runtime/test_openai.py tests/infra/exec/test_process.py -q` -> `136 passed, 38 warnings in 7.43s`
@@ -461,8 +469,9 @@
 - `M7.2` 当前仍刻意收敛：状态/恢复信号仍是 in-memory read 面，不含 DB 持久化、监控页或 operator dashboard；这些仍留给后续阶段（`M7.3` / `M7.4`）。
 - `M7.3.1` 当前已完成：`registered_groups` 现在是 `/groups` 的真实持久化列表源，且默认 HTTP / IM dispatch 会在继续执行前懒注册当前 target。
 - `M7.3.2` 和 `M7.3.3` 当前已完成：`registered_groups` 现在同时承载 canonical workspace topology 与最小 IM binding metadata，`folder` 是 execution workspace key，`jid` 是 endpoint，`is_home` 区分 canonical home/main web workspace row，`target_workspace_jid` 则让 IM endpoint row 可以显式绑定到某个 canonical workspace。
-- `M7.3.3` 当前仍刻意收敛：没有自动绑定策略、没有 `target_agent_id` / reply policy / health-check auto-unbind，也没有 user-facing bind/unbind API；这些仍留给后续 `M7.3.4` ~ `M7.3.6`。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.4` working-session / membership parity。
+- `M7.3.4` 当前已完成：`group_members` 现在以 `group_folder` 为 membership source of truth；`registered_groups` 继续只负责 workspace / endpoint registry；home workspace 继续私有；只有非-home canonical `web:*` workspace 可共享；IM endpoint row 仅通过绑定目标 workspace 继承访问权限。
+- `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.5` sub-agent / multi-session model decision。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -477,16 +486,17 @@
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
    - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
    - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
-2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.2` 已完成：
+2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.3.4` 已完成：
    - 如需复现当前 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.3.4` 开始：把当前最小 `GroupMemberService` / workspace registry 边界推进到真实 working-session / membership model，并明确它如何与已完成的 canonical workspace topology + IM binding metadata 对齐
-   - 当前 `M7.3.3` 的直接相关文件是：`services/group_registry.py`、`domain/models/group.py`、`scripts/init_db.py`、`app/routes/im.py`、`app/routes/groups.py`、`services/message_dispatch.py`、`tests/services/test_group_registry.py`、`tests/domain/models/test_models.py`、`tests/scripts/test_init_db.py`、`tests/services/test_message_dispatch.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_api_routes.py`
-   - 如果要继续 `M7.3` 设计面，先看：`docs/plans/2026-03-13-m7-3-2-workspace-topology-design.md`、`docs/plans/2026-03-13-m7-3-2-workspace-topology.md`，再回看 `docs/plans/2026-03-13-m7-3-1-persisted-group-listing-design.md`
+   - 如果用户继续 parity backlog，优先从 `M7.3.5` 开始：先明确 Portex 是否要支持 HappyClaw 风格的 sub-agent / multi-session tabs；若支持，再在已完成的 canonical workspace topology + workspace membership model 之上补最小 data model
+   - 当前 `M7.3.4` 的直接相关文件是：`domain/models/group_member.py`、`services/group_member_service.py`、`services/group_registry.py`、`scripts/init_db.py`、`app/routes/groups.py`、`app/routes/messages.py`、`app/routes/executions.py`、`tests/services/test_group_member_service.py`、`tests/services/test_group_registry.py`、`tests/app/routes/test_api_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_execution_routes.py`
+   - 如果要继续 `M7.3` 设计面，先看：`docs/plans/2026-03-14-m7-3-4-workspace-membership-design.md`、`docs/plans/2026-03-14-m7-3-4-workspace-membership.md`，再回看 `docs/plans/2026-03-13-m7-3-2-workspace-topology-design.md` 与 `docs/plans/2026-03-14-m7-3-3-im-workspace-binding-design.md`
    - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`app/routes/executions.py`、`domain/schemas.py`、`app/openapi.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/app/routes/test_execution_routes.py`、`tests/infra/runtime/test_openai.py`
-   - 如果需要继续维护 `M7.1` 代码面，先看 `app/routes/im.py`、`app/routes/messages.py`、`services/message_dispatch.py`、`services/message_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`
+   - 如果需要继续维护 `M7.1` / `M7.2` / `M7.3.4` 交界面，先看 `app/routes/im.py`、`app/routes/messages.py`、`app/routes/executions.py`、`services/message_dispatch.py`、`services/group_registry.py`、`services/group_member_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_execution_routes.py`
+   - 显式保留 `M7.3.4` 当前残余风险：WebSocket 鉴权还没接上新的 workspace membership gate；如果后续改 `/ws/{group_folder}`，先别把 owner/admin blanket access 或 IM endpoint row access 又带回来
    - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
    - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
    - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
@@ -508,4 +518,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2`、`M7.3.3` 已完成；当前 parity backlog 的下一步是 `M7.3.4`（working-session / membership parity）。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2`、`M7.3.3`、`M7.3.4` 已完成；当前 parity backlog 的下一步是 `M7.3.5`（sub-agent / multi-session model decision）。

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
@@ -46,6 +47,37 @@ def _login_headers_with_user_id(
 def _login_headers(api_client: TestClient, username: str = "alice") -> dict[str, str]:
     headers, _ = _login_headers_with_user_id(api_client, username=username)
     return headers
+
+
+def _seed_shared_workspace(
+    *,
+    jid: str,
+    folder: str,
+    owner_id: str,
+    member_id: str,
+) -> None:
+    from infra.db.database import AsyncSessionLocal
+    from services.group_member_service import GroupMemberService
+    from services.group_registry import GroupRegistryService
+
+    async def _seed() -> None:
+        async with AsyncSessionLocal() as session:
+            registry = GroupRegistryService(db=session)
+            members = GroupMemberService(db=session)
+            await registry.ensure_registered_group(
+                jid=jid,
+                name="Shared Workspace",
+                folder=folder,
+                created_by=owner_id,
+                is_home=False,
+            )
+            await members.add_member(
+                folder,
+                member_id,
+                added_by=owner_id,
+            )
+
+    asyncio.run(_seed())
 
 
 def test_execution_status_route_requires_authentication(api_client: TestClient) -> None:
@@ -217,5 +249,114 @@ def test_execution_status_route_hides_other_users_runs(api_client: TestClient) -
     finally:
         app.dependency_overrides.clear()
 
+    assert response.status_code == 404
+    assert response.json() == {"detail": "execution run not found"}
+
+
+def test_execution_status_route_allows_shared_workspace_member(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import executions as execution_routes
+    from services.execution_coordinator import ExecutionRunSnapshot
+
+    _, owner_id = _login_headers_with_user_id(api_client, username="owner")
+    member_headers, member_id = _login_headers_with_user_id(api_client, username="member")
+    shared_folder = f"shared-exec-{owner_id[:8]}-{member_id[:8]}"
+    _seed_shared_workspace(
+        jid=f"web:{shared_folder}",
+        folder=shared_folder,
+        owner_id=owner_id,
+        member_id=member_id,
+    )
+
+    class FakeCoordinator:
+        def get_run_snapshot(self, run_id: str):
+            if run_id != "run-shared-member":
+                return None
+            return ExecutionRunSnapshot(
+                run_id=run_id,
+                group_folder=shared_folder,
+                chat_jid=f"web:{shared_folder}",
+                user_id=owner_id,
+                source="web",
+                requested_mode="openai",
+                status="completed",
+                backend="openai_runtime",
+                session_id=shared_folder,
+                created_at=datetime(2026, 3, 14, 8, 0, tzinfo=timezone.utc),
+                started_at=datetime(2026, 3, 14, 8, 0, 1, tzinfo=timezone.utc),
+                finished_at=datetime(2026, 3, 14, 8, 0, 2, tzinfo=timezone.utc),
+                final_output="shared done",
+                error=None,
+                timeout_ms=None,
+                recovery_attempted=False,
+                recovery_reason=None,
+                recovery_succeeded=None,
+            )
+
+    app.dependency_overrides[execution_routes.get_execution_coordinator] = lambda: FakeCoordinator()
+
+    try:
+        response = api_client.get("/executions/run-shared-member", headers=member_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["run_id"] == "run-shared-member"
+    assert payload["group_folder"] == shared_folder
+    assert payload["final_output"] == "shared done"
+
+
+def test_execution_status_route_hides_inaccessible_shared_workspace_run(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import executions as execution_routes
+    from services.execution_coordinator import ExecutionRunSnapshot
+
+    _, owner_id = _login_headers_with_user_id(api_client, username="owner")
+    _, member_id = _login_headers_with_user_id(api_client, username="member")
+    outsider_headers, outsider_id = _login_headers_with_user_id(api_client, username="outsider")
+    shared_folder = f"shared-exec-{owner_id[:8]}-{member_id[:8]}-hidden"
+    _seed_shared_workspace(
+        jid=f"web:{shared_folder}",
+        folder=shared_folder,
+        owner_id=owner_id,
+        member_id=member_id,
+    )
+
+    class FakeCoordinator:
+        def get_run_snapshot(self, run_id: str):
+            if run_id != "run-shared-hidden":
+                return None
+            return ExecutionRunSnapshot(
+                run_id=run_id,
+                group_folder=shared_folder,
+                chat_jid=f"web:{shared_folder}",
+                user_id=owner_id,
+                source="web",
+                requested_mode="host",
+                status="running",
+                backend="host_process",
+                session_id=shared_folder,
+                created_at=datetime(2026, 3, 14, 9, 0, tzinfo=timezone.utc),
+                started_at=datetime(2026, 3, 14, 9, 0, 1, tzinfo=timezone.utc),
+                finished_at=None,
+                final_output=None,
+                error=None,
+                timeout_ms=None,
+                recovery_attempted=False,
+                recovery_reason=None,
+                recovery_succeeded=None,
+            )
+
+    app.dependency_overrides[execution_routes.get_execution_coordinator] = lambda: FakeCoordinator()
+
+    try:
+        response = api_client.get("/executions/run-shared-hidden", headers=outsider_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert outsider_id not in {owner_id, member_id}
     assert response.status_code == 404
     assert response.json() == {"detail": "execution run not found"}

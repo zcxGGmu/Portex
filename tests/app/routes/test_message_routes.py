@@ -16,14 +16,11 @@ if str(PROJECT_ROOT) not in sys.path:
 def api_client() -> Iterator[TestClient]:
     from app.main import app
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     auth_service.reset()
-    group_member_service.reset()
     with TestClient(app) as client:
         yield client
     auth_service.reset()
-    group_member_service.reset()
 
 
 def _login_headers(api_client: TestClient, username: str, password: str) -> dict[str, str]:
@@ -34,6 +31,25 @@ def _login_headers(api_client: TestClient, username: str, password: str) -> dict
     )
     assert login_response.status_code == 200
     return {"Authorization": f"Bearer {login_response.json()['access_token']}"}
+
+
+def _login_headers_with_user_id(
+    api_client: TestClient,
+    username: str,
+    password: str,
+) -> tuple[dict[str, str], str]:
+    register_response = api_client.post(
+        "/auth/register",
+        json={"username": username, "password": password},
+    )
+    assert register_response.status_code == 200
+    user_id = register_response.json()["user_id"]
+    login_response = api_client.post(
+        "/auth/login",
+        json={"username": username, "password": password},
+    )
+    assert login_response.status_code == 200
+    return {"Authorization": f"Bearer {login_response.json()['access_token']}"}, user_id
 
 
 def test_post_messages_dispatches_through_real_service_boundary(api_client: TestClient) -> None:
@@ -344,6 +360,9 @@ def test_post_messages_resolves_main_folder_to_canonical_web_jid(api_client: Tes
                 },
             )()
 
+        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+            return group.created_by == user_id
+
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
     app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
 
@@ -434,6 +453,9 @@ def test_post_messages_resolves_personal_home_folder_to_canonical_web_jid(
                 },
             )()
 
+        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+            return group.created_by == user_id
+
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
     app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
 
@@ -450,3 +472,153 @@ def test_post_messages_resolves_personal_home_folder_to_canonical_web_jid(
     assert len(dispatched_messages) == 1
     assert dispatched_messages[0].chat_jid == f"web:home-{user_id}"
     assert dispatched_messages[0].group_folder == home_folder
+
+
+def test_post_messages_allows_shared_workspace_member(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+
+    dispatched_messages: list[UnifiedMessage] = []
+    _, owner_id = _login_headers_with_user_id(api_client, "owner", "secret")
+    member_headers, member_id = _login_headers_with_user_id(api_client, "member", "secret")
+    shared_workspace = type(
+        "RegisteredGroup",
+        (),
+        {
+            "jid": "web:shared",
+            "folder": "shared",
+            "name": "Shared",
+            "created_by": owner_id,
+            "is_home": False,
+        },
+    )()
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-shared-member",
+                    "status": "completed",
+                    "final_output": "shared reply",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return None
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder == "shared":
+                return shared_workspace
+            return None
+
+        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+            _ = group
+            return user_id in {owner_id, member_id}
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "shared", "content": "hello shared"},
+            headers=member_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["run_id"] == "run-shared-member"
+    assert len(dispatched_messages) == 1
+    assert dispatched_messages[0].chat_jid == "web:shared"
+    assert dispatched_messages[0].group_folder == "shared"
+
+
+def test_post_messages_hides_inaccessible_shared_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+
+    dispatched_messages: list[UnifiedMessage] = []
+    _, owner_id = _login_headers_with_user_id(api_client, "owner", "secret")
+    _, member_id = _login_headers_with_user_id(api_client, "member", "secret")
+    outsider_headers, outsider_id = _login_headers_with_user_id(api_client, "outsider", "secret")
+    shared_workspace = type(
+        "RegisteredGroup",
+        (),
+        {
+            "jid": "web:shared",
+            "folder": "shared",
+            "name": "Shared",
+            "created_by": owner_id,
+            "is_home": False,
+        },
+    )()
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-outsider",
+                    "status": "completed",
+                    "final_output": "should not dispatch",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return None
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder == "shared":
+                return shared_workspace
+            return None
+
+        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+            _ = group
+            return user_id in {owner_id, member_id}
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "shared", "content": "hello shared"},
+            headers=outsider_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert outsider_id not in {owner_id, member_id}
+    assert response.status_code == 404
+    assert response.json() == {"detail": "group not found"}
+    assert dispatched_messages == []
