@@ -70,7 +70,7 @@
 - `M7.3.2` 已完成（workspace topology / per-user home workspace parity）。
 - `M7.3.3` 已完成（IM workspace binding metadata parity）。
 - `M7.3.4` 已完成（workspace membership / working-session parity）。
-- 当前起点：继续 parity backlog 时，从 `M7.3.5` 开始，决定 Portex 是否需要 HappyClaw 风格的 sub-agent / multi-session tabs，以及最小数据模型；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- 当前起点：继续 parity backlog 时，从 `M7.3.5` 开始，按已确认的最小 conversation slots 方案实施；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -473,7 +473,7 @@
 - `M7.3.4` 当前已完成：`group_members` 现在以 `group_folder` 为 membership source of truth；`registered_groups` 继续只负责 workspace / endpoint registry；home workspace 继续私有；只有非-home canonical `web:*` workspace 可共享；IM endpoint row 仅通过绑定目标 workspace 继承访问权限。
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 设计决策现已固定：Portex 不会在这一轮直接复制 HappyClaw 的完整 agent tabs，而是先引入 workspace 下的最小 conversation slots 模型；IM 继续只落到 workspace `main` slot，task/sub-agent persistence 继续留待后续阶段。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.5` sub-agent / multi-session model decision。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.5` 最小 conversation slots 实施。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -488,15 +488,15 @@
    - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
    - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
    - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
-2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.3.4` 已完成：
+2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.3.4` 已完成，`M7.3.5` 设计/计划已完成：
    - 如需复现当前 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.3.5` 开始：先明确 Portex 是否要支持 HappyClaw 风格的 sub-agent / multi-session tabs；若支持，再在已完成的 canonical workspace topology + workspace membership model 之上补最小 data model
+   - 如果用户继续 parity backlog，优先从 `M7.3.5` 开始：按已确认的最小 conversation slots 方案实施，保持 workspace 仍是权限/文件/记忆/IM-binding 边界，slot 只承载对话/session 边界；默认 `main` slot 必须存在，IM 继续固定落到 `main`
    - 当前 `M7.3.5` 的先读文档是：`docs/plans/2026-03-14-m7-3-5-conversation-slots-design.md`、`docs/plans/2026-03-14-m7-3-5-conversation-slots.md`
    - 当前 `M7.3.4` 的直接相关文件是：`domain/models/group_member.py`、`services/group_member_service.py`、`services/group_registry.py`、`scripts/init_db.py`、`app/routes/groups.py`、`app/routes/messages.py`、`app/routes/executions.py`、`tests/services/test_group_member_service.py`、`tests/services/test_group_registry.py`、`tests/app/routes/test_api_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_execution_routes.py`
-   - 如果要继续 `M7.3` 设计面，先看：`docs/plans/2026-03-14-m7-3-5-conversation-slots-design.md`、`docs/plans/2026-03-14-m7-3-5-conversation-slots.md`，再回看 `docs/plans/2026-03-14-m7-3-4-workspace-membership-design.md`、`docs/plans/2026-03-13-m7-3-2-workspace-topology-design.md` 与 `docs/plans/2026-03-14-m7-3-3-im-workspace-binding-design.md`
+   - 如果要继续 `M7.3.5` 实施前复盘，先看：`docs/plans/2026-03-14-m7-3-5-conversation-slots-design.md`、`docs/plans/2026-03-14-m7-3-5-conversation-slots.md`，再回看 `docs/plans/2026-03-14-m7-3-4-workspace-membership-design.md`、`docs/plans/2026-03-13-m7-3-2-workspace-topology-design.md` 与 `docs/plans/2026-03-14-m7-3-3-im-workspace-binding-design.md`
    - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`app/routes/executions.py`、`domain/schemas.py`、`app/openapi.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/app/routes/test_execution_routes.py`、`tests/infra/runtime/test_openai.py`
    - 如果需要继续维护 `M7.1` / `M7.2` / `M7.3.4` 交界面，先看 `app/routes/im.py`、`app/routes/messages.py`、`app/routes/executions.py`、`services/message_dispatch.py`、`services/group_registry.py`、`services/group_member_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_execution_routes.py`
    - 显式保留 `M7.3.4` 当前残余风险：WebSocket 鉴权还没接上新的 workspace membership gate；如果后续改 `/ws/{group_folder}`，先别把 owner/admin blanket access 或 IM endpoint row access 又带回来
@@ -521,4 +521,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2`、`M7.3.3`、`M7.3.4` 已完成；当前 parity backlog 的下一步是 `M7.3.5`（sub-agent / multi-session model decision）。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2`、`M7.3.3`、`M7.3.4` 已完成；当前 parity backlog 的下一步是 `M7.3.5`（按已确认方案实施最小 conversation slots）。
