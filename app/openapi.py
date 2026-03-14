@@ -49,6 +49,10 @@ OPENAPI_TAGS = [
         "description": "User-global and workspace-scoped markdown memory read/write/search endpoints.",
     },
     {
+        "name": "skills",
+        "description": "User-local skills listing, editing, state-toggle, and delete endpoints.",
+    },
+    {
         "name": "messages",
         "description": "HTTP message dispatch entrypoint backed by the current "
         "runtime-chain orchestration boundary.",

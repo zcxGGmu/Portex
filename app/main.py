@@ -16,6 +16,7 @@ from app.routes import (
     memory,
     messages,
     monitor,
+    skills,
     tasks,
     users,
     websocket,
@@ -47,6 +48,7 @@ app.include_router(users.router)
 app.include_router(groups.router)
 app.include_router(files.router)
 app.include_router(memory.router)
+app.include_router(skills.router)
 app.include_router(im.router)
 app.include_router(executions.router)
 app.include_router(messages.router)

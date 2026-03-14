@@ -402,6 +402,89 @@ class WorkspaceMemorySearchResponse(BaseModel):
     hits: list[WorkspaceMemorySearchHitResponse]
 
 
+class SkillSummaryResponse(BaseModel):
+    skill_id: str = Field(
+        description="User-local skill identifier.",
+        examples=["writer-guide"],
+    )
+    enabled: bool = Field(
+        description="Whether the skill is currently enabled.",
+        examples=[True],
+    )
+    updated_at: datetime = Field(
+        description="Last-updated timestamp for the skill file.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+    size: int = Field(
+        description="Skill file size in bytes.",
+        examples=[512],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_skill_summary_updated_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("SkillSummaryResponse.updated_at normalization returned None")
+        return normalized
+
+
+class SkillListResponse(BaseModel):
+    skills: list[SkillSummaryResponse]
+
+
+class SkillDetailResponse(BaseModel):
+    skill_id: str = Field(
+        description="User-local skill identifier.",
+        examples=["writer-guide"],
+    )
+    enabled: bool = Field(
+        description="Whether the skill is currently enabled.",
+        examples=[True],
+    )
+    updated_at: datetime = Field(
+        description="Last-updated timestamp for the skill file.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+    size: int = Field(
+        description="Skill file size in bytes.",
+        examples=[512],
+    )
+    content: str = Field(
+        description="Raw markdown content of the skill file.",
+        examples=["# Writer Guide\nAlways explain tradeoffs."],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_skill_detail_updated_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("SkillDetailResponse.updated_at normalization returned None")
+        return normalized
+
+
+class UpdateSkillRequest(BaseModel):
+    content: str = Field(
+        description="Replacement markdown content for the user-owned skill file.",
+        examples=["# Writer Guide\nAlways clarify assumptions."],
+    )
+
+
+class UpdateSkillStateRequest(BaseModel):
+    enabled: bool = Field(
+        description="Target enabled state for the selected skill.",
+        examples=[False],
+    )
+
+
+class DeleteSkillResponse(BaseModel):
+    status: str = Field(
+        description="Delete result for the selected skill.",
+        examples=["deleted"],
+    )
+
+
 class CreateConversationSlotRequest(BaseModel):
     slot_id: str = Field(
         min_length=1,

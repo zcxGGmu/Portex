@@ -8,6 +8,7 @@ __all__ = [
     "groups",
     "files",
     "memory",
+    "skills",
     "executions",
     "im",
     "messages",
