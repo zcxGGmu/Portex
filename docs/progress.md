@@ -1,6 +1,6 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-14 (Asia/Shanghai)
+最后更新: 2026-03-15 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
 
@@ -80,6 +80,7 @@
 
 ## 2. 最近完成
 
+- `M7.4.3`：memory-management API/UI 的 planning docs 已完成，当前规划文档为 `docs/plans/2026-03-15-m7-4-3-memory-surface-design.md` 与 `docs/plans/2026-03-15-m7-4-3-memory-surface.md`；实现尚未开始，下一步仍是按该计划进入 TDD。
 - `M7.4.2`：新增 workspace file-management service 与 `/groups/{group_id}/files...` 路由族，补齐 browse、upload、download、preview、text content read/write、delete 六类文件操作，并把访问控制绑定到现有 workspace membership / `groups.write` 权限边界。
 - `M7.4.2`：新增 `WorkspaceFileService`，以 `data/groups/{workspace_folder}` 为根目录统一处理 path normalization、root containment、symlink escape、workspace root delete guard、文本类型白名单和文件大小限制。
 - `M7.4.2`：新增前端 `/files` 页面、导航入口、workspace selector、目录浏览、上传、下载、预览、文本编辑保存与删除操作，不把该能力提前耦合到当前 `ChatPanel`。
@@ -500,7 +501,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.6` 管理/API 面补齐。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.4.3` memory-management API/UI。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -510,42 +511,22 @@
 
 ## 4. 下一位 Codex 直接执行
 
-1. 先读：`docs/TODO.md`、`docs/progress.md`、`docs/PORTEX_PLAN.md`。
-   - 建议顺手再看：`pyproject.toml`、`README.md`、`docs/progress.md`、`tasks/todo.md`
-   - 再读：`docs/plans/2026-03-11-m6-5-1-version-planning-design.md`、`docs/plans/2026-03-11-m6-5-1-version-planning.md`、`docs/plans/2026-03-11-m6-5-2-release-tag-design.md`、`docs/plans/2026-03-11-m6-5-2-release-tag.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts-design.md`、`docs/plans/2026-03-11-m6-5-3-release-artifacts.md`
-   - 如果要继续改 README 顶部 logo，再读：`docs/plans/2026-03-11-portex-logo-redesign-design.md`、`docs/plans/2026-03-11-portex-logo-redesign.md`
-   - 如果用户要继续 parity 方向，再读：`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`、`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`
-2. 当前正式 `M6` 路线已完成，parity backlog 当前推进到 `M7.3.5` 已完成：
-   - 如需复现当前 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`
-   - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
-   - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
-   - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.3.6` 开始：在已落地的 workspace + conversation-slot 模型上补 slot/workspace 管理 API，同时继续保持 workspace 仍是权限/文件/记忆/IM-binding 边界，slot 只承载对话/session 边界
-   - 当前 `M7.3.6` 开始前的先读文档是：`docs/plans/2026-03-14-m7-3-5-conversation-slots-design.md`、`docs/plans/2026-03-14-m7-3-5-conversation-slots.md`
-   - 当前 `M7.3.4` 的直接相关文件是：`domain/models/group_member.py`、`services/group_member_service.py`、`services/group_registry.py`、`scripts/init_db.py`、`app/routes/groups.py`、`app/routes/messages.py`、`app/routes/executions.py`、`tests/services/test_group_member_service.py`、`tests/services/test_group_registry.py`、`tests/app/routes/test_api_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_execution_routes.py`
-   - 如果要继续 `M7.3.6` 设计/实施前复盘，先看：`docs/plans/2026-03-14-m7-3-5-conversation-slots-design.md`、`docs/plans/2026-03-14-m7-3-5-conversation-slots.md`，再回看 `docs/plans/2026-03-14-m7-3-4-workspace-membership-design.md`、`docs/plans/2026-03-13-m7-3-2-workspace-topology-design.md` 与 `docs/plans/2026-03-14-m7-3-3-im-workspace-binding-design.md`
-   - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`app/routes/executions.py`、`domain/schemas.py`、`app/openapi.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/app/routes/test_execution_routes.py`、`tests/infra/runtime/test_openai.py`
-   - 如果需要继续维护 `M7.1` / `M7.2` / `M7.3.4` 交界面，先看 `app/routes/im.py`、`app/routes/messages.py`、`app/routes/executions.py`、`services/message_dispatch.py`、`services/group_registry.py`、`services/group_member_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/app/routes/test_execution_routes.py`
-   - 显式保留 `M7.3.4` 当前残余风险：WebSocket 鉴权还没接上新的 workspace membership gate；如果后续改 `/ws/{group_folder}`，先别把 owner/admin blanket access 或 IM endpoint row access 又带回来
-   - 继续保留 `M6.4.1` 当前边界：repo-local 安全扫描已经落在 `scripts/security_scan.py`，且当前只扫描运行时代码目录；不要把它误读成更广义的安全治理已经完成
-   - 继续保留 `M6.4.2` 当前边界：repo-local `pip-audit` 已接入 backend workflow，但当前只覆盖 Python 项目依赖，不覆盖 frontend packages
-   - 继续显式保留 `ecdsa 0.19.1 / CVE-2024-23342` 的 ignore 说明：后续如果上游发布修复版本或依赖图变化，必须优先检查是否可以移除
-   - 继续保留 `M6.4.3` 当前边界：当前只做了最小 HTTP 安全头，不包含 CSP、HSTS 或 HTTPS-only 假设，后续阶段不要误读成这些能力已到位
-   - 继续保留 `M6.3.3` 当前边界：缓存只覆盖 user-global memory 的单进程读路径，不要误读成已经有通用缓存层或跨进程一致性
-   - 继续保留 `M6.3.2` 当前边界：数据库引擎连接池已显式化，但仍没有性能基准、池参数环境化或多数据库适配工作
-   - 继续保留 `M6.3.1` 当前边界：索引只对 fresh schema 初始化路径有直接验证，仓库仍没有 migration/backfill 机制
-   - 继续保留 `M6.2.3` 当前边界：本地进程部署链路已做 fresh 烟测，但 Docker Compose 仍只是未验证草案
-   - 继续保留 `M6.2.2` 当前边界：HTTP API 已在 FastAPI `/docs` 中补齐，但 WebSocket 契约仍不在 OpenAPI 内
-   - 继续保留 `M6.1.3` 当前边界：CI workflow 已配置且本地命令已验证，但还没有远端 GitHub Actions 运行证据，也不包含部署/发布
-   - 继续保留 `M6.1.2` 当前边界：integration 测试入口已建立，但 API matrix 仍窄、WebSocket 仍基于 fake runtime，不能把它误读成真实 provider/e2e 已打通
-   - 不要回退 `M7.1` 当前边界：`app/routes/messages.py`、`app/routes/im.py`、`services/message_dispatch.py` 和 Telegram outbound text send 现在已经接上；下一阶段真正缺的是 execution plane / queue / workspace model，而不是再写一遍 IM dispatch
-   - 保留 `M4` 当前边界：用户、任务、日志、记忆仍有 in-memory / 文件型最小实现，不要在 `M5` 起步时顺手扩成 DB 迁移或后台守护
-   - 继续保留 `M4.2.2` / `M4.2.3` 的边界：不要顺手启用 `user.permissions` 自定义覆盖，也不要启动 DB-backed 用户/群组迁移
-   - 继续把 `M3` 未完成的真实请求注入 / 混合模式烟测作为风险备注保留，不要在 `M5` 中意外遗失
-3. 如果要做真实容器烟测，再确认本机 Docker daemon 可用，且不要把任何凭据写入仓库。
+1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
+2. 当前有效起点是 `M7.4.3`，实现还没开始，只完成了 planning docs：
+   - 必读：`docs/plans/2026-03-15-m7-4-3-memory-surface-design.md`
+   - 必读：`docs/plans/2026-03-15-m7-4-3-memory-surface.md`
+   - 建议顺手再看：`services/memory.py`、`tests/services/test_memory_service.py`、`container/agent-runner/src/tools/memory.py`
+   - 如果需要对照当前 operator surface，再看：`app/routes/monitor.py`、`web/src/pages/Monitor.tsx`、`app/routes/files.py`、`services/workspace_files.py`、`web/src/pages/Files.tsx`
+3. 当前正式主计划仍停在 `M6`，`M7` 仍是 parity backlog；但在用户持续要求继续开发的前提下，当前默认下一步就是 `M7.4.3`，不要回退到 `M7.3.x` 或重复做 `M7.4.1/M7.4.2`。
+4. 如果要复现最近两步的验证基线：
+   - `M7.4.1`：`.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_monitor_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M7.4.2`：`.venv/bin/pytest tests/services/test_workspace_files.py tests/app/routes/test_file_routes.py tests/app/routes/test_api_routes.py -q`
+   - 全量后端：`.venv/bin/pytest -o addopts='' -q`
+   - 前端：`cd web && npm run lint && npm run build`
+5. 如需复现 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`。
 
 ---
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2`、`M7.3.3`、`M7.3.4`、`M7.3.5` 已完成；当前 parity backlog 的下一步是 `M7.3.6`（补 workspace / conversation-slot 管理 API）。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2` 已完成；当前 parity backlog 的下一步是 `M7.4.3`（补 memory-management API/UI），且 planning docs 已就绪。
