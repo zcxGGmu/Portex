@@ -2232,6 +2232,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "monitor" in tags
     assert "files" in tags
     assert "memory" in tags
+    assert "skills" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2306,6 +2307,22 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "search" in workspace_memory_search_operation["summary"].lower()
     assert "400" in workspace_memory_search_operation["responses"]
 
+    list_skills_operation = schema["paths"]["/skills"]["get"]
+    assert "skill" in list_skills_operation["summary"].lower()
+    assert "401" in list_skills_operation["responses"]
+
+    get_skill_operation = schema["paths"]["/skills/{skill_id}"]["get"]
+    assert "skill" in get_skill_operation["summary"].lower()
+    assert "404" in get_skill_operation["responses"]
+
+    put_skill_operation = schema["paths"]["/skills/{skill_id}"]["put"]
+    assert "update" in put_skill_operation["summary"].lower()
+    assert "400" in put_skill_operation["responses"]
+
+    patch_skill_state_operation = schema["paths"]["/skills/{skill_id}/state"]["patch"]
+    assert "state" in patch_skill_state_operation["summary"].lower()
+    assert "404" in patch_skill_state_operation["responses"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -2332,6 +2349,8 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "GroupIMBindingResponse" in schema["components"]["schemas"]
     assert "MonitorResponse" in schema["components"]["schemas"]
     assert "WorkspaceFileListResponse" in schema["components"]["schemas"]
+    assert "SkillSummaryResponse" in schema["components"]["schemas"]
+    assert "SkillDetailResponse" in schema["components"]["schemas"]
     assert "ExecutionRunStatusResponse" in schema["components"]["schemas"]
     assert "MemoryGlobalResponse" in schema["components"]["schemas"]
     assert "WorkspaceMemoryFileListResponse" in schema["components"]["schemas"]
