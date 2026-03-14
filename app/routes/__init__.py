@@ -7,6 +7,7 @@ __all__ = [
     "users",
     "groups",
     "files",
+    "memory",
     "executions",
     "im",
     "messages",

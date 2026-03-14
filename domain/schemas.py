@@ -289,6 +289,119 @@ class DeleteWorkspaceFileResponse(BaseModel):
     )
 
 
+class MemoryGlobalResponse(BaseModel):
+    content: str = Field(
+        description="Current user-global memory content from AGENTS.md.",
+        examples=["Always answer in concise bullet points."],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description="Last-updated timestamp for the global memory file.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+    size: int = Field(
+        description="Global memory file size in bytes.",
+        examples=[42],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_memory_global_updated_at(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateMemoryGlobalRequest(BaseModel):
+    content: str = Field(
+        description="Replacement UTF-8 content for the current user's global memory file.",
+        examples=["Prefer UTC timestamps in all responses."],
+    )
+
+
+class WorkspaceMemoryFileEntryResponse(BaseModel):
+    path: str = Field(
+        description="Workspace-memory-relative markdown path.",
+        examples=["2026-03-15.md"],
+    )
+    name: str = Field(
+        description="Markdown file name.",
+        examples=["2026-03-15.md"],
+    )
+    updated_at: datetime = Field(
+        description="Last-updated timestamp for the markdown memory file.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+    size: int = Field(
+        description="Markdown memory file size in bytes.",
+        examples=[128],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_workspace_memory_file_updated_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("WorkspaceMemoryFileEntryResponse.updated_at normalization returned None")
+        return normalized
+
+
+class WorkspaceMemoryFileListResponse(BaseModel):
+    files: list[WorkspaceMemoryFileEntryResponse]
+
+
+class WorkspaceMemoryFileResponse(BaseModel):
+    path: str = Field(
+        description="Workspace-memory-relative markdown path.",
+        examples=["notes/today.md"],
+    )
+    content: str = Field(
+        description="UTF-8 markdown memory content.",
+        examples=["project launch checklist"],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Last-updated timestamp for the markdown memory file. "
+            "Null means the file does not exist yet."
+        ),
+        examples=["2026-03-15T08:00:00Z"],
+    )
+    size: int = Field(
+        description="Markdown memory file size in bytes.",
+        examples=[24],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_workspace_memory_file_response_updated_at(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateWorkspaceMemoryFileRequest(BaseModel):
+    path: str = Field(
+        min_length=1,
+        description="Workspace-memory-relative markdown file path to update or create.",
+        examples=["notes/today.md"],
+    )
+    content: str = Field(
+        description="Replacement UTF-8 markdown content for the target memory file.",
+        examples=["remember: ship checklist first"],
+    )
+
+
+class WorkspaceMemorySearchHitResponse(BaseModel):
+    path: str = Field(
+        description="Workspace-memory-relative markdown path that matched the query.",
+        examples=["notes/today.md"],
+    )
+
+
+class WorkspaceMemorySearchResponse(BaseModel):
+    hits: list[WorkspaceMemorySearchHitResponse]
+
+
 class CreateConversationSlotRequest(BaseModel):
     slot_id: str = Field(
         min_length=1,

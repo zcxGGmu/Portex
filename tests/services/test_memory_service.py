@@ -286,7 +286,7 @@ async def test_search_memory_returns_matching_markdown_paths_for_target_group(
 
     results = await service.search_memory("group-a", "launch")
 
-    assert results == [str(match_path)]
+    assert results == ["2026-03-08.md"]
 
 
 @pytest.mark.asyncio
@@ -301,7 +301,7 @@ async def test_search_memory_is_case_insensitive(tmp_path: Path) -> None:
 
     results = await service.search_memory("group-a", "launch")
 
-    assert results == [str(match_path)]
+    assert results == ["2026-03-08.md"]
 
 
 @pytest.mark.asyncio
@@ -335,7 +335,7 @@ async def test_search_memory_excludes_other_groups_and_user_agents_files(
 
     results = await service.search_memory("group-a", "shared")
 
-    assert results == [str(group_match)]
+    assert results == ["2026-03-08.md"]
 
 
 @pytest.mark.asyncio

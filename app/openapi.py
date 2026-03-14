@@ -45,6 +45,10 @@ OPENAPI_TAGS = [
         "description": "Workspace-scoped file browsing, upload, preview, text editing, download, and delete endpoints.",
     },
     {
+        "name": "memory",
+        "description": "User-global and workspace-scoped markdown memory read/write/search endpoints.",
+    },
+    {
         "name": "messages",
         "description": "HTTP message dispatch entrypoint backed by the current "
         "runtime-chain orchestration boundary.",

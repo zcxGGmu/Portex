@@ -6,7 +6,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import setup_logging
 from app.middleware import SecurityHeadersMiddleware
 from app.openapi import OPENAPI_DESCRIPTION, OPENAPI_TAGS
-from app.routes import auth, executions, files, groups, health, im, messages, monitor, tasks, users, websocket
+from app.routes import (
+    auth,
+    executions,
+    files,
+    groups,
+    health,
+    im,
+    memory,
+    messages,
+    monitor,
+    tasks,
+    users,
+    websocket,
+)
 
 
 setup_logging()
@@ -33,6 +46,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)
 app.include_router(files.router)
+app.include_router(memory.router)
 app.include_router(im.router)
 app.include_router(executions.router)
 app.include_router(messages.router)
