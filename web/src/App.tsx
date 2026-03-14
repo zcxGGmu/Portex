@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Chat } from './pages/Chat'
 import { Files } from './pages/Files'
 import { Login } from './pages/Login'
+import { Memory } from './pages/Memory'
 import { Monitor } from './pages/Monitor'
 import { Register } from './pages/Register'
 import { Settings } from './pages/Settings'
@@ -66,6 +67,14 @@ function App() {
           </ProtectedRoute>
         }
         path="/files"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Memory />
+          </ProtectedRoute>
+        }
+        path="/memory"
       />
       <Route
         element={

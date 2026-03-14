@@ -63,6 +63,83 @@ export function useMonitorQuery(enabled = true) {
   })
 }
 
+export function useGlobalMemoryQuery() {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['memory-global', token],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getGlobalMemory(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useWorkspaceMemoryFilesQuery(groupId: string | null) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['workspace-memory-files', token, groupId],
+    enabled: Boolean(token && groupId),
+    queryFn: async () => {
+      if (!token || !groupId) {
+        throw new Error('Missing token or group id')
+      }
+
+      return apiClient.listWorkspaceMemoryFiles(token, groupId)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useWorkspaceMemoryFileQuery(
+  groupId: string | null,
+  filePath: string | null,
+  enabled = true,
+) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['workspace-memory-file', token, groupId, filePath],
+    enabled: Boolean(token && groupId && filePath && enabled),
+    queryFn: async () => {
+      if (!token || !groupId || !filePath) {
+        throw new Error('Missing token, group id, or file path')
+      }
+
+      return apiClient.getWorkspaceMemoryFile(token, groupId, filePath)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useWorkspaceMemorySearchQuery(
+  groupId: string | null,
+  query: string,
+  enabled = true,
+) {
+  const token = useAuthStore((state) => state.token)
+  const normalizedQuery = query.trim()
+
+  return useQuery({
+    queryKey: ['workspace-memory-search', token, groupId, normalizedQuery],
+    enabled: Boolean(token && groupId && normalizedQuery && enabled),
+    queryFn: async () => {
+      if (!token || !groupId || !normalizedQuery) {
+        throw new Error('Missing token, group id, or query')
+      }
+
+      return apiClient.searchWorkspaceMemory(token, groupId, normalizedQuery)
+    },
+    staleTime: 2_000,
+  })
+}
+
 export function useWorkspaceFilesQuery(groupId: string | null, currentPath: string) {
   const token = useAuthStore((state) => state.token)
 

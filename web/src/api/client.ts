@@ -39,6 +39,34 @@ export interface WorkspaceFileContentResponse {
   size: number
 }
 
+export interface MemoryGlobalResponse {
+  content: string
+  updated_at: string | null
+  size: number
+}
+
+export interface WorkspaceMemoryFileEntry {
+  path: string
+  name: string
+  updated_at: string
+  size: number
+}
+
+export interface WorkspaceMemoryFileListResponse {
+  files: WorkspaceMemoryFileEntry[]
+}
+
+export interface WorkspaceMemoryFileResponse {
+  path: string
+  content: string
+  updated_at: string | null
+  size: number
+}
+
+export interface WorkspaceMemorySearchResponse {
+  hits: { path: string }[]
+}
+
 export interface MonitorBackendHealth {
   backend: string
   status: 'ok' | 'error'
@@ -214,6 +242,57 @@ export const apiClient = {
   },
   getMonitor(token: string): Promise<MonitorResponse> {
     return request<MonitorResponse>('/monitor', { token })
+  },
+  getGlobalMemory(token: string): Promise<MemoryGlobalResponse> {
+    return request<MemoryGlobalResponse>('/memory/global', { token })
+  },
+  updateGlobalMemory(token: string, content: string): Promise<MemoryGlobalResponse> {
+    return request<MemoryGlobalResponse>('/memory/global', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({ content }),
+    })
+  },
+  listWorkspaceMemoryFiles(token: string, groupId: string): Promise<WorkspaceMemoryFileListResponse> {
+    return request<WorkspaceMemoryFileListResponse>(
+      `/memory/workspaces/${encodeURIComponent(groupId)}/files`,
+      { token },
+    )
+  },
+  getWorkspaceMemoryFile(
+    token: string,
+    groupId: string,
+    path: string,
+  ): Promise<WorkspaceMemoryFileResponse> {
+    return request<WorkspaceMemoryFileResponse>(
+      `/memory/workspaces/${encodeURIComponent(groupId)}/file?path=${encodeURIComponent(path)}`,
+      { token },
+    )
+  },
+  updateWorkspaceMemoryFile(
+    token: string,
+    groupId: string,
+    path: string,
+    content: string,
+  ): Promise<WorkspaceMemoryFileResponse> {
+    return request<WorkspaceMemoryFileResponse>(
+      `/memory/workspaces/${encodeURIComponent(groupId)}/file`,
+      {
+        method: 'PUT',
+        token,
+        body: JSON.stringify({ path, content }),
+      },
+    )
+  },
+  searchWorkspaceMemory(
+    token: string,
+    groupId: string,
+    query: string,
+  ): Promise<WorkspaceMemorySearchResponse> {
+    return request<WorkspaceMemorySearchResponse>(
+      `/memory/workspaces/${encodeURIComponent(groupId)}/search?q=${encodeURIComponent(query)}`,
+      { token },
+    )
   },
   listWorkspaceFiles(token: string, groupId: string, currentPath = ''): Promise<WorkspaceFileListResponse> {
     const query = currentPath ? `?path=${encodeURIComponent(currentPath)}` : ''
