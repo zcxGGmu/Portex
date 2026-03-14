@@ -259,8 +259,10 @@ async def test_ensure_home_workspace_reuses_shared_main_for_owner(
     db_session: AsyncSession,
 ) -> None:
     from services.group_registry import GroupRegistryService
+    from services.conversation_slot_service import ConversationSlotService
 
     service = GroupRegistryService(db=db_session)
+    slot_service = ConversationSlotService(db=db_session)
 
     first = await service.ensure_home_workspace(
         user_id="owner-1",
@@ -279,6 +281,9 @@ async def test_ensure_home_workspace_reuses_shared_main_for_owner(
     assert second.jid == "web:main"
     assert second.folder == "main"
     assert second.created_by == "owner-1"
+    slot = await slot_service.get_slot("main", "main")
+    assert slot is not None
+    assert slot.title == "Main"
 
 
 @pytest.mark.asyncio
@@ -286,8 +291,10 @@ async def test_get_web_workspace_by_folder_prefers_canonical_web_row(
     db_session: AsyncSession,
 ) -> None:
     from services.group_registry import GroupRegistryService
+    from services.conversation_slot_service import ConversationSlotService
 
     service = GroupRegistryService(db=db_session)
+    slot_service = ConversationSlotService(db=db_session)
     await service.ensure_registered_group(
         jid="telegram:chat-1",
         name="Telegram Chat",
@@ -307,6 +314,9 @@ async def test_get_web_workspace_by_folder_prefers_canonical_web_row(
     assert resolved is not None
     assert resolved.jid == "web:home-user-1"
     assert resolved.is_home is True
+    slot = await slot_service.get_slot("home-user-1", "main")
+    assert slot is not None
+    assert slot.title == "Main"
 
 
 @pytest.mark.asyncio

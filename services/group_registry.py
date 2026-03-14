@@ -9,6 +9,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.group import RegisteredGroup
+from services.conversation_slot_service import ConversationSlotService
 from services.group_member_service import GroupMemberService
 
 _UNSET: Final = object()
@@ -72,6 +73,7 @@ class GroupRegistryService:
                 existing.target_workspace_jid = target_workspace_jid
             await self._db.commit()
             await self._db.refresh(existing)
+            await self._ensure_main_slot_for_workspace(existing)
             return existing
 
         group = RegisteredGroup(
@@ -88,6 +90,7 @@ class GroupRegistryService:
         self._db.add(group)
         await self._db.commit()
         await self._db.refresh(group)
+        await self._ensure_main_slot_for_workspace(group)
         return group
 
     async def ensure_home_workspace(
@@ -129,7 +132,9 @@ class GroupRegistryService:
                 group.jid,
             )
         )
-        return groups[0]
+        workspace = groups[0]
+        await self._ensure_main_slot_for_workspace(workspace)
+        return workspace
 
     async def resolve_im_workspace(self, *, jid: str) -> RegisteredGroup | None:
         endpoint = await self.get_registered_group(jid)
@@ -214,6 +219,12 @@ class GroupRegistryService:
     async def _is_member(self, group_folder: str, user_id: str) -> bool:
         member_service = GroupMemberService(db=self._db)
         return await member_service.get_member(group_folder, user_id) is not None
+
+    async def _ensure_main_slot_for_workspace(self, group: RegisteredGroup) -> None:
+        if not group.jid.startswith("web:"):
+            return
+        slot_service = ConversationSlotService(db=self._db)
+        await slot_service.ensure_main_slot(group.folder, created_by=group.created_by)
 
 
 __all__ = ["GroupRegistryService"]
