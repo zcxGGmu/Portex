@@ -70,6 +70,7 @@ async def _can_read_execution_snapshot(
     if workspace is not None:
         return await group_registry.user_can_access_group(
             user_id=current_user.id,
+            user_role=current_user.role,
             group=workspace,
         )
     if current_user.role in {"owner", "admin"}:

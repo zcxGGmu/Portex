@@ -42,6 +42,7 @@ class GroupRegistryService:
         await self._ensure_schema()
         existing = await self._db.get(RegisteredGroup, jid)
         if existing is not None:
+            await self._ensure_main_slot_for_workspace(existing)
             return existing
 
         return await self.ensure_registered_group(
@@ -150,10 +151,13 @@ class GroupRegistryService:
         self,
         *,
         user_id: str,
+        user_role: str | None = None,
         group: RegisteredGroup,
     ) -> bool:
         await self._ensure_schema()
         if group.is_home:
+            if group.jid == "web:main" and group.folder == "main" and user_role == "owner":
+                return True
             return group.created_by == user_id
 
         if group.jid.startswith("web:"):
@@ -164,7 +168,11 @@ class GroupRegistryService:
         if group.target_workspace_jid:
             bound_workspace = await self.resolve_im_workspace(jid=group.jid)
             if bound_workspace is not None and bound_workspace.jid != group.jid:
-                return await self.user_can_access_group(user_id=user_id, group=bound_workspace)
+                return await self.user_can_access_group(
+                    user_id=user_id,
+                    user_role=user_role,
+                    group=bound_workspace,
+                )
 
         return group.created_by == user_id
 
@@ -221,8 +229,6 @@ class GroupRegistryService:
         return await member_service.get_member(group_folder, user_id) is not None
 
     async def _ensure_main_slot_for_workspace(self, group: RegisteredGroup) -> None:
-        if not group.jid.startswith("web:"):
-            return
         slot_service = ConversationSlotService(db=self._db)
         await slot_service.ensure_main_slot(group.folder, created_by=group.created_by)
 

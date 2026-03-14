@@ -113,12 +113,10 @@ async def list_groups(
                 isinstance(getattr(group, "jid", None), str)
                 and group.jid.startswith("web:")
                 and not _is_raw_im_endpoint(group)
-                and (
-                    (current_user.role == "owner" and getattr(group, "folder", None) == "main")
-                    or await group_registry.user_can_access_group(
-                        user_id=current_user.id,
-                        group=group,
-                    )
+                and await group_registry.user_can_access_group(
+                    user_id=current_user.id,
+                    user_role=current_user.role,
+                    group=group,
                 )
             )
         ]
@@ -150,7 +148,11 @@ async def list_group_members(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group not found",
         )
-    if not await group_registry.user_can_access_group(user_id=current_user.id, group=workspace):
+    if not await group_registry.user_can_access_group(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        group=workspace,
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group not found",
@@ -195,7 +197,11 @@ async def add_group_member(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group not found",
         )
-    if not await group_registry.user_can_access_group(user_id=current_user.id, group=workspace):
+    if not await group_registry.user_can_access_group(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        group=workspace,
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group not found",
@@ -266,7 +272,11 @@ async def remove_group_member(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group not found",
         )
-    if not await group_registry.user_can_access_group(user_id=current_user.id, group=workspace):
+    if not await group_registry.user_can_access_group(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        group=workspace,
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="group not found",

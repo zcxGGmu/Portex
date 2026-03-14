@@ -310,6 +310,99 @@ def test_execution_status_route_allows_shared_workspace_member(api_client: TestC
     assert payload["final_output"] == "shared done"
 
 
+def test_execution_status_route_allows_secondary_owner_on_main_workspace(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import executions as execution_routes
+    from services.auth import auth_service
+    from services.execution_coordinator import ExecutionRunSnapshot
+
+    secondary_owner = auth_service.register_user("owner-two", "secret", role="owner")
+    access_calls: list[dict[str, str | None]] = []
+    workspace = type(
+        "RegisteredGroup",
+        (),
+        {
+            "jid": "web:main",
+            "folder": "main",
+            "name": "Main",
+            "created_by": "owner-1",
+            "is_home": True,
+        },
+    )()
+
+    class FakeCoordinator:
+        def get_run_snapshot(self, run_id: str):
+            if run_id != "run-main-owner":
+                return None
+            return ExecutionRunSnapshot(
+                run_id=run_id,
+                group_folder="main",
+                chat_jid="web:main",
+                user_id="owner-1",
+                source="web",
+                requested_mode="openai",
+                status="completed",
+                backend="openai_runtime",
+                session_id="main",
+                created_at=datetime(2026, 3, 14, 10, 0, tzinfo=timezone.utc),
+                started_at=datetime(2026, 3, 14, 10, 0, 1, tzinfo=timezone.utc),
+                finished_at=datetime(2026, 3, 14, 10, 0, 2, tzinfo=timezone.utc),
+                final_output="done",
+                error=None,
+                timeout_ms=None,
+                recovery_attempted=False,
+                recovery_reason=None,
+                recovery_succeeded=None,
+            )
+
+    class FakeGroupRegistry:
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder == "main":
+                return workspace
+            return None
+
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            access_calls.append(
+                {
+                    "user_id": user_id,
+                    "user_role": user_role,
+                    "group_id": group.folder,
+                }
+            )
+            return user_role == "owner" and group.folder == "main"
+
+    app.dependency_overrides[execution_routes.get_execution_coordinator] = lambda: FakeCoordinator()
+    app.dependency_overrides[execution_routes.get_group_registry_service] = (
+        lambda: FakeGroupRegistry()
+    )
+
+    try:
+        response = api_client.get(
+            "/executions/run-main-owner",
+            headers={"Authorization": f"Bearer {auth_service.create_access_token(secondary_owner.id)}"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["run_id"] == "run-main-owner"
+    assert access_calls == [
+        {
+            "user_id": secondary_owner.id,
+            "user_role": "owner",
+            "group_id": "main",
+        }
+    ]
+
+
 def test_execution_status_route_hides_inaccessible_shared_workspace_run(
     api_client: TestClient,
 ) -> None:

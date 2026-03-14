@@ -2,7 +2,7 @@
 
 最后更新: 2026-03-14 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
-当前分支: `feat/m7-3-3-im-workspace-binding`
+当前分支: `main`
 
 ---
 
@@ -76,6 +76,9 @@
 ---
 
 ## 2. 最近完成
+
+- 2026-03-14 post-merge bugfix：`GroupRegistryService.user_can_access_group()` 现已接收 `user_role`，恢复第二个 `owner` 对共享 `web:main` 的访问一致性；`/groups`、`/messages`、`/executions/{run_id}` 现统一复用同一判定。
+- 2026-03-14 post-merge bugfix：`ensure_im_endpoint()` 现在会为新建和既有 IM endpoint row 自愈 `main` conversation slot；fresh 验证已通过 `.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 
 - `M4.3.2`：补齐 `domain/schemas.py` 任务 DTO、新增薄层 `services/task_service.py`，将当前 in-memory `TaskScheduler` 暴露为最小 create/list/delete 服务边界。
 - `M4.3.2`：实现并挂载 `/tasks` CRUD API：`POST /tasks`、`GET /tasks`、`DELETE /tasks/{task_id}`；继续沿用 `tasks` 资源权限模板，`owner/admin` 可写、`member` 只读。

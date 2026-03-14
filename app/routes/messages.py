@@ -47,6 +47,7 @@ async def _resolve_http_message_target(
     if workspace is not None:
         if not await group_registry.user_can_access_group(
             user_id=current_user.id,
+            user_role=current_user.role,
             group=workspace,
         ):
             raise HTTPException(

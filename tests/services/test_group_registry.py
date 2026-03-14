@@ -200,6 +200,64 @@ async def test_ensure_im_endpoint_preserves_existing_endpoint_metadata(
 
 
 @pytest.mark.asyncio
+async def test_ensure_im_endpoint_creates_main_slot_for_new_endpoint(
+    db_session: AsyncSession,
+) -> None:
+    from services.conversation_slot_service import ConversationSlotService
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    slot_service = ConversationSlotService(db=db_session)
+
+    endpoint = await registry.ensure_im_endpoint(
+        jid="telegram:chat-1",
+        name="Telegram Chat 1",
+        folder="chat-abc123",
+    )
+
+    slot = await slot_service.get_slot(endpoint.folder, "main")
+
+    assert slot is not None
+    assert slot.title == "Main"
+
+
+@pytest.mark.asyncio
+async def test_ensure_im_endpoint_repairs_missing_main_slot_for_existing_endpoint(
+    db_session: AsyncSession,
+) -> None:
+    from domain.models.group import RegisteredGroup
+    from services.conversation_slot_service import ConversationSlotService
+    from services.group_registry import GroupRegistryService
+
+    legacy_endpoint = RegisteredGroup(
+        jid="telegram:chat-legacy",
+        name="Legacy Telegram Chat",
+        folder="chat-legacy",
+        added_at=datetime.utcnow(),
+        created_by=None,
+        is_home=False,
+        target_workspace_jid=None,
+    )
+    db_session.add(legacy_endpoint)
+    await db_session.commit()
+
+    registry = GroupRegistryService(db=db_session)
+    slot_service = ConversationSlotService(db=db_session)
+
+    assert await slot_service.get_slot("chat-legacy", "main") is None
+
+    endpoint = await registry.ensure_im_endpoint(
+        jid="telegram:chat-legacy",
+        name="Legacy Telegram Chat",
+        folder="chat-legacy",
+    )
+    slot = await slot_service.get_slot(endpoint.folder, "main")
+
+    assert slot is not None
+    assert slot.title == "Main"
+
+
+@pytest.mark.asyncio
 async def test_list_registered_groups_returns_persisted_rows_in_deterministic_order(
     db_session: AsyncSession,
 ) -> None:
@@ -511,6 +569,34 @@ async def test_user_can_access_bound_im_endpoint_through_target_workspace_member
 
     assert await registry.user_can_access_group(user_id="member-1", group=endpoint) is True
     assert await registry.user_can_access_group(user_id="outsider-1", group=endpoint) is False
+
+
+@pytest.mark.asyncio
+async def test_user_can_access_shared_main_workspace_as_second_owner(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    workspace = await registry.ensure_home_workspace(
+        user_id="owner-1",
+        role="owner",
+        username="owner-one",
+    )
+    await registry.ensure_home_workspace(
+        user_id="owner-2",
+        role="owner",
+        username="owner-two",
+    )
+
+    assert (
+        await registry.user_can_access_group(
+            user_id="owner-2",
+            user_role="owner",
+            group=workspace,
+        )
+        is True
+    )
 
 
 @pytest.mark.asyncio

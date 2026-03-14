@@ -173,8 +173,20 @@ class FakeGroupRegistry:
                 return group
         return None
 
-    async def user_can_access_group(self, *, user_id: str, group) -> bool:
+    async def user_can_access_group(
+        self,
+        *,
+        user_id: str,
+        user_role: str | None = None,
+        group,
+    ) -> bool:
         if getattr(group, "is_home", False):
+            if (
+                getattr(group, "jid", None) == "web:main"
+                and getattr(group, "folder", None) == "main"
+                and user_role == "owner"
+            ):
+                return True
             return getattr(group, "created_by", None) == user_id
         if str(getattr(group, "jid", "")).startswith("web:"):
             return getattr(group, "created_by", None) == user_id or user_id in getattr(
@@ -185,7 +197,11 @@ class FakeGroupRegistry:
         if getattr(group, "target_workspace_jid", None):
             target = next((item for item in self.groups if item.jid == group.target_workspace_jid), None)
             if target is not None:
-                return await self.user_can_access_group(user_id=user_id, group=target)
+                return await self.user_can_access_group(
+                    user_id=user_id,
+                    user_role=user_role,
+                    group=target,
+                )
         return getattr(group, "created_by", None) == user_id
 
     async def user_can_manage_members(self, *, user_id: str, group) -> bool:

@@ -371,7 +371,14 @@ def test_post_messages_resolves_main_folder_to_canonical_web_jid(api_client: Tes
                 },
             )()
 
-        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            _ = user_role
             return group.created_by == user_id
 
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
@@ -395,6 +402,101 @@ def test_post_messages_resolves_main_folder_to_canonical_web_jid(api_client: Tes
             "user_id": owner.id,
             "role": "owner",
             "username": "owner",
+        }
+    ]
+
+
+def test_post_messages_allows_secondary_owner_on_main_workspace(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+    from services.auth import auth_service
+
+    dispatched_messages: list[UnifiedMessage] = []
+    access_calls: list[dict[str, str | None]] = []
+    secondary_owner = auth_service.register_user("owner-two", "secret", role="owner")
+    workspace = type(
+        "RegisteredGroup",
+        (),
+        {
+            "jid": "web:main",
+            "folder": "main",
+            "name": "Main",
+            "created_by": "owner-1",
+            "is_home": True,
+        },
+    )()
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-main-secondary-owner",
+                    "status": "completed",
+                    "final_output": "main reply",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return workspace
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder == "main":
+                return workspace
+            return None
+
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            access_calls.append(
+                {
+                    "user_id": user_id,
+                    "user_role": user_role,
+                    "group_id": group.folder,
+                }
+            )
+            return user_role == "owner" and group.folder == "main"
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "main", "content": "hello main"},
+            headers={"Authorization": f"Bearer {auth_service.create_access_token(secondary_owner.id)}"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert len(dispatched_messages) == 1
+    assert dispatched_messages[0].chat_jid == "web:main"
+    assert access_calls == [
+        {
+            "user_id": secondary_owner.id,
+            "user_role": "owner",
+            "group_id": "main",
         }
     ]
 
@@ -464,7 +566,14 @@ def test_post_messages_resolves_personal_home_folder_to_canonical_web_jid(
                 },
             )()
 
-        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            _ = user_role
             return group.created_by == user_id
 
     app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
@@ -537,7 +646,14 @@ def test_post_messages_allows_shared_workspace_member(api_client: TestClient) ->
                 return shared_workspace
             return None
 
-        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            _ = user_role
             _ = group
             return user_id in {owner_id, member_id}
 
@@ -612,7 +728,14 @@ def test_post_messages_accepts_explicit_slot_for_existing_workspace(api_client: 
                 return shared_workspace
             return None
 
-        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            _ = user_role
             _ = group
             return user_id in {owner_id, member_id}
 
@@ -703,7 +826,14 @@ def test_post_messages_hides_inaccessible_shared_workspace(api_client: TestClien
                 return shared_workspace
             return None
 
-        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            _ = user_role
             _ = group
             return user_id in {owner_id, member_id}
 
@@ -778,7 +908,14 @@ def test_post_messages_returns_404_for_missing_non_main_slot(api_client: TestCli
                 return shared_workspace
             return None
 
-        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        async def user_can_access_group(
+            self,
+            *,
+            user_id: str,
+            user_role: str | None = None,
+            group,
+        ) -> bool:
+            _ = user_role
             _ = group
             return user_id in {owner_id, member_id}
 
