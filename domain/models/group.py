@@ -20,3 +20,4 @@ class RegisteredGroup(Base):
     container_config: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str | None] = mapped_column(String)
     is_home: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    target_workspace_jid: Mapped[str | None] = mapped_column(String, nullable=True)

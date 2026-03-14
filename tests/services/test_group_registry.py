@@ -53,6 +53,7 @@ async def test_ensure_registered_group_inserts_new_row(db_session: AsyncSession)
     assert group.name == "Telegram Chat 1"
     assert group.folder == "chat-abc123"
     assert group.created_by == "user-1"
+    assert group.target_workspace_jid is None
     assert isinstance(group.added_at, datetime)
 
 
@@ -111,6 +112,38 @@ async def test_ensure_registered_group_does_not_clear_home_or_created_by_on_repe
     assert updated.name == "Alice Home Updated"
     assert updated.created_by == "user-1"
     assert updated.is_home is True
+
+
+@pytest.mark.asyncio
+async def test_ensure_registered_group_preserves_existing_binding_until_explicitly_updated(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+
+    original = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat 1",
+        folder="chat-abc123",
+        target_workspace_jid="web:main",
+    )
+    assert original.target_workspace_jid == "web:main"
+
+    unchanged = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat 1 Renamed",
+        folder="chat-abc123",
+    )
+    assert unchanged.target_workspace_jid == "web:main"
+    updated = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat 1 Rebound",
+        folder="chat-abc123",
+        target_workspace_jid="web:home-user-1",
+    )
+
+    assert updated.target_workspace_jid == "web:home-user-1"
 
 
 @pytest.mark.asyncio
@@ -221,3 +254,72 @@ async def test_get_web_workspace_by_folder_prefers_canonical_web_row(
     assert resolved is not None
     assert resolved.jid == "web:home-user-1"
     assert resolved.is_home is True
+
+
+@pytest.mark.asyncio
+async def test_resolve_im_workspace_returns_fallback_endpoint_when_unbound(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+    endpoint = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-abc123",
+    )
+
+    resolved = await service.resolve_im_workspace(jid="telegram:chat-1")
+
+    assert resolved is not None
+    assert resolved.jid == endpoint.jid
+    assert resolved.folder == "chat-abc123"
+
+
+@pytest.mark.asyncio
+async def test_resolve_im_workspace_returns_bound_target_workspace_when_present(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+    await service.ensure_registered_group(
+        jid="web:main",
+        name="Main",
+        folder="main",
+        created_by="owner-1",
+        is_home=True,
+    )
+    await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-abc123",
+        target_workspace_jid="web:main",
+    )
+
+    resolved = await service.resolve_im_workspace(jid="telegram:chat-1")
+
+    assert resolved is not None
+    assert resolved.jid == "web:main"
+    assert resolved.folder == "main"
+
+
+@pytest.mark.asyncio
+async def test_resolve_im_workspace_falls_back_when_binding_target_is_missing(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+    endpoint = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-abc123",
+        target_workspace_jid="web:missing",
+    )
+
+    resolved = await service.resolve_im_workspace(jid="telegram:chat-1")
+
+    assert resolved is not None
+    assert resolved.jid == endpoint.jid
+    assert resolved.folder == endpoint.folder

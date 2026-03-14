@@ -179,7 +179,9 @@ def test_init_db_backfills_missing_indexes_for_existing_tables(tmp_path: Path) -
     assert "idx_tasks_next_run" in task_indexes
 
 
-def test_init_db_backfills_registered_groups_home_flag_for_existing_tables(tmp_path: Path) -> None:
+def test_init_db_backfills_registered_groups_binding_columns_for_existing_tables(
+    tmp_path: Path,
+) -> None:
     from scripts import init_db
 
     database_path = tmp_path / "portex-registered-groups.db"
@@ -219,3 +221,6 @@ def test_init_db_backfills_registered_groups_home_flag_for_existing_tables(tmp_p
     assert "is_home" in columns
     assert columns["is_home"][3] == 1
     assert columns["is_home"][4] == "0"
+    assert "target_workspace_jid" in columns
+    assert columns["target_workspace_jid"][3] == 0
+    assert columns["target_workspace_jid"][4] is None

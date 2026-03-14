@@ -44,6 +44,7 @@ def test_model_key_fields_exist() -> None:
     group_member_columns = GroupMember.__table__.columns.keys()
     invite_columns = InviteCode.__table__.columns.keys()
     message_columns = Message.__table__.columns.keys()
+    registered_group_columns = RegisteredGroup.__table__.columns.keys()
     session_columns = Session.__table__.columns.keys()
     scheduled_task_columns = ScheduledTask.__table__.columns.keys()
     task_run_log_columns = task_run_log.__table__.columns.keys()
@@ -65,6 +66,7 @@ def test_model_key_fields_exist() -> None:
     assert "permission_template" in invite_columns
     assert "used_at" in invite_columns
     assert "attachments" in message_columns
+    assert "target_workspace_jid" in registered_group_columns
     assert "group_folder" in session_columns
     assert "execution_mode" in scheduled_task_columns
     assert "id" in task_run_log_columns
@@ -121,6 +123,12 @@ def test_registered_group_has_home_workspace_flag() -> None:
     assert is_home.nullable is False
     assert is_home.default is not None
     assert is_home.default.arg is False
+
+
+def test_registered_group_target_workspace_binding_is_optional() -> None:
+    target_workspace_jid = RegisteredGroup.__table__.c.target_workspace_jid
+
+    assert target_workspace_jid.nullable is True
 
 
 def test_task_run_log_model_fields_have_expected_nullability() -> None:

@@ -44,6 +44,11 @@ def _backfill_registered_group_columns(connection: Connection) -> None:
             "ALTER TABLE registered_groups "
             "ADD COLUMN is_home BOOLEAN NOT NULL DEFAULT 0"
         )
+    if "target_workspace_jid" not in columns:
+        connection.exec_driver_sql(
+            "ALTER TABLE registered_groups "
+            "ADD COLUMN target_workspace_jid VARCHAR"
+        )
 
 
 async def init_db(database_url: str | None = None) -> None:
