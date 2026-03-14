@@ -1,8 +1,8 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-13 (Asia/Shanghai)
+最后更新: 2026-03-14 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
-当前分支: `main`
+当前分支: `feat/m7-3-3-im-workspace-binding`
 
 ---
 
@@ -68,7 +68,8 @@
 - `M7.2` 已完成（execution plane parity，`M7.2.1` ~ `M7.2.7`），包括 coordinator/status/recovery read 面与 focused parity behavior tests。
 - `M7.3.1` 已完成（真实持久化 group/workspace 列表模型）。
 - `M7.3.2` 已完成（workspace topology / per-user home workspace parity）。
-- 当前起点：继续 parity backlog 时，从 `M7.3.3` 开始，为 IM chats 增加显式 workspace ownership / binding metadata；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.3.3` 已完成（IM workspace binding metadata parity）。
+- 当前起点：继续 parity backlog 时，从 `M7.3.4` 开始，把当前最小 group/member 模型推进到真实 working-session / workspace membership 边界；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
@@ -205,6 +206,11 @@
 - `M7.3.2`：扩展 `domain/models/group.py`、`services/group_registry.py` 与 `scripts/init_db.py`，为 `registered_groups` 增加 `is_home` 语义、home/main workspace ensure helper、canonical `web:*` workspace lookup，以及对现有 SQLite 表的最小 `is_home` backfill；runtime service 也会在访问时自愈缺失列，避免现有默认 DB 因 schema 落后而阻塞路由测试或实际运行。
 - `M7.3.2`：扩展 `app/routes/auth.py`、`app/routes/groups.py` 与 `app/routes/messages.py`，在注册、`GET /groups`、HTTP `/messages` 三条链路上 ensure 当前用户 home/main workspace；`owner` 统一映射到共享 `web:main/main`，`admin/member` 映射到 `web:home-{user_id}/home-{user_id}`，`/groups` 会隐藏无关 home rows，而 `/messages` 在命中 canonical web workspace row 时会把 `group_id=<folder>` 解析为 `chat_jid=web:*` + `group_folder=<folder>`。
 - `M7.3.2`：补齐 `tests/services/test_group_registry.py`、`tests/domain/models/test_models.py`、`tests/scripts/test_init_db.py`、`tests/app/routes/test_api_routes.py` 与 `tests/app/routes/test_message_routes.py`；fresh focused verification、全量回归、`ruff` 与 `git diff --check` 均已通过，下一步切到 `M7.3.3`。
+- `M7.3.3`：新增 `docs/plans/2026-03-14-m7-3-3-im-workspace-binding-design.md` 与 `docs/plans/2026-03-14-m7-3-3-im-workspace-binding.md`，将这一子步固定为“unbound-first IM workspace binding metadata”，明确只补 `target_workspace_jid` 与 binding-aware resolution，不提前吞掉自动绑定策略、agent-level binding 或管理 API。
+- `M7.3.3`：扩展 `domain/models/group.py`、`services/group_registry.py` 与 `scripts/init_db.py`，为 `registered_groups` 增加可空 `target_workspace_jid`，补齐旧 SQLite 表兼容 backfill，并新增 `resolve_im_workspace()`，让 IM endpoint row 能在 unbound / bound / orphan binding 三种状态下稳定解析到有效 execution workspace。
+- `M7.3.3`：扩展 `app/routes/im.py` 与 `services/message_dispatch.py`，让默认 IM ingress 在提交 coordinator 前先 ensure IM endpoint row，再按 binding metadata 解析 execution `group_folder`；bound IM chat 现在可复用 canonical workspace folder，但 outbound reply 仍保持原始 IM `chat_jid`。
+- `M7.3.3`：扩展 `app/routes/groups.py` 与 `tests/app/routes/test_api_routes.py`，将 `/groups` 收紧为 workspace list，继续保留 `M7.3.2` 的 main/home 可见性规则，同时不再暴露原始 `telegram:*` / `feishu:*` endpoint rows。
+- `M7.3.3`：fresh verification 已完成：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_registry.py tests/services/test_message_dispatch.py tests/app/routes/test_im_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check` 全部通过；下一步切到 `M7.3.4`。
 - README follow-up：新增 `docs/plans/2026-03-11-readme-refresh-design.md` 与 `docs/plans/2026-03-11-readme-refresh.md`，把这次公开文档重构固定为“命名故事 + 对外能力矩阵 + Mermaid 图示 + 中文对照 README”，不再沿用内部 milestone 叙事。
 - README follow-up：重写根 `README.md`，加入 `Portex = Portal + Codex` 命名说明、公开的 `What Works Today` / `What's Next` 清单、系统/工作流/IM 边界三张 Mermaid 图，并把内部文档链接降到次级导航位置。
 - README follow-up：新增 `README.zh-CN.md` 作为英文 README 的近似镜像中文版；fresh review 先抓出两处图示夸大问题（`container/agent-runner` 主链路暗示、WebSocket 房间广播表达不准），均已修正。
@@ -220,6 +226,12 @@
 - HappyClaw parity backlog follow-up：将 `Portex vs HappyClaw Gap Audit` 从粗粒度 `P0/P1/P2` 清单继续细化为正式的 `M7.1` ~ `M7.6` 里程碑树，当前落在 `tasks/todo.md`，尚未写回 `docs/TODO.md` 这个正式里程碑源。
 - HappyClaw parity backlog follow-up：新增 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md` 与 `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`，把 `M7.1` 收敛为“在当前 runtime 栈上补齐主运行链”，明确不提前吞掉 `M7.2` queue/execution plane 或 `M7.3` workspace model。
 - 最近阶段提交：
+  - `1b4dbce` `feat(groups): hide raw IM endpoints from workspace list`
+  - `9a81a1f` `feat(im): resolve bound workspace for IM dispatch`
+  - `99ea3b3` `feat(groups): add IM binding registry contract`
+  - `68962e4` `docs(plans): outline M7.3.3 implementation`
+  - `8dfd035` `chore(git): ignore local worktrees`
+  - `14cb383` `docs(plans): define M7.3.3 IM workspace binding`
   - `e565c72` `feat(groups): complete M7.3.2 workspace topology parity`
   - `da09862` `docs(plans): define M7.3.2 workspace topology`
   - `b50d4db` `feat(groups): complete M7.3.1 persisted group listing`
@@ -448,9 +460,9 @@
 - `M7.2` 当前已完成 `M7.2.1` ~ `M7.2.7`：coordinator/policy core、backend adapters、Web/IM/task rewiring、workspace session lifecycle、cancel-timeout cleanup 边界、run snapshot + execution status 查询接口，以及 focused parity behavior tests 都已到位。
 - `M7.2` 当前仍刻意收敛：状态/恢复信号仍是 in-memory read 面，不含 DB 持久化、监控页或 operator dashboard；这些仍留给后续阶段（`M7.3` / `M7.4`）。
 - `M7.3.1` 当前已完成：`registered_groups` 现在是 `/groups` 的真实持久化列表源，且默认 HTTP / IM dispatch 会在继续执行前懒注册当前 target。
-- `M7.3.2` 当前已完成：`registered_groups` 现在承载了 Portex 的最小 workspace topology，`folder` 是 workspace key，`jid` 是 endpoint，`is_home` 区分 canonical home/main web workspace row；注册、`GET /groups` 和 HTTP `/messages` 都会 ensure 当前用户 home/main workspace 存在。
-- `M7.3.2` 当前仍刻意收敛：还没有 `target_main_jid` / `target_agent_id` / reply policy 这类显式 binding metadata，也没有把 IM chats 绑定到 home/main workspace；这些仍留给 `M7.3.3`。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.3` workspace binding metadata parity。
+- `M7.3.2` 和 `M7.3.3` 当前已完成：`registered_groups` 现在同时承载 canonical workspace topology 与最小 IM binding metadata，`folder` 是 execution workspace key，`jid` 是 endpoint，`is_home` 区分 canonical home/main web workspace row，`target_workspace_jid` 则让 IM endpoint row 可以显式绑定到某个 canonical workspace。
+- `M7.3.3` 当前仍刻意收敛：没有自动绑定策略、没有 `target_agent_id` / reply policy / health-check auto-unbind，也没有 user-facing bind/unbind API；这些仍留给后续 `M7.3.4` ~ `M7.3.6`。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.3.4` working-session / membership parity。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -470,8 +482,8 @@
    - 当前主机不需要再重复走 Docker apt 安装 / blocker 排查；只有当 `~/bin/docker` 或 `/run/user/1000/docker.sock` 失效时，才重新检查 rootless daemon 状态
    - 继续保留 `M6.5.2` 当前边界：首个正式 release tag `v1.0.0` 已创建并推送，当前 package/runtime version 仍是 `0.1.0`；进入后续版本工作前不要意外把这两类版本语义混淆
    - 若要复现 release baseline，优先以 `v1.0.0` / `dba45f3` 为准；`main` 可能继续追加 handoff-only commit，因此是否完全同步以实时 `git status --short --branch` 为准
-   - 如果用户继续 parity backlog，优先从 `M7.3.3` 开始：在当前 canonical main/home workspace topology 基础上，为 IM chats 增加显式 workspace ownership / binding metadata（Portex 版 `target_main_jid` / future binding context）
-   - 当前 `M7.3.2` 的直接相关文件是：`services/group_registry.py`、`domain/models/group.py`、`scripts/init_db.py`、`app/routes/auth.py`、`app/routes/groups.py`、`app/routes/messages.py`、`tests/services/test_group_registry.py`、`tests/domain/models/test_models.py`、`tests/scripts/test_init_db.py`、`tests/app/routes/test_api_routes.py`、`tests/app/routes/test_message_routes.py`
+   - 如果用户继续 parity backlog，优先从 `M7.3.4` 开始：把当前最小 `GroupMemberService` / workspace registry 边界推进到真实 working-session / membership model，并明确它如何与已完成的 canonical workspace topology + IM binding metadata 对齐
+   - 当前 `M7.3.3` 的直接相关文件是：`services/group_registry.py`、`domain/models/group.py`、`scripts/init_db.py`、`app/routes/im.py`、`app/routes/groups.py`、`services/message_dispatch.py`、`tests/services/test_group_registry.py`、`tests/domain/models/test_models.py`、`tests/scripts/test_init_db.py`、`tests/services/test_message_dispatch.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_api_routes.py`
    - 如果要继续 `M7.3` 设计面，先看：`docs/plans/2026-03-13-m7-3-2-workspace-topology-design.md`、`docs/plans/2026-03-13-m7-3-2-workspace-topology.md`，再回看 `docs/plans/2026-03-13-m7-3-1-persisted-group-listing-design.md`
    - 当前 `M7.2` 的直接相关文件是：`services/workspace_lifecycle.py`、`services/execution_coordinator.py`、`services/execution_policy.py`、`services/execution_backends.py`、`services/execution_runtime.py`、`services/group_queue.py`、`services/task_service.py`、`app/routes/executions.py`、`domain/schemas.py`、`app/openapi.py`、`infra/runtime/openai.py`、`tests/services/test_workspace_lifecycle.py`、`tests/services/test_execution_coordinator.py`、`tests/services/test_execution_policy.py`、`tests/services/test_execution_backends.py`、`tests/services/test_task_service.py`、`tests/app/routes/test_execution_routes.py`、`tests/infra/runtime/test_openai.py`
    - 如果需要继续维护 `M7.1` 代码面，先看 `app/routes/im.py`、`app/routes/messages.py`、`services/message_dispatch.py`、`services/message_service.py`、`tests/app/routes/test_im_routes.py`、`tests/app/routes/test_message_routes.py`、`tests/integration/test_message_flow.py`
@@ -496,4 +508,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2` 已完成；当前 parity backlog 的下一步是 `M7.3.3`（workspace binding metadata parity）。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1`、`M7.3.2`、`M7.3.3` 已完成；当前 parity backlog 的下一步是 `M7.3.4`（working-session / membership parity）。
