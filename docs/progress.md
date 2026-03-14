@@ -75,12 +75,17 @@
 - `M7.4.1` 已完成（monitor/status API + page）。
 - `M7.4.2` 已完成（workspace file-management API + UI）。
 - `M7.4.3` 已完成（memory-management API + UI）。
-- 当前起点：继续 parity backlog 时，从 `M7.4.4` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.4.4` 已完成（skills-management API + UI）。
+- 当前起点：继续 parity backlog 时，从 `M7.4.5` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M7.4.4`：新增独立 `/skills` 路由族，补齐 `GET /skills`、`GET/PUT/DELETE /skills/{skill_id}` 与 `PATCH /skills/{skill_id}/state`，并在 OpenAPI 中新增 `skills` tag 与相关 DTO 契约。
+- `M7.4.4`：用文件系统版 `SkillsService` 替换占位实现，落地 `data/skills/{user_id}/{skill_id}/SKILL.md(.disabled)` 管理模型，补齐 list/detail/upsert/enable/disable/delete 与 path/symlink/size guard。
+- `M7.4.4`：新增前端 `/skills` 页面与导航入口，支持 skills 列表、新建、编辑、启停和删除，不引入 marketplace/install/sync-host 复杂流程。
+- `M7.4.4`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_skills_service.py tests/app/routes/test_skills_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .`、`git diff --check`、`cd web && npm run lint` 与 `cd web && npm run build`。
 - `M7.4.3`：新增独立 `/memory` 路由族，补齐 `GET/PUT /memory/global`、`GET /memory/workspaces/{group_id}/files`、`GET/PUT /memory/workspaces/{group_id}/file` 与 `GET /memory/workspaces/{group_id}/search`，并在 OpenAPI 中新增 `memory` tag 与相关 DTO 契约。
 - `M7.4.3`：扩展 `MemoryService`，新增 workspace markdown memory file 的 list/read/write 能力，补齐 path traversal/symlink escape/`.md` 扩展名与 size guard；workspace memory 写权限按 workspace 可访问性开放（不绑定 `groups.write`）。
 - `M7.4.3`：新增前端 `/memory` 页面与导航入口，包含 global memory 编辑、workspace selector、workspace memory file list、search、`Today` 快捷入口与 note 编辑保存。
@@ -339,10 +344,10 @@
 
 ## 3. 最新验证证据
 
-- M7.4.3 focused verification：`.venv/bin/pytest tests/services/test_memory_service.py tests/app/routes/test_memory_routes.py tests/app/routes/test_api_routes.py` -> `88 passed, 1 warning in 11.76s`
-- M7.4.3 frontend verification：`cd web && npm run lint && npm run build` -> `eslint exit 0`; `vite build completed successfully`
-- M7.4.3 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `500 passed, 1 warning in 29.06s`
-- M7.4.3 repo hygiene：`.venv/bin/ruff check .` -> `All checks passed!`; `git diff --check` -> `exit 0`
+- M7.4.4 focused verification：`.venv/bin/pytest tests/services/test_skills_service.py tests/app/routes/test_skills_routes.py tests/app/routes/test_api_routes.py -q` -> `71 passed, 1 warning`
+- M7.4.4 frontend verification：`cd web && npm run lint && npm run build` -> `eslint exit 0`; `vite build completed successfully`
+- M7.4.4 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `512 passed, 1 warning in 38.45s`
+- M7.4.4 repo hygiene：`.venv/bin/ruff check .` -> `All checks passed!`; `git diff --check` -> `exit 0`
 - M7.3.4 focused verification：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_member_service.py tests/services/test_group_registry.py tests/app/routes/test_api_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_execution_routes.py -q` -> `110 passed, 1 warning in 17.90s`
 - M7.3.4 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `428 passed, 1 warning in 20.76s`; `.venv/bin/ruff check .` -> `All checks passed!`
 - M7.2.7 focused verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_websocket_routes.py` -> `29 passed, 1 warning in 3.58s`
@@ -509,7 +514,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.4.3` 已完成，下一步入口应前移到 `M7.4.4`，避免重复回做 memory surface。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.4.4` 已完成，下一步入口应前移到 `M7.4.5`，避免重复回做 skills surface。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -520,10 +525,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M7.4.3` 已完成，关键实现点在 `services/memory.py`、`app/routes/memory.py`、`web/src/pages/Memory.tsx`，以及对应测试 `tests/app/routes/test_memory_routes.py`。
-3. 当前有效起点前移到 `M7.4.4`。若 `M7.4.4` 规划尚未落盘，先在 parity backlog 里补 design/plan，再按 TDD 开始实现，不要回退重做 `M7.4.3`。
+2. `M7.4.4` 已完成，关键实现点在 `services/skills.py`、`app/routes/skills.py`、`web/src/pages/Skills.tsx`，以及对应测试 `tests/services/test_skills_service.py` 与 `tests/app/routes/test_skills_routes.py`。
+3. 当前有效起点前移到 `M7.4.5`。若 `M7.4.5` 规划尚未落盘，先在 parity backlog 里补 design/plan，再按 TDD 开始实现，不要回退重做 `M7.4.4`。
 4. 复现当前基线建议命令：
-   - `M7.4.3 focused`：`.venv/bin/pytest tests/services/test_memory_service.py tests/app/routes/test_memory_routes.py tests/app/routes/test_api_routes.py`
+   - `M7.4.4 focused`：`.venv/bin/pytest tests/services/test_skills_service.py tests/app/routes/test_skills_routes.py tests/app/routes/test_api_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -533,4 +538,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3` 已完成；当前 parity backlog 的下一步入口是 `M7.4.4`。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4` 已完成；当前 parity backlog 的下一步入口是 `M7.4.5`。
