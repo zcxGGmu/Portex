@@ -51,11 +51,10 @@ async def _resolve_registered_im_target(
     if message.channel == "web":
         return fallback_target
 
-    await group_registry.ensure_registered_group(
+    await group_registry.ensure_im_endpoint(
         jid=message.chat_jid,
         name=_build_registered_group_name(message, fallback_target),
         folder=fallback_target.group_folder,
-        created_by=None,
     )
     resolved_workspace = await group_registry.resolve_im_workspace(jid=message.chat_jid)
     return ResolvedMessageTarget(

@@ -174,6 +174,32 @@ async def test_ensure_registered_group_can_explicitly_clear_existing_binding(
 
 
 @pytest.mark.asyncio
+async def test_ensure_im_endpoint_preserves_existing_endpoint_metadata(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+    original = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Custom Endpoint Label",
+        folder="custom-folder",
+        target_workspace_jid="web:main",
+    )
+
+    ensured = await service.ensure_im_endpoint(
+        jid="telegram:chat-1",
+        name="Fallback Endpoint Label",
+        folder="chat-abc123",
+    )
+
+    assert ensured.jid == original.jid
+    assert ensured.name == "Custom Endpoint Label"
+    assert ensured.folder == "custom-folder"
+    assert ensured.target_workspace_jid == "web:main"
+
+
+@pytest.mark.asyncio
 async def test_list_registered_groups_returns_persisted_rows_in_deterministic_order(
     db_session: AsyncSession,
 ) -> None:

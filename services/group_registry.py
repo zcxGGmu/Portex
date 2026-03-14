@@ -30,6 +30,24 @@ class GroupRegistryService:
         await self._ensure_schema()
         return await self._db.get(RegisteredGroup, jid)
 
+    async def ensure_im_endpoint(
+        self,
+        *,
+        jid: str,
+        name: str,
+        folder: str,
+    ) -> RegisteredGroup:
+        await self._ensure_schema()
+        existing = await self._db.get(RegisteredGroup, jid)
+        if existing is not None:
+            return existing
+
+        return await self.ensure_registered_group(
+            jid=jid,
+            name=name,
+            folder=folder,
+        )
+
     async def ensure_registered_group(
         self,
         *,

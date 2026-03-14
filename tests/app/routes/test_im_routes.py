@@ -179,24 +179,18 @@ def test_telegram_update_route_default_dependency_uses_bound_workspace_resolutio
             )
 
     class FakeGroupRegistry:
-        async def ensure_registered_group(
+        async def ensure_im_endpoint(
             self,
             *,
             jid: str,
             name: str,
             folder: str,
-            created_by: str | None = None,
-            is_home: bool | None = None,
-            target_workspace_jid: str | None | object = None,
         ):
             ensure_calls.append(
                 {
                     "jid": jid,
                     "name": name,
                     "folder": folder,
-                    "created_by": created_by,
-                    "is_home": is_home,
-                    "target_workspace_jid": target_workspace_jid,
                 }
             )
             return type(
@@ -206,11 +200,9 @@ def test_telegram_update_route_default_dependency_uses_bound_workspace_resolutio
                     "jid": jid,
                     "name": name,
                     "folder": folder,
-                    "created_by": created_by,
-                    "is_home": bool(is_home),
-                    "target_workspace_jid": None
-                    if target_workspace_jid is None
-                    else target_workspace_jid,
+                    "created_by": None,
+                    "is_home": False,
+                    "target_workspace_jid": None,
                 },
             )()
 

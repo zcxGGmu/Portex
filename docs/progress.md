@@ -2,7 +2,7 @@
 
 最后更新: 2026-03-14 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
-当前分支: `feat/m7-3-3-im-workspace-binding`
+当前分支: `main`
 
 ---
 
