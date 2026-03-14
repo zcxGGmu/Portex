@@ -161,6 +161,27 @@ class GroupListResponse(BaseModel):
     groups: list[GroupSummaryResponse]
 
 
+class CreateGroupRequest(BaseModel):
+    group_id: str = Field(
+        min_length=1,
+        description="Folder-style identifier for the new shared workspace.",
+        examples=["project-alpha"],
+    )
+    name: str = Field(
+        min_length=1,
+        description="Display name for the new shared workspace.",
+        examples=["Project Alpha"],
+    )
+
+
+class UpdateGroupRequest(BaseModel):
+    name: str = Field(
+        min_length=1,
+        description="Updated display name for the existing shared workspace.",
+        examples=["Project Renamed"],
+    )
+
+
 class CreateGroupMemberRequest(BaseModel):
     user_id: str = Field(
         min_length=1,
@@ -191,6 +212,96 @@ class DeleteGroupMemberResponse(BaseModel):
         description="Removal result for the group-member delete operation.",
         examples=["removed"],
     )
+
+
+class CreateConversationSlotRequest(BaseModel):
+    slot_id: str = Field(
+        min_length=1,
+        description="Persistent identifier for the new conversation slot.",
+        examples=["draft"],
+    )
+    title: str = Field(
+        min_length=1,
+        description="Display title shown for the slot within the workspace.",
+        examples=["Draft"],
+    )
+
+
+class ConversationSlotResponse(BaseModel):
+    group_id: str = Field(
+        description="Workspace identifier that owns the conversation slot.",
+        examples=["project-alpha"],
+    )
+    slot_id: str = Field(
+        description="Persistent conversation-slot identifier within the workspace.",
+        examples=["main"],
+    )
+    title: str = Field(
+        description="Human-readable slot title.",
+        examples=["Main"],
+    )
+    created_by: str | None = Field(
+        default=None,
+        description="User identifier that created the slot when recorded.",
+        examples=["user-1234567890ab"],
+    )
+    created_at: datetime = Field(
+        description="Creation timestamp for the slot.",
+        examples=["2026-03-14T08:00:00Z"],
+    )
+
+    @field_validator("created_at", mode="after")
+    @classmethod
+    def normalize_created_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("ConversationSlotResponse.created_at normalization returned None")
+        return normalized
+
+
+class ConversationSlotListResponse(BaseModel):
+    slots: list[ConversationSlotResponse]
+
+
+class GroupIMBindingResponse(BaseModel):
+    im_jid: str = Field(
+        description="Raw IM endpoint identifier.",
+        examples=["telegram:chat-1"],
+    )
+    name: str = Field(
+        description="Display name recorded for the IM endpoint.",
+        examples=["Telegram Chat"],
+    )
+    channel: Literal["telegram", "feishu"] = Field(
+        description="IM channel family for the endpoint row.",
+        examples=["telegram"],
+    )
+    fallback_group_id: str = Field(
+        description="Fallback isolated workspace folder used when this endpoint is unbound.",
+        examples=["chat-a1b2c3"],
+    )
+    binding_state: Literal["unbound", "bound", "orphaned"] = Field(
+        description="Current binding state for the IM endpoint.",
+        examples=["bound"],
+    )
+    target_group_id: str | None = Field(
+        default=None,
+        description="Canonical workspace identifier when the binding currently resolves.",
+        examples=["project-alpha"],
+    )
+    target_group_name: str | None = Field(
+        default=None,
+        description="Canonical workspace display name when the binding currently resolves.",
+        examples=["Project Alpha"],
+    )
+    bound_to_current_group: bool = Field(
+        description="Whether this IM endpoint is currently bound to the workspace route being queried.",
+        examples=[True],
+    )
+
+
+class GroupIMBindingListResponse(BaseModel):
+    bindings: list[GroupIMBindingResponse]
 
 
 class SendMessageRequest(BaseModel):

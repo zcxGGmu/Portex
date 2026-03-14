@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+import re
 from typing import Final
 
 from sqlalchemy import select, text
@@ -13,6 +15,23 @@ from services.conversation_slot_service import ConversationSlotService
 from services.group_member_service import GroupMemberService
 
 _UNSET: Final = object()
+_WORKSPACE_FOLDER_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+class GroupRegistryConflictError(RuntimeError):
+    """Raised when a requested registry write conflicts with existing state."""
+
+
+@dataclass(frozen=True, slots=True)
+class GroupIMBindingStatus:
+    im_jid: str
+    name: str
+    channel: str
+    fallback_group_id: str
+    binding_state: str
+    target_group_id: str | None
+    target_group_name: str | None
+    bound_to_current_group: bool
 
 
 class GroupRegistryService:
@@ -118,6 +137,52 @@ class GroupRegistryService:
             is_home=True,
         )
 
+    async def create_workspace(
+        self,
+        *,
+        folder: str,
+        name: str,
+        created_by: str,
+    ) -> RegisteredGroup:
+        await self._ensure_schema()
+        self._validate_workspace_folder(folder)
+        existing = await self._get_group_by_folder(folder)
+        if existing is not None:
+            raise GroupRegistryConflictError("workspace already exists")
+
+        workspace = await self.ensure_registered_group(
+            jid=f"web:{folder}",
+            name=name,
+            folder=folder,
+            created_by=created_by,
+            is_home=False,
+        )
+        member_service = GroupMemberService(db=self._db)
+        await member_service.add_member(
+            folder,
+            created_by,
+            role="owner",
+            added_by=created_by,
+        )
+        return workspace
+
+    async def rename_workspace(
+        self,
+        group: RegisteredGroup,
+        *,
+        name: str,
+    ) -> RegisteredGroup:
+        await self._ensure_schema()
+        if group.is_home:
+            raise ValueError("home workspaces cannot be renamed")
+        if not group.jid.startswith("web:"):
+            raise ValueError("only canonical web workspaces can be renamed")
+
+        group.name = name
+        await self._db.commit()
+        await self._db.refresh(group)
+        return group
+
     async def get_web_workspace_by_folder(self, folder: str) -> RegisteredGroup | None:
         await self._ensure_schema()
         result = await self._db.execute(
@@ -145,6 +210,92 @@ class GroupRegistryService:
             bound_workspace = await self.get_registered_group(endpoint.target_workspace_jid)
             if bound_workspace is not None and bound_workspace.jid.startswith("web:"):
                 return bound_workspace
+        return endpoint
+
+    async def list_im_endpoint_bindings(
+        self,
+        group: RegisteredGroup,
+    ) -> list[GroupIMBindingStatus]:
+        await self._ensure_schema()
+        result = await self._db.execute(
+            select(RegisteredGroup).order_by(RegisteredGroup.added_at, RegisteredGroup.jid)
+        )
+        bindings: list[GroupIMBindingStatus] = []
+        for endpoint in result.scalars().all():
+            channel = _channel_from_jid(endpoint.jid)
+            if channel is None:
+                continue
+
+            binding_state = "unbound"
+            target_group_id: str | None = None
+            target_group_name: str | None = None
+            bound_to_current_group = False
+            if endpoint.target_workspace_jid:
+                target = await self.get_registered_group(endpoint.target_workspace_jid)
+                if target is None or not target.jid.startswith("web:"):
+                    binding_state = "orphaned"
+                else:
+                    binding_state = "bound"
+                    target_group_id = target.folder
+                    target_group_name = target.name
+                    bound_to_current_group = target.jid == group.jid
+
+            bindings.append(
+                GroupIMBindingStatus(
+                    im_jid=endpoint.jid,
+                    name=endpoint.name,
+                    channel=channel,
+                    fallback_group_id=endpoint.folder,
+                    binding_state=binding_state,
+                    target_group_id=target_group_id,
+                    target_group_name=target_group_name,
+                    bound_to_current_group=bound_to_current_group,
+                )
+            )
+        return bindings
+
+    async def bind_im_endpoint_to_workspace(
+        self,
+        group: RegisteredGroup,
+        *,
+        im_jid: str,
+    ) -> RegisteredGroup:
+        await self._ensure_schema()
+        endpoint = await self.get_registered_group(im_jid)
+        if endpoint is None:
+            raise LookupError("IM endpoint not found")
+        if _channel_from_jid(endpoint.jid) is None:
+            raise ValueError("group is not an IM endpoint")
+        if endpoint.target_workspace_jid == group.jid:
+            return endpoint
+        if endpoint.target_workspace_jid:
+            target = await self.get_registered_group(endpoint.target_workspace_jid)
+            if target is not None and target.jid.startswith("web:"):
+                raise GroupRegistryConflictError("IM endpoint is already bound elsewhere")
+
+        endpoint.target_workspace_jid = group.jid
+        await self._db.commit()
+        await self._db.refresh(endpoint)
+        return endpoint
+
+    async def unbind_im_endpoint_from_workspace(
+        self,
+        group: RegisteredGroup,
+        *,
+        im_jid: str,
+    ) -> RegisteredGroup:
+        await self._ensure_schema()
+        endpoint = await self.get_registered_group(im_jid)
+        if endpoint is None:
+            raise LookupError("IM endpoint not found")
+        if _channel_from_jid(endpoint.jid) is None:
+            raise ValueError("group is not an IM endpoint")
+        if endpoint.target_workspace_jid != group.jid:
+            raise ValueError("IM endpoint is not bound to this workspace")
+
+        endpoint.target_workspace_jid = None
+        await self._db.commit()
+        await self._db.refresh(endpoint)
         return endpoint
 
     async def user_can_access_group(
@@ -232,5 +383,31 @@ class GroupRegistryService:
         slot_service = ConversationSlotService(db=self._db)
         await slot_service.ensure_main_slot(group.folder, created_by=group.created_by)
 
+    async def _get_group_by_folder(self, folder: str) -> RegisteredGroup | None:
+        result = await self._db.execute(
+            select(RegisteredGroup)
+            .where(RegisteredGroup.folder == folder)
+            .order_by(RegisteredGroup.added_at, RegisteredGroup.jid)
+        )
+        return result.scalars().first()
 
-__all__ = ["GroupRegistryService"]
+    def _validate_workspace_folder(self, folder: str) -> None:
+        if folder == "main" or folder.startswith("home-"):
+            raise ValueError("reserved workspace folder")
+        if not _WORKSPACE_FOLDER_PATTERN.fullmatch(folder):
+            raise ValueError("invalid workspace folder")
+
+
+def _channel_from_jid(jid: str) -> str | None:
+    if jid.startswith("telegram:"):
+        return "telegram"
+    if jid.startswith("feishu:"):
+        return "feishu"
+    return None
+
+
+__all__ = [
+    "GroupIMBindingStatus",
+    "GroupRegistryConflictError",
+    "GroupRegistryService",
+]

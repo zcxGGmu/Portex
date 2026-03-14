@@ -116,3 +116,19 @@ async def test_get_slot_returns_none_for_missing_slot(db_session: AsyncSession) 
     missing = await service.get_slot("project-alpha", "missing")
 
     assert missing is None
+
+
+@pytest.mark.asyncio
+async def test_create_slot_rejects_invalid_slot_id(db_session: AsyncSession) -> None:
+    from services.conversation_slot_service import ConversationSlotService
+
+    service = ConversationSlotService(db=db_session)
+    await service.ensure_main_slot("project-alpha", created_by="owner-1")
+
+    with pytest.raises(ValueError, match="invalid slot_id"):
+        await service.create_slot(
+            workspace_folder="project-alpha",
+            slot_id="Draft Slot",
+            title="Draft Slot",
+            created_by="owner-1",
+        )

@@ -33,8 +33,8 @@ OPENAPI_TAGS = [
     },
     {
         "name": "groups",
-        "description": "Group listing and member management. Group members can read "
-        "membership; only owners can add or remove members.",
+        "description": "Workspace listing, shared-workspace management, conversation "
+        "slot management, IM binding management, and member management.",
     },
     {
         "name": "messages",

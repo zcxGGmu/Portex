@@ -71,11 +71,16 @@
 - `M7.3.3` 已完成（IM workspace binding metadata parity）。
 - `M7.3.4` 已完成（workspace membership / working-session parity）。
 - `M7.3.5` 已完成（workspace 下的最小 persistent conversation slots 模型）。
-- 当前起点：继续 parity backlog 时，从 `M7.3.6` 开始，围绕已落地的 workspace + conversation-slot 模型补管理/API 面；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.3.6` 已完成（workspace/slot/IM binding 管理 API）。
+- 当前起点：继续 parity backlog 时，从 `M7.4.1` 开始，围绕 monitor/status/operator surface 补真实管理面；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M7.3.6`：新增 workspace management API，`/groups` 继续只表示 canonical web workspace，并补齐 `POST /groups`、`PATCH /groups/{group_id}`、`GET/POST /groups/{group_id}/slots`、`GET/PUT/DELETE /groups/{group_id}/bindings/im/{im_jid}` 这一最小管理面。
+- `M7.3.6`：扩展 `GroupRegistryService` 与 `ConversationSlotService`，补齐 shared workspace create/rename、owner membership + `main` slot seeding、raw IM endpoint binding status list、bind/unbind conflict 语义，以及 slot/workspace ID 的保守校验。
+- `M7.3.6`：OpenAPI 与测试合同已更新，新增 workspace/slot/binding DTO 与 route docs；fresh 验证已通过 `.venv/bin/pytest tests/services/test_conversation_slot_service.py tests/services/test_group_registry.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_member_service.py tests/services/test_group_registry.py tests/services/test_conversation_slot_service.py tests/services/test_workspace_lifecycle.py tests/services/test_execution_coordinator.py tests/services/test_message_service.py tests/services/test_message_dispatch.py tests/app/routes/test_api_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_execution_routes.py tests/app/routes/test_im_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 
 - 2026-03-14 post-merge bugfix：`GroupRegistryService.user_can_access_group()` 现已接收 `user_role`，恢复第二个 `owner` 对共享 `web:main` 的访问一致性；`/groups`、`/messages`、`/executions/{run_id}` 现统一复用同一判定。
 - 2026-03-14 post-merge bugfix：`ensure_im_endpoint()` 现在会为新建和既有 IM endpoint row 自愈 `main` conversation slot；fresh 验证已通过 `.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。

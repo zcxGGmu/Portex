@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import case, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.conversation_slot import ConversationSlot
+
+_SLOT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 class ConversationSlotService:
@@ -51,6 +55,8 @@ class ConversationSlotService:
         await self._ensure_schema()
         if slot_id == "main":
             raise ValueError("slot_id 'main' is reserved")
+        if not _SLOT_ID_PATTERN.fullmatch(slot_id):
+            raise ValueError("invalid slot_id")
         existing = await self.get_slot(workspace_folder, slot_id)
         if existing is not None:
             return existing

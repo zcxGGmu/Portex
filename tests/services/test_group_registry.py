@@ -613,3 +613,208 @@ async def test_home_workspace_never_becomes_member_manageable(
     )
 
     assert await registry.user_can_manage_members(user_id="user-1", group=home) is False
+
+
+@pytest.mark.asyncio
+async def test_create_workspace_seeds_owner_membership_and_main_slot(
+    db_session: AsyncSession,
+) -> None:
+    from services.conversation_slot_service import ConversationSlotService
+    from services.group_member_service import GroupMemberService
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    members = GroupMemberService(db=db_session)
+    slots = ConversationSlotService(db=db_session)
+
+    workspace = await registry.create_workspace(
+        folder="project-alpha",
+        name="Project Alpha",
+        created_by="owner-1",
+    )
+
+    owner_member = await members.get_member("project-alpha", "owner-1")
+    main_slot = await slots.get_slot("project-alpha", "main")
+
+    assert workspace.jid == "web:project-alpha"
+    assert workspace.folder == "project-alpha"
+    assert workspace.name == "Project Alpha"
+    assert workspace.created_by == "owner-1"
+    assert workspace.is_home is False
+    assert owner_member is not None
+    assert owner_member.role == "owner"
+    assert owner_member.added_by == "owner-1"
+    assert main_slot is not None
+    assert main_slot.title == "Main"
+
+
+@pytest.mark.asyncio
+async def test_create_workspace_rejects_reserved_or_invalid_folder(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+
+    with pytest.raises(ValueError, match="reserved workspace folder"):
+        await registry.create_workspace(
+            folder="main",
+            name="Main Clone",
+            created_by="owner-1",
+        )
+
+    with pytest.raises(ValueError, match="invalid workspace folder"):
+        await registry.create_workspace(
+            folder="Project Alpha",
+            name="Project Alpha",
+            created_by="owner-1",
+        )
+
+
+@pytest.mark.asyncio
+async def test_rename_workspace_updates_shared_workspace_name(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    workspace = await registry.create_workspace(
+        folder="project-alpha",
+        name="Project Alpha",
+        created_by="owner-1",
+    )
+
+    renamed = await registry.rename_workspace(workspace, name="Project Renamed")
+
+    assert renamed.jid == "web:project-alpha"
+    assert renamed.folder == "project-alpha"
+    assert renamed.name == "Project Renamed"
+
+
+@pytest.mark.asyncio
+async def test_rename_workspace_rejects_home_workspace(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    home = await registry.ensure_home_workspace(
+        user_id="user-1",
+        role="member",
+        username="alice",
+    )
+
+    with pytest.raises(ValueError, match="home workspaces cannot be renamed"):
+        await registry.rename_workspace(home, name="Renamed Home")
+
+
+@pytest.mark.asyncio
+async def test_list_im_endpoint_bindings_reports_binding_state(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    workspace = await registry.create_workspace(
+        folder="project-alpha",
+        name="Project Alpha",
+        created_by="owner-1",
+    )
+    await registry.ensure_registered_group(
+        jid="telegram:chat-unbound",
+        name="Telegram Unbound",
+        folder="chat-unbound",
+    )
+    await registry.ensure_registered_group(
+        jid="telegram:chat-bound",
+        name="Telegram Bound",
+        folder="chat-bound",
+        target_workspace_jid=workspace.jid,
+    )
+    await registry.ensure_registered_group(
+        jid="feishu:chat-orphan",
+        name="Feishu Orphan",
+        folder="chat-orphan",
+        target_workspace_jid="web:missing",
+    )
+
+    bindings = await registry.list_im_endpoint_bindings(workspace)
+
+    states = {
+        binding.im_jid: (
+            binding.binding_state,
+            binding.bound_to_current_group,
+            binding.target_group_id,
+        )
+        for binding in bindings
+    }
+    assert states == {
+        "feishu:chat-orphan": ("orphaned", False, None),
+        "telegram:chat-bound": ("bound", True, "project-alpha"),
+        "telegram:chat-unbound": ("unbound", False, None),
+    }
+
+
+@pytest.mark.asyncio
+async def test_bind_im_endpoint_is_idempotent_and_rejects_other_workspace_conflicts(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryConflictError, GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    alpha = await registry.create_workspace(
+        folder="project-alpha",
+        name="Project Alpha",
+        created_by="owner-1",
+    )
+    beta = await registry.create_workspace(
+        folder="project-beta",
+        name="Project Beta",
+        created_by="owner-1",
+    )
+    await registry.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-1",
+    )
+
+    bound = await registry.bind_im_endpoint_to_workspace(alpha, im_jid="telegram:chat-1")
+    rebound = await registry.bind_im_endpoint_to_workspace(alpha, im_jid="telegram:chat-1")
+
+    assert bound.target_workspace_jid == alpha.jid
+    assert rebound.target_workspace_jid == alpha.jid
+
+    with pytest.raises(GroupRegistryConflictError, match="already bound elsewhere"):
+        await registry.bind_im_endpoint_to_workspace(beta, im_jid="telegram:chat-1")
+
+
+@pytest.mark.asyncio
+async def test_unbind_im_endpoint_requires_matching_workspace_binding(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    registry = GroupRegistryService(db=db_session)
+    alpha = await registry.create_workspace(
+        folder="project-alpha",
+        name="Project Alpha",
+        created_by="owner-1",
+    )
+    beta = await registry.create_workspace(
+        folder="project-beta",
+        name="Project Beta",
+        created_by="owner-1",
+    )
+    await registry.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-1",
+        target_workspace_jid=alpha.jid,
+    )
+
+    with pytest.raises(ValueError, match="not bound to this workspace"):
+        await registry.unbind_im_endpoint_from_workspace(beta, im_jid="telegram:chat-1")
+
+    cleared = await registry.unbind_im_endpoint_from_workspace(alpha, im_jid="telegram:chat-1")
+
+    assert cleared.target_workspace_jid is None

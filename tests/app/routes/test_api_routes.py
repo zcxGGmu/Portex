@@ -144,6 +144,11 @@ class FakeGroupMemberService:
 class FakeGroupRegistry:
     def __init__(self, groups) -> None:
         self.groups = list(groups)
+        self.created_workspaces: list[dict[str, str]] = []
+        self.renamed_workspaces: list[dict[str, str]] = []
+        self.listed_binding_groups: list[str] = []
+        self.bound_endpoints: list[dict[str, str]] = []
+        self.unbound_endpoints: list[dict[str, str]] = []
 
     async def ensure_home_workspace(
         self,
@@ -208,6 +213,51 @@ class FakeGroupRegistry:
         if getattr(group, "is_home", False):
             return False
         return str(getattr(group, "jid", "")).startswith("web:") and getattr(group, "created_by", None) == user_id
+
+    async def create_workspace(self, *, folder: str, name: str, created_by: str):
+        self.created_workspaces.append(
+            {
+                "folder": folder,
+                "name": name,
+                "created_by": created_by,
+            }
+        )
+        workspace = _workspace(
+            jid=f"web:{folder}",
+            folder=folder,
+            name=name,
+            created_by=created_by,
+        )
+        self.groups.append(workspace)
+        return workspace
+
+    async def rename_workspace(self, group, *, name: str):
+        if getattr(group, "is_home", False):
+            raise ValueError("home workspaces cannot be renamed")
+        self.renamed_workspaces.append(
+            {
+                "folder": group.folder,
+                "name": name,
+            }
+        )
+        group.name = name
+        return group
+
+    async def list_im_endpoint_bindings(self, group):
+        self.listed_binding_groups.append(group.folder)
+        return []
+
+    async def bind_im_endpoint_to_workspace(self, group, *, im_jid: str):
+        self.bound_endpoints.append({"folder": group.folder, "im_jid": im_jid})
+        endpoint = next(item for item in self.groups if item.jid == im_jid)
+        endpoint.target_workspace_jid = group.jid
+        return endpoint
+
+    async def unbind_im_endpoint_from_workspace(self, group, *, im_jid: str):
+        self.unbound_endpoints.append({"folder": group.folder, "im_jid": im_jid})
+        endpoint = next(item for item in self.groups if item.jid == im_jid)
+        endpoint.target_workspace_jid = None
+        return endpoint
 
 
 def test_health_check_endpoint(api_client: TestClient) -> None:
@@ -621,6 +671,353 @@ def test_owner_can_list_shared_main_workspace_created_by_another_owner(
             {"group_id": "main", "name": "Main"},
         ]
     }
+
+
+def test_group_create_route_creates_shared_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry([])
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+
+    try:
+        response = api_client.post(
+            "/groups",
+            json={"group_id": "project-alpha", "name": "Project Alpha"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"group_id": "project-alpha", "name": "Project Alpha"}
+    assert registry.created_workspaces == [
+        {
+            "folder": "project-alpha",
+            "name": "Project Alpha",
+            "created_by": owner_user.id,
+        }
+    ]
+
+
+def test_group_update_route_renames_shared_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+
+    try:
+        response = api_client.patch(
+            "/groups/project-alpha",
+            json={"name": "Project Renamed"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"group_id": "project-alpha", "name": "Project Renamed"}
+    assert registry.renamed_workspaces == [
+        {
+            "folder": "project-alpha",
+            "name": "Project Renamed",
+        }
+    ]
+
+
+def test_group_update_route_returns_400_for_home_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:main",
+                folder="main",
+                name="Main",
+                created_by=owner_user.id,
+                is_home=True,
+            )
+        ]
+    )
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+
+    try:
+        response = api_client.patch(
+            "/groups/main",
+            json={"name": "Renamed Main"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "home workspaces cannot be renamed"}
+
+
+def test_group_bindings_route_requires_owner_role(api_client: TestClient) -> None:
+    from services.auth import auth_service
+
+    member_user = auth_service.register_user("member", "secret")
+    member_headers = _login_headers(api_client, "member", "secret")
+
+    response = api_client.get(
+        f"/groups/home-{member_user.id}/bindings/im",
+        headers=member_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "permission denied"}
+
+
+def test_group_slots_route_lists_slots_for_accessible_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+
+    class FakeSlotService:
+        async def list_slots(self, workspace_folder: str):
+            assert workspace_folder == "project-alpha"
+            return [
+                SimpleNamespace(
+                    workspace_folder="project-alpha",
+                    slot_id="main",
+                    title="Main",
+                    created_by=owner_user.id,
+                    created_at=datetime(2026, 3, 14, tzinfo=timezone.utc),
+                ),
+                SimpleNamespace(
+                    workspace_folder="project-alpha",
+                    slot_id="draft",
+                    title="Draft",
+                    created_by=owner_user.id,
+                    created_at=datetime(2026, 3, 14, 0, 1, tzinfo=timezone.utc),
+                ),
+            ]
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_conversation_slot_service] = lambda: FakeSlotService()
+
+    try:
+        response = api_client.get("/groups/project-alpha/slots", headers=owner_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["slots"][0]["slot_id"] == "main"
+    assert response.json()["slots"][1]["slot_id"] == "draft"
+
+
+def test_group_slot_create_route_creates_non_main_slot(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+    create_calls: list[dict[str, str]] = []
+
+    class FakeSlotService:
+        async def create_slot(
+            self,
+            *,
+            workspace_folder: str,
+            slot_id: str,
+            title: str,
+            created_by: str | None = None,
+        ):
+            create_calls.append(
+                {
+                    "workspace_folder": workspace_folder,
+                    "slot_id": slot_id,
+                    "title": title,
+                    "created_by": created_by or "",
+                }
+            )
+            return SimpleNamespace(
+                workspace_folder=workspace_folder,
+                slot_id=slot_id,
+                title=title,
+                created_by=created_by,
+                created_at=datetime(2026, 3, 14, tzinfo=timezone.utc),
+            )
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_conversation_slot_service] = lambda: FakeSlotService()
+
+    try:
+        response = api_client.post(
+            "/groups/project-alpha/slots",
+            json={"slot_id": "draft", "title": "Draft"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["slot_id"] == "draft"
+    assert create_calls == [
+        {
+            "workspace_folder": "project-alpha",
+            "slot_id": "draft",
+            "title": "Draft",
+            "created_by": owner_user.id,
+        }
+    ]
+
+
+def test_group_im_binding_routes_list_bind_and_unbind(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            ),
+            _workspace(
+                jid="telegram:chat-1",
+                folder="chat-1",
+                name="Telegram Chat",
+                created_by=None,
+            ),
+        ]
+    )
+
+    async def list_bindings(_group):
+        return [
+            SimpleNamespace(
+                im_jid="telegram:chat-1",
+                name="Telegram Chat",
+                channel="telegram",
+                fallback_group_id="chat-1",
+                binding_state="unbound",
+                target_group_id=None,
+                target_group_name=None,
+                bound_to_current_group=False,
+            )
+        ]
+
+    registry.list_im_endpoint_bindings = list_bindings
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+
+    try:
+        list_response = api_client.get(
+            "/groups/project-alpha/bindings/im",
+            headers=owner_headers,
+        )
+        bind_response = api_client.put(
+            "/groups/project-alpha/bindings/im/telegram:chat-1",
+            headers=owner_headers,
+        )
+        unbind_response = api_client.delete(
+            "/groups/project-alpha/bindings/im/telegram:chat-1",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert list_response.status_code == 200
+    assert list_response.json()["bindings"][0]["im_jid"] == "telegram:chat-1"
+    assert bind_response.status_code == 200
+    assert bind_response.json()["im_jid"] == "telegram:chat-1"
+    assert unbind_response.status_code == 200
+    assert unbind_response.json()["im_jid"] == "telegram:chat-1"
+    assert registry.bound_endpoints == [{"folder": "project-alpha", "im_jid": "telegram:chat-1"}]
+    assert registry.unbound_endpoints == [{"folder": "project-alpha", "im_jid": "telegram:chat-1"}]
+
+
+def test_group_im_bind_route_maps_conflict_to_409(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+
+    class ConflictRegistry(FakeGroupRegistry):
+        async def bind_im_endpoint_to_workspace(self, group, *, im_jid: str):
+            _ = group
+            _ = im_jid
+            from services.group_registry import GroupRegistryConflictError
+
+            raise GroupRegistryConflictError("IM endpoint is already bound elsewhere")
+
+    conflict_registry = ConflictRegistry(registry.groups)
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: conflict_registry
+
+    try:
+        response = api_client.put(
+            "/groups/project-alpha/bindings/im/telegram:chat-1",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "IM endpoint is already bound elsewhere"}
 
 
 def test_group_member_routes_require_authentication(api_client: TestClient) -> None:
@@ -1857,6 +2254,21 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "status" in execution_status_operation["summary"].lower()
     assert "404" in execution_status_operation["responses"]
 
+    create_group_operation = schema["paths"]["/groups"]["post"]
+    assert "workspace" in create_group_operation["summary"].lower()
+    assert "400" in create_group_operation["responses"]
+    assert "409" in create_group_operation["responses"]
+
+    rename_group_operation = schema["paths"]["/groups/{group_id}"]["patch"]
+    assert "rename" in rename_group_operation["summary"].lower()
+    assert "404" in rename_group_operation["responses"]
+
+    list_slots_operation = schema["paths"]["/groups/{group_id}/slots"]["get"]
+    assert "slot" in list_slots_operation["summary"].lower()
+
+    bindings_operation = schema["paths"]["/groups/{group_id}/bindings/im"]["get"]
+    assert "binding" in bindings_operation["summary"].lower()
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -1877,6 +2289,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
 
     send_message_schema = schema["components"]["schemas"]["SendMessageRequest"]
     assert "execution_mode" in send_message_schema["properties"]
+    assert "CreateGroupRequest" in schema["components"]["schemas"]
+    assert "UpdateGroupRequest" in schema["components"]["schemas"]
+    assert "ConversationSlotResponse" in schema["components"]["schemas"]
+    assert "GroupIMBindingResponse" in schema["components"]["schemas"]
     assert "ExecutionRunStatusResponse" in schema["components"]["schemas"]
 
 
