@@ -1,6 +1,7 @@
 """SQLAlchemy domain models."""
 
 from domain.models.base import Base
+from domain.models.conversation_slot import ConversationSlot
 from domain.models.group import RegisteredGroup
 from domain.models.group_member import GroupMember
 from domain.models.invite_code import InviteCode
@@ -12,6 +13,7 @@ from domain.models.user import User
 
 __all__ = [
     "Base",
+    "ConversationSlot",
     "GroupMember",
     "InviteCode",
     "User",

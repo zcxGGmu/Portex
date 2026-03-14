@@ -23,4 +23,5 @@ class Message(Base):
     content: Mapped[str | None] = mapped_column(Text)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     is_from_me: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    slot_id: Mapped[str] = mapped_column(String, default="main", nullable=False)
     attachments: Mapped[str | None] = mapped_column(Text)

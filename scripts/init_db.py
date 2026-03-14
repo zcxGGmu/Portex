@@ -51,6 +51,65 @@ def _backfill_registered_group_columns(connection: Connection) -> None:
         )
 
 
+def _backfill_message_columns(connection: Connection) -> None:
+    inspector = inspect(connection)
+    if "messages" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("messages")}
+    if "slot_id" not in columns:
+        connection.exec_driver_sql(
+            "ALTER TABLE messages "
+            "ADD COLUMN slot_id VARCHAR NOT NULL DEFAULT 'main'"
+        )
+
+
+def _repair_main_conversation_slots(connection: Connection) -> None:
+    inspector = inspect(connection)
+    table_names = set(inspector.get_table_names())
+    if "registered_groups" not in table_names or "conversation_slots" not in table_names:
+        return
+
+    rows = connection.exec_driver_sql(
+        """
+        SELECT folder, created_by
+        FROM registered_groups
+        ORDER BY
+            CASE WHEN jid LIKE 'web:%' THEN 0 ELSE 1 END,
+            added_at,
+            jid
+        """
+    ).fetchall()
+    seen_folders: set[str] = set()
+    for folder, created_by in rows:
+        if folder in seen_folders:
+            continue
+        seen_folders.add(folder)
+        exists = connection.exec_driver_sql(
+            """
+            SELECT 1
+            FROM conversation_slots
+            WHERE workspace_folder = ? AND slot_id = 'main'
+            """,
+            (folder,),
+        ).fetchone()
+        if exists is not None:
+            continue
+        connection.exec_driver_sql(
+            """
+            INSERT INTO conversation_slots (
+                workspace_folder,
+                slot_id,
+                title,
+                created_by,
+                created_at
+            )
+            VALUES (?, 'main', 'Main', ?, CURRENT_TIMESTAMP)
+            """,
+            (folder, created_by),
+        )
+
+
 def _backfill_group_member_columns(connection: Connection) -> None:
     inspector = inspect(connection)
     if "group_members" not in inspector.get_table_names():
@@ -114,7 +173,9 @@ async def init_db(database_url: str | None = None) -> None:
         async with db_engine.begin() as connection:
             await connection.run_sync(metadata.create_all)
             await connection.run_sync(_backfill_registered_group_columns)
+            await connection.run_sync(_backfill_message_columns)
             await connection.run_sync(_backfill_group_member_columns)
+            await connection.run_sync(_repair_main_conversation_slots)
             await connection.run_sync(lambda sync_connection: _create_missing_indexes(sync_connection, metadata))
     finally:
         if should_dispose:

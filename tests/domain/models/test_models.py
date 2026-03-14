@@ -25,8 +25,16 @@ def _task_run_log_model():
     return task_run_log
 
 
+def _conversation_slot_model():
+    conversation_slot = getattr(domain_models, "ConversationSlot", None)
+
+    assert conversation_slot is not None
+    return conversation_slot
+
+
 def test_model_table_names() -> None:
     task_run_log = _task_run_log_model()
+    conversation_slot = _conversation_slot_model()
 
     assert User.__tablename__ == "users"
     assert GroupMember.__tablename__ == "group_members"
@@ -36,10 +44,12 @@ def test_model_table_names() -> None:
     assert RegisteredGroup.__tablename__ == "registered_groups"
     assert ScheduledTask.__tablename__ == "scheduled_tasks"
     assert task_run_log.__tablename__ == "task_run_logs"
+    assert conversation_slot.__tablename__ == "conversation_slots"
 
 
 def test_model_key_fields_exist() -> None:
     task_run_log = _task_run_log_model()
+    conversation_slot = _conversation_slot_model()
     user_columns = User.__table__.columns.keys()
     group_member_columns = GroupMember.__table__.columns.keys()
     invite_columns = InviteCode.__table__.columns.keys()
@@ -48,6 +58,7 @@ def test_model_key_fields_exist() -> None:
     session_columns = Session.__table__.columns.keys()
     scheduled_task_columns = ScheduledTask.__table__.columns.keys()
     task_run_log_columns = task_run_log.__table__.columns.keys()
+    conversation_slot_columns = conversation_slot.__table__.columns.keys()
 
     assert "username" in user_columns
     assert "avatar_emoji" in user_columns
@@ -67,9 +78,15 @@ def test_model_key_fields_exist() -> None:
     assert "permission_template" in invite_columns
     assert "used_at" in invite_columns
     assert "attachments" in message_columns
+    assert "slot_id" in message_columns
     assert "target_workspace_jid" in registered_group_columns
     assert "group_folder" in session_columns
     assert "execution_mode" in scheduled_task_columns
+    assert "workspace_folder" in conversation_slot_columns
+    assert "slot_id" in conversation_slot_columns
+    assert "title" in conversation_slot_columns
+    assert "created_by" in conversation_slot_columns
+    assert "created_at" in conversation_slot_columns
     assert "id" in task_run_log_columns
     assert "task_id" in task_run_log_columns
     assert "run_at" in task_run_log_columns
@@ -136,6 +153,35 @@ def test_registered_group_target_workspace_binding_is_optional() -> None:
     assert target_workspace_jid.nullable is True
 
 
+def test_message_model_slot_id_defaults_to_main() -> None:
+    slot_id = Message.__table__.c.slot_id
+
+    assert slot_id.nullable is False
+    assert slot_id.default is not None
+    assert slot_id.default.arg == "main"
+
+
+def test_conversation_slot_model_uses_workspace_folder_and_slot_id_primary_key() -> None:
+    conversation_slot = _conversation_slot_model()
+
+    primary_key_columns = [column.name for column in conversation_slot.__table__.primary_key.columns]
+
+    assert primary_key_columns == ["workspace_folder", "slot_id"]
+
+
+def test_conversation_slot_model_fields_have_expected_defaults() -> None:
+    conversation_slot = _conversation_slot_model()
+
+    title = conversation_slot.__table__.c.title
+    created_by = conversation_slot.__table__.c.created_by
+    created_at = conversation_slot.__table__.c.created_at
+
+    assert title.nullable is False
+    assert created_by.nullable is True
+    assert created_at.nullable is False
+    assert created_at.default is not None
+
+
 def test_task_run_log_model_fields_have_expected_nullability() -> None:
     task_run_log = _task_run_log_model()
 
@@ -162,8 +208,10 @@ def test_scheduled_task_execution_mode_is_optional() -> None:
 
 def test_shared_metadata_contains_all_tables() -> None:
     task_run_log = _task_run_log_model()
+    conversation_slot = _conversation_slot_model()
     table_names = set(Base.metadata.tables.keys())
     expected = {
+        "conversation_slots",
         "users",
         "group_members",
         "invite_codes",
@@ -182,6 +230,7 @@ def test_shared_metadata_contains_all_tables() -> None:
     assert Session.metadata is Base.metadata
     assert RegisteredGroup.metadata is Base.metadata
     assert ScheduledTask.metadata is Base.metadata
+    assert conversation_slot.metadata is Base.metadata
     assert task_run_log.metadata is Base.metadata
 
 

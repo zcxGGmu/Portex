@@ -142,6 +142,24 @@ def test_init_db_backfills_missing_indexes_for_existing_tables(tmp_path: Path) -
         )
         connection.execute(
             """
+            CREATE TABLE registered_groups (
+                jid VARCHAR PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                folder VARCHAR NOT NULL,
+                added_at DATETIME NOT NULL,
+                container_config TEXT,
+                created_by VARCHAR
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO registered_groups (jid, name, folder, added_at, container_config, created_by)
+            VALUES ('web:project-alpha', 'Project Alpha', 'project-alpha', '2026-03-14T10:00:00', NULL, 'owner-1')
+            """
+        )
+        connection.execute(
+            """
             CREATE TABLE scheduled_tasks (
                 id VARCHAR PRIMARY KEY,
                 group_folder VARCHAR NOT NULL,
@@ -171,12 +189,27 @@ def test_init_db_backfills_missing_indexes_for_existing_tables(tmp_path: Path) -
         task_indexes = {
             row[1] for row in connection.execute("PRAGMA index_list('scheduled_tasks')").fetchall()
         }
+        message_columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info('messages')").fetchall()
+        }
+        conversation_slots = connection.execute(
+            """
+            SELECT workspace_folder, slot_id, title, created_by
+            FROM conversation_slots
+            ORDER BY workspace_folder, slot_id
+            """
+        ).fetchall()
     finally:
         connection.close()
 
     assert "idx_messages_chat_jid" in message_indexes
     assert "idx_messages_timestamp" in message_indexes
     assert "idx_tasks_next_run" in task_indexes
+    assert "slot_id" in message_columns
+    assert message_columns["slot_id"][3] == 1
+    assert message_columns["slot_id"][4] == "'main'"
+    assert conversation_slots == [("project-alpha", "main", "Main", "owner-1")]
 
 
 def test_init_db_backfills_registered_groups_binding_columns_for_existing_tables(
@@ -224,6 +257,80 @@ def test_init_db_backfills_registered_groups_binding_columns_for_existing_tables
     assert "target_workspace_jid" in columns
     assert columns["target_workspace_jid"][3] == 0
     assert columns["target_workspace_jid"][4] is None
+
+
+def test_init_db_repairs_missing_main_slot_for_existing_workspace(tmp_path: Path) -> None:
+    from scripts import init_db
+
+    database_path = tmp_path / "portex-conversation-slots.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE registered_groups (
+                jid VARCHAR PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                folder VARCHAR NOT NULL,
+                added_at DATETIME NOT NULL,
+                container_config TEXT,
+                created_by VARCHAR,
+                is_home BOOLEAN NOT NULL DEFAULT 0,
+                target_workspace_jid VARCHAR
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO registered_groups (
+                jid, name, folder, added_at, container_config, created_by, is_home, target_workspace_jid
+            )
+            VALUES (
+                'web:project-alpha',
+                'Project Alpha',
+                'project-alpha',
+                '2026-03-14T10:00:00',
+                NULL,
+                'owner-1',
+                0,
+                NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE conversation_slots (
+                workspace_folder VARCHAR NOT NULL,
+                slot_id VARCHAR NOT NULL,
+                title VARCHAR NOT NULL,
+                created_by VARCHAR,
+                created_at DATETIME NOT NULL,
+                PRIMARY KEY (workspace_folder, slot_id)
+            )
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    exit_code = init_db.main(["--database-url", database_url])
+
+    assert exit_code == 0
+
+    connection = sqlite3.connect(database_path)
+    try:
+        slots = connection.execute(
+            """
+            SELECT workspace_folder, slot_id, title, created_by
+            FROM conversation_slots
+            ORDER BY workspace_folder, slot_id
+            """
+        ).fetchall()
+    finally:
+        connection.close()
+
+    assert slots == [("project-alpha", "main", "Main", "owner-1")]
 
 
 def test_init_db_backfills_group_members_workspace_columns_for_existing_tables(
