@@ -52,6 +52,13 @@ def _is_group_visible_to_user(group, current_user: AuthUser) -> bool:
     return getattr(group, "created_by", None) == current_user.id
 
 
+def _is_raw_im_endpoint(group) -> bool:
+    jid = getattr(group, "jid", None)
+    if not isinstance(jid, str):
+        return False
+    return jid.startswith("telegram:") or jid.startswith("feishu:")
+
+
 def _require_group_membership(group_id: str, current_user: AuthUser) -> None:
     if group_member_service.get_member(group_id, current_user.id) is None:
         raise HTTPException(
@@ -111,7 +118,7 @@ async def list_groups(
         groups=[
             _to_group_summary_response(group)
             for group in await group_registry.list_registered_groups()
-            if _is_group_visible_to_user(group, current_user)
+            if _is_group_visible_to_user(group, current_user) and not _is_raw_im_endpoint(group)
         ]
     )
 

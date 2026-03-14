@@ -365,7 +365,81 @@ def test_groups_route_ensures_home_workspace_and_hides_other_users_home_rows(
     assert response.json() == {
         "groups": [
             {"group_id": f"home-{current_user.id}", "name": "alice Home"},
-            {"group_id": "chat-1", "name": "Shared Chat"},
+        ]
+    }
+
+
+def test_groups_route_hides_raw_im_endpoint_rows_but_keeps_workspace_rows(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    current_user = auth_service.register_user("alice", "secret")
+    auth_headers = _login_headers(api_client, "alice", "secret")
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(
+            self,
+            *,
+            user_id: str,
+            role: str,
+            username: str,
+        ):
+            _ = role
+            return SimpleNamespace(
+                jid=f"web:home-{user_id}",
+                folder=f"home-{user_id}",
+                name=f"{username} Home",
+                created_by=user_id,
+                is_home=True,
+            )
+
+        async def list_registered_groups(self):
+            return [
+                SimpleNamespace(
+                    jid=f"web:home-{current_user.id}",
+                    folder=f"home-{current_user.id}",
+                    name="alice Home",
+                    created_by=current_user.id,
+                    is_home=True,
+                ),
+                SimpleNamespace(
+                    jid="telegram:chat-1",
+                    folder="chat-1",
+                    name="Telegram Chat",
+                    created_by=None,
+                    is_home=False,
+                ),
+                SimpleNamespace(
+                    jid="feishu:oc_chat",
+                    folder="chat-2",
+                    name="Feishu Chat",
+                    created_by=None,
+                    is_home=False,
+                ),
+                SimpleNamespace(
+                    jid="group-alpha",
+                    folder="group-alpha",
+                    name="Alpha Workspace",
+                    created_by=None,
+                    is_home=False,
+                ),
+            ]
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.get("/groups", headers=auth_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "groups": [
+            {"group_id": f"home-{current_user.id}", "name": "alice Home"},
+            {"group_id": "group-alpha", "name": "Alpha Workspace"},
         ]
     }
 
