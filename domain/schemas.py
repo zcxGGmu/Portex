@@ -276,6 +276,10 @@ class ExecutionRunStatusResponse(BaseModel):
         description="Execution source that submitted the run.",
         examples=["web"],
     )
+    slot_id: str = Field(
+        description="Conversation slot identifier within the workspace.",
+        examples=["main"],
+    )
     requested_mode: ExecutionMode | None = Field(
         default=None,
         description="Optional backend preference from the original request.",

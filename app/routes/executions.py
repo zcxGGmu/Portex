@@ -43,6 +43,7 @@ def _to_execution_status_response(snapshot: ExecutionRunSnapshot) -> ExecutionRu
         chat_jid=snapshot.chat_jid,
         user_id=snapshot.user_id,
         source=snapshot.source,
+        slot_id=snapshot.slot_id,
         requested_mode=_normalize_requested_mode(snapshot.requested_mode),
         backend=snapshot.backend,
         session_id=snapshot.session_id,

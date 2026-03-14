@@ -17,6 +17,7 @@ def _request(
     group_folder: str,
     prompt: str,
     source: str = "web",
+    slot_id: str = "main",
     requested_mode: str | None = None,
     timeout_ms: int | None = None,
     fresh_session: bool = False,
@@ -29,10 +30,15 @@ def _request(
         user_id="user-a",
         prompt=prompt,
         source=source,
+        slot_id=slot_id,
         requested_mode=requested_mode,
         timeout_ms=timeout_ms,
         fresh_session=fresh_session,
     )
+
+
+def _slot_workspace_key(group_folder: str, slot_id: str = "main") -> str:
+    return f"{group_folder}#slot:{slot_id}"
 
 
 class _RecordingBackend:
@@ -237,6 +243,36 @@ async def test_execution_coordinator_allows_different_groups_to_progress_indepen
 
 
 @pytest.mark.asyncio
+async def test_execution_coordinator_separates_session_identity_by_slot() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _RecordingBackend()
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    first = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="main", slot_id="main")
+    )
+    second = await coordinator.submit_execution(
+        _request(group_folder="group-a", prompt="draft", slot_id="draft")
+    )
+
+    backend.release()
+    first_result = await coordinator.wait_for_run(first.run_id)
+    second_result = await coordinator.wait_for_run(second.run_id)
+
+    assert first_result.status == "completed"
+    assert second_result.status == "completed"
+    assert [call["session_id"] for call in backend.calls] == [
+        _slot_workspace_key("group-a", "main"),
+        _slot_workspace_key("group-a", "draft"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_execution_coordinator_continues_same_group_queue_after_head_failure() -> None:
     from services.execution_coordinator import ExecutionCoordinator
     from services.execution_policy import ExecutionPolicy
@@ -370,7 +406,7 @@ async def test_execution_coordinator_marks_running_run_cancelled() -> None:
     assert result.status == "cancelled"
     assert result.group_folder == "group-a"
     assert result.backend == "openai_runtime"
-    assert result.session_id == "group-a"
+    assert result.session_id == _slot_workspace_key("group-a")
     assert backend.cancelled_run_ids == [handle.run_id]
 
 
@@ -612,11 +648,13 @@ async def test_execution_coordinator_only_commits_fresh_session_after_success() 
 
     assert second_result.status == "failed"
     assert [call["session_id"] for call in backend.calls] == [
-        "group-a",
-        "group-a:fresh",
-        "group-a",
+        _slot_workspace_key("group-a"),
+        f"{_slot_workspace_key('group-a')}:fresh",
+        _slot_workspace_key("group-a"),
     ]
-    assert session_store.get_state("group-a").session_id == "group-a"
+    assert session_store.get_state(_slot_workspace_key("group-a")).session_id == _slot_workspace_key(
+        "group-a"
+    )
 
 
 @pytest.mark.asyncio
@@ -651,11 +689,13 @@ async def test_execution_coordinator_invalidates_stale_session_and_retries_once_
     assert second_result.status == "completed"
     assert second_result.final_output == "reply:second"
     assert [call["session_id"] for call in backend.calls] == [
-        "group-a",
-        "group-a",
-        "group-a:fresh",
+        _slot_workspace_key("group-a"),
+        _slot_workspace_key("group-a"),
+        f"{_slot_workspace_key('group-a')}:fresh",
     ]
-    assert session_store.get_state("group-a").session_id == "group-a:fresh"
+    assert session_store.get_state(_slot_workspace_key("group-a")).session_id == (
+        f"{_slot_workspace_key('group-a')}:fresh"
+    )
 
 
 @pytest.mark.asyncio
@@ -674,6 +714,7 @@ async def test_execution_coordinator_exposes_run_snapshot_lifecycle() -> None:
 
     assert queued_snapshot is not None
     assert queued_snapshot.status == "queued"
+    assert queued_snapshot.slot_id == "main"
     assert queued_snapshot.created_at is not None
     assert queued_snapshot.started_at is None
     assert queued_snapshot.finished_at is None
@@ -692,9 +733,10 @@ async def test_execution_coordinator_exposes_run_snapshot_lifecycle() -> None:
     assert result.status == "completed"
     assert completed_snapshot is not None
     assert completed_snapshot.status == "completed"
+    assert completed_snapshot.slot_id == "main"
     assert completed_snapshot.finished_at is not None
     assert completed_snapshot.final_output == "reply:snapshot"
-    assert completed_snapshot.session_id == "group-a"
+    assert completed_snapshot.session_id == _slot_workspace_key("group-a")
 
 
 @pytest.mark.asyncio
@@ -809,4 +851,42 @@ async def test_execution_coordinator_fresh_session_resume_failure_skips_recovery
     assert second_snapshot.recovery_attempted is False
     assert second_snapshot.recovery_reason is None
     assert second_snapshot.recovery_succeeded is None
-    assert [call["session_id"] for call in backend.calls] == ["group-a", "group-a:fresh"]
+    assert [call["session_id"] for call in backend.calls] == [
+        _slot_workspace_key("group-a"),
+        f"{_slot_workspace_key('group-a')}:fresh",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execution_coordinator_snapshot_uses_default_main_slot_when_unspecified() -> None:
+    from services.execution_coordinator import ExecutionCoordinator
+    from services.execution_policy import ExecutionPolicy
+
+    backend = _SequentialBackend([{"status": "completed", "final_output": "reply:main"}])
+    coordinator = ExecutionCoordinator(
+        execution_policy=ExecutionPolicy(),
+        backends={"openai_runtime": backend},
+    )
+
+    handle = await coordinator.submit_execution(_request(group_folder="group-a", prompt="main"))
+    await coordinator.wait_for_run(handle.run_id)
+    snapshot = coordinator.get_run_snapshot(handle.run_id)
+
+    assert snapshot is not None
+    assert snapshot.slot_id == "main"
+    assert snapshot.session_id == _slot_workspace_key("group-a")
+
+
+def test_execution_request_defaults_slot_id_to_main() -> None:
+    from services.execution_coordinator import ExecutionRequest
+
+    request = ExecutionRequest(
+        group_folder="group-a",
+        chat_jid="group-a",
+        user_id="user-a",
+        prompt="hello",
+        source="web",
+    )
+
+    assert request.requested_mode is None
+    assert request.slot_id == "main"

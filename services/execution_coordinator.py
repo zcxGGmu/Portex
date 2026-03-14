@@ -31,6 +31,7 @@ class ExecutionRequest:
     user_id: str
     prompt: str
     source: ExecutionSource
+    slot_id: str = "main"
     requested_mode: str | None = None
     timeout_ms: int | None = None
     fresh_session: bool = False
@@ -52,6 +53,7 @@ class ExecutionResult:
     group_folder: str
     backend: str
     session_id: str
+    slot_id: str = "main"
     final_output: str | None = None
     error: str | None = None
     timeout_ms: int | None = None
@@ -66,6 +68,7 @@ class ExecutionRunSnapshot:
     source: ExecutionSource
     requested_mode: str | None
     status: ExecutionStatus
+    slot_id: str = "main"
     backend: str | None = None
     session_id: str | None = None
     created_at: datetime = field(default_factory=_utcnow)
@@ -140,6 +143,7 @@ class ExecutionCoordinator:
             chat_jid=request.chat_jid,
             user_id=request.user_id,
             source=request.source,
+            slot_id=request.slot_id,
             requested_mode=request.requested_mode,
             status="queued",
         )
@@ -179,12 +183,13 @@ class ExecutionCoordinator:
             self._store_terminal_result(
                 self._build_result(
                     run_id=run_id,
-                    group_folder=request.group_folder,
-                    backend=backend,
-                    session_id=session_id,
-                    status="cancelled",
+                        group_folder=request.group_folder,
+                        backend=backend,
+                        session_id=session_id,
+                        slot_id=request.slot_id,
+                        status="cancelled",
+                    )
                 )
-            )
             return True
         if status == "running":
             request = self._run_requests[run_id]
@@ -203,6 +208,7 @@ class ExecutionCoordinator:
                         group_folder=request.group_folder,
                         backend=backend_name,
                         session_id=session_id,
+                        slot_id=request.slot_id,
                         status="cancelled",
                     )
                 )
@@ -234,6 +240,7 @@ class ExecutionCoordinator:
                             request,
                             self._safe_select_backend_name(request),
                         ),
+                        slot_id=request.slot_id,
                         status="failed",
                         error=str(exc),
                     )
@@ -251,6 +258,7 @@ class ExecutionCoordinator:
                     group_folder=request.group_folder,
                     backend="unknown",
                     session_id=session_id,
+                    slot_id=request.slot_id,
                     status="failed",
                     error=str(exc),
                 )
@@ -358,6 +366,7 @@ class ExecutionCoordinator:
                         group_folder=request.group_folder,
                         backend=backend_name,
                         session_id=retry_session_id,
+                        slot_id=request.slot_id,
                         status="failed",
                         error=str(retry_exc),
                     )
@@ -368,6 +377,7 @@ class ExecutionCoordinator:
                     group_folder=request.group_folder,
                     backend=backend_name,
                     session_id=session_id,
+                    slot_id=request.slot_id,
                     status="failed",
                     error=str(exc),
                 )
@@ -405,6 +415,7 @@ class ExecutionCoordinator:
                 group_folder=request.group_folder,
                 backend=backend_name,
                 session_id=session_id,
+                slot_id=request.slot_id,
                 status="timeout",
                 timeout_ms=request.timeout_ms,
             )
@@ -416,6 +427,7 @@ class ExecutionCoordinator:
                 group_folder=request.group_folder,
                 backend=backend_name,
                 session_id=session_id,
+                slot_id=request.slot_id,
                 status="failed",
                 error=str(exc),
             )
@@ -428,6 +440,7 @@ class ExecutionCoordinator:
             group_folder=request.group_folder,
             backend=backend_name,
             session_id=session_id,
+            slot_id=request.slot_id,
             status=raw_result.get("status", "completed"),
             final_output=raw_result.get("final_output"),
             error=raw_result.get("error"),
@@ -435,7 +448,7 @@ class ExecutionCoordinator:
         )
 
     def _workspace_key(self, request: ExecutionRequest) -> str:
-        return self._workspace_resolver.resolve_workspace_key(request.group_folder)
+        return self._workspace_resolver.resolve_workspace_key(request.group_folder, request.slot_id)
 
     def _resolve_session_id(
         self,
@@ -538,6 +551,7 @@ class ExecutionCoordinator:
         snapshot.status = result.status
         snapshot.backend = result.backend
         snapshot.session_id = result.session_id
+        snapshot.slot_id = result.slot_id
         snapshot.final_output = result.final_output
         snapshot.error = result.error
         snapshot.timeout_ms = result.timeout_ms
@@ -551,6 +565,7 @@ class ExecutionCoordinator:
         backend: str,
         session_id: str,
         status: ExecutionStatus,
+        slot_id: str = "main",
         final_output: str | None = None,
         error: str | None = None,
         timeout_ms: int | None = None,
@@ -561,6 +576,7 @@ class ExecutionCoordinator:
             group_folder=group_folder,
             backend=backend,
             session_id=session_id,
+            slot_id=slot_id,
             final_output=final_output,
             error=error,
             timeout_ms=timeout_ms,

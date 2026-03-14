@@ -103,10 +103,11 @@ def test_execution_status_route_returns_run_snapshot(api_client: TestClient) -> 
                 chat_jid="group-demo",
                 user_id=user_id,
                 source="web",
+                slot_id="draft",
                 requested_mode="host",
                 status="running",
                 backend="host_process",
-                session_id="group-demo",
+                session_id="group-demo#slot:draft",
                 created_at=datetime(2026, 3, 13, 8, 0, tzinfo=timezone.utc),
                 started_at=datetime(2026, 3, 13, 8, 0, 1, tzinfo=timezone.utc),
                 finished_at=None,
@@ -132,8 +133,9 @@ def test_execution_status_route_returns_run_snapshot(api_client: TestClient) -> 
     payload = response.json()
     assert payload["run_id"] == "run-visible"
     assert payload["status"] == "running"
+    assert payload["slot_id"] == "draft"
     assert payload["backend"] == "host_process"
-    assert payload["session_id"] == "group-demo"
+    assert payload["session_id"] == "group-demo#slot:draft"
     assert payload["recovery"]["attempted"] is False
 
 
@@ -206,6 +208,7 @@ def test_execution_status_route_tolerates_unknown_requested_mode(api_client: Tes
     payload = response.json()
     assert payload["run_id"] == "run-unknown-mode"
     assert payload["status"] == "failed"
+    assert payload["slot_id"] == "main"
     assert "requested_mode" not in payload
 
 

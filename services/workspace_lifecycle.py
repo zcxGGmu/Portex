@@ -17,15 +17,19 @@ class WorkspaceSessionState:
 
 
 class WorkspaceResolver(Protocol):
-    def resolve_workspace_key(self, group_folder: str) -> str:
+    def resolve_workspace_key(self, group_folder: str, slot_id: str = "main") -> str:
         ...
 
 
 class GroupFolderWorkspaceResolver:
     """Treat ``group_folder`` as the current workspace identity."""
 
-    def resolve_workspace_key(self, group_folder: str) -> str:
-        return group_folder
+    def resolve_workspace_key(self, group_folder: str, slot_id: str = "main") -> str:
+        return build_slot_workspace_key(group_folder, slot_id)
+
+
+def build_slot_workspace_key(group_folder: str, slot_id: str = "main") -> str:
+    return f"{group_folder}#slot:{slot_id}"
 
 
 class WorkspaceSessionStore:
@@ -83,6 +87,7 @@ class WorkspaceSessionStore:
 
 __all__ = [
     "GroupFolderWorkspaceResolver",
+    "build_slot_workspace_key",
     "WorkspaceResolver",
     "WorkspaceSessionState",
     "WorkspaceSessionStore",
