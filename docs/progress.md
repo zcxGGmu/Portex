@@ -74,13 +74,17 @@
 - `M7.3.6` 已完成（workspace/slot/IM binding 管理 API）。
 - `M7.4.1` 已完成（monitor/status API + page）。
 - `M7.4.2` 已完成（workspace file-management API + UI）。
-- 当前起点：继续 parity backlog 时，从 `M7.4.3` 开始，围绕 memory-management API/UI 补 operator surface；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.4.3` 已完成（memory-management API + UI）。
+- 当前起点：继续 parity backlog 时，从 `M7.4.4` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
-- `M7.4.3`：memory-management API/UI 的 planning docs 已完成，当前规划文档为 `docs/plans/2026-03-15-m7-4-3-memory-surface-design.md` 与 `docs/plans/2026-03-15-m7-4-3-memory-surface.md`；实现尚未开始，下一步仍是按该计划进入 TDD。
+- `M7.4.3`：新增独立 `/memory` 路由族，补齐 `GET/PUT /memory/global`、`GET /memory/workspaces/{group_id}/files`、`GET/PUT /memory/workspaces/{group_id}/file` 与 `GET /memory/workspaces/{group_id}/search`，并在 OpenAPI 中新增 `memory` tag 与相关 DTO 契约。
+- `M7.4.3`：扩展 `MemoryService`，新增 workspace markdown memory file 的 list/read/write 能力，补齐 path traversal/symlink escape/`.md` 扩展名与 size guard；workspace memory 写权限按 workspace 可访问性开放（不绑定 `groups.write`）。
+- `M7.4.3`：新增前端 `/memory` 页面与导航入口，包含 global memory 编辑、workspace selector、workspace memory file list、search、`Today` 快捷入口与 note 编辑保存。
+- `M7.4.3`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_memory_service.py tests/app/routes/test_memory_routes.py tests/app/routes/test_api_routes.py`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .`、`git diff --check`、`cd web && npm run lint` 与 `cd web && npm run build`。
 - `M7.4.2`：新增 workspace file-management service 与 `/groups/{group_id}/files...` 路由族，补齐 browse、upload、download、preview、text content read/write、delete 六类文件操作，并把访问控制绑定到现有 workspace membership / `groups.write` 权限边界。
 - `M7.4.2`：新增 `WorkspaceFileService`，以 `data/groups/{workspace_folder}` 为根目录统一处理 path normalization、root containment、symlink escape、workspace root delete guard、文本类型白名单和文件大小限制。
 - `M7.4.2`：新增前端 `/files` 页面、导航入口、workspace selector、目录浏览、上传、下载、预览、文本编辑保存与删除操作，不把该能力提前耦合到当前 `ChatPanel`。
@@ -335,6 +339,10 @@
 
 ## 3. 最新验证证据
 
+- M7.4.3 focused verification：`.venv/bin/pytest tests/services/test_memory_service.py tests/app/routes/test_memory_routes.py tests/app/routes/test_api_routes.py` -> `88 passed, 1 warning in 11.76s`
+- M7.4.3 frontend verification：`cd web && npm run lint && npm run build` -> `eslint exit 0`; `vite build completed successfully`
+- M7.4.3 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `500 passed, 1 warning in 29.06s`
+- M7.4.3 repo hygiene：`.venv/bin/ruff check .` -> `All checks passed!`; `git diff --check` -> `exit 0`
 - M7.3.4 focused verification：`.venv/bin/pytest tests/domain/models/test_models.py tests/scripts/test_init_db.py tests/services/test_group_member_service.py tests/services/test_group_registry.py tests/app/routes/test_api_routes.py tests/app/routes/test_message_routes.py tests/app/routes/test_execution_routes.py -q` -> `110 passed, 1 warning in 17.90s`
 - M7.3.4 repo regression：`git diff --check` -> `exit 0`; `.venv/bin/pytest -o addopts='' -q` -> `428 passed, 1 warning in 20.76s`; `.venv/bin/ruff check .` -> `All checks passed!`
 - M7.2.7 focused verification：`.venv/bin/pytest -o addopts='' tests/services/test_execution_coordinator.py tests/app/routes/test_websocket_routes.py` -> `29 passed, 1 warning in 3.58s`
@@ -501,7 +509,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；但在用户已明确开启 parity 方向的前提下，当前有效下一步已变成 `M7.4.3` memory-management API/UI。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.4.3` 已完成，下一步入口应前移到 `M7.4.4`，避免重复回做 memory surface。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -512,21 +520,17 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前有效起点是 `M7.4.3`，实现还没开始，只完成了 planning docs：
-   - 必读：`docs/plans/2026-03-15-m7-4-3-memory-surface-design.md`
-   - 必读：`docs/plans/2026-03-15-m7-4-3-memory-surface.md`
-   - 建议顺手再看：`services/memory.py`、`tests/services/test_memory_service.py`、`container/agent-runner/src/tools/memory.py`
-   - 如果需要对照当前 operator surface，再看：`app/routes/monitor.py`、`web/src/pages/Monitor.tsx`、`app/routes/files.py`、`services/workspace_files.py`、`web/src/pages/Files.tsx`
-3. 当前正式主计划仍停在 `M6`，`M7` 仍是 parity backlog；但在用户持续要求继续开发的前提下，当前默认下一步就是 `M7.4.3`，不要回退到 `M7.3.x` 或重复做 `M7.4.1/M7.4.2`。
-4. 如果要复现最近两步的验证基线：
-   - `M7.4.1`：`.venv/bin/pytest tests/services/test_execution_coordinator.py tests/app/routes/test_monitor_routes.py tests/app/routes/test_api_routes.py -q`
-   - `M7.4.2`：`.venv/bin/pytest tests/services/test_workspace_files.py tests/app/routes/test_file_routes.py tests/app/routes/test_api_routes.py -q`
+2. `M7.4.3` 已完成，关键实现点在 `services/memory.py`、`app/routes/memory.py`、`web/src/pages/Memory.tsx`，以及对应测试 `tests/app/routes/test_memory_routes.py`。
+3. 当前有效起点前移到 `M7.4.4`。若 `M7.4.4` 规划尚未落盘，先在 parity backlog 里补 design/plan，再按 TDD 开始实现，不要回退重做 `M7.4.3`。
+4. 复现当前基线建议命令：
+   - `M7.4.3 focused`：`.venv/bin/pytest tests/services/test_memory_service.py tests/app/routes/test_memory_routes.py tests/app/routes/test_api_routes.py`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
+   - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
 5. 如需复现 release-image 验证，先导出 `PATH="$HOME/bin:$PATH"` 与 `DOCKER_HOST=unix:///run/user/1000/docker.sock`，再运行 `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` 与 `docker image inspect portex:v1.0.0 --format '{{.Id}}'`。
 
 ---
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2` 已完成；当前 parity backlog 的下一步是 `M7.4.3`（补 memory-management API/UI），且 planning docs 已就绪。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3` 已完成；当前 parity backlog 的下一步入口是 `M7.4.4`。
