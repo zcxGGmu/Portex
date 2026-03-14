@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -48,7 +49,7 @@ class MessageRouterProtocol(Protocol):
 
 
 StoreMessageCallable = Callable[..., Awaitable[Any]]
-TargetResolver = Callable[[UnifiedMessage], ResolvedMessageTarget]
+TargetResolver = Callable[[UnifiedMessage], ResolvedMessageTarget | Awaitable[ResolvedMessageTarget]]
 RuntimeTrigger = Callable[..., Awaitable[RunResult]]
 RegisterTargetCallable = Callable[[UnifiedMessage, ResolvedMessageTarget], Awaitable[Any]]
 
@@ -96,7 +97,7 @@ class MessageDispatchService:
         if message.content.strip() == "":
             raise MessageDispatchError("message content cannot be empty")
 
-        target = self._resolve_target(message)
+        target = await self._resolve_target(message)
         if self._register_target is not None:
             await self._register_target(message, target)
         run_id = uuid4().hex
@@ -177,13 +178,16 @@ class MessageDispatchService:
             final_output=run_result.final_output,
         )
 
-    def _resolve_target(self, message: UnifiedMessage) -> ResolvedMessageTarget:
+    async def _resolve_target(self, message: UnifiedMessage) -> ResolvedMessageTarget:
         if message.group_folder is not None:
             return ResolvedMessageTarget(
                 group_folder=message.group_folder,
                 chat_jid=message.chat_jid,
             )
-        return self._target_resolver(message)
+        target = self._target_resolver(message)
+        if inspect.isawaitable(target):
+            return await target
+        return target
 
     def _build_execution_request(
         self,

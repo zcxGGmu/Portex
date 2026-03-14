@@ -128,6 +128,151 @@ def test_telegram_update_route_dispatches_normalized_message(
     assert dispatched_messages[0].content == "hello telegram"
 
 
+def test_telegram_update_route_default_dependency_uses_bound_workspace_resolution(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from infra.im.telegram import TelegramMessageEvent
+
+    submit_calls: list[object] = []
+    resolve_calls: list[str] = []
+    ensure_calls: list[dict[str, object]] = []
+    routed_messages: list[object] = []
+    store_calls: list[dict[str, object]] = []
+
+    class FakeTelegramClient:
+        def handle_update(self, payload):
+            assert payload["message"]["message_id"] == 2001
+            return TelegramMessageEvent(
+                event_type="message",
+                chat_id="-3001",
+                message_id="2001",
+                sender_id="4001",
+                message_type="text",
+                text="hello telegram",
+                raw_event=payload["message"],
+                timestamp=datetime(2026, 3, 12, 12, 0, tzinfo=timezone.utc),
+            )
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            from services.execution_coordinator import ExecutionHandle
+
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id=request.request_id or "run-bound-im",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            from services.execution_coordinator import ExecutionResult
+
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="main",
+                backend="openai_runtime",
+                session_id="main",
+                final_output="reply from bound workspace",
+            )
+
+    class FakeGroupRegistry:
+        async def ensure_registered_group(
+            self,
+            *,
+            jid: str,
+            name: str,
+            folder: str,
+            created_by: str | None = None,
+            is_home: bool | None = None,
+            target_workspace_jid: str | None | object = None,
+        ):
+            ensure_calls.append(
+                {
+                    "jid": jid,
+                    "name": name,
+                    "folder": folder,
+                    "created_by": created_by,
+                    "is_home": is_home,
+                    "target_workspace_jid": target_workspace_jid,
+                }
+            )
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": jid,
+                    "name": name,
+                    "folder": folder,
+                    "created_by": created_by,
+                    "is_home": bool(is_home),
+                    "target_workspace_jid": None
+                    if target_workspace_jid is None
+                    else target_workspace_jid,
+                },
+            )()
+
+        async def resolve_im_workspace(self, *, jid: str):
+            resolve_calls.append(jid)
+            return type(
+                "RegisteredGroup",
+                (),
+                {
+                    "jid": "web:main",
+                    "folder": "main",
+                    "name": "Main",
+                    "created_by": "owner-1",
+                    "is_home": True,
+                    "target_workspace_jid": None,
+                },
+            )()
+
+    async def fake_store_message(*, db, **kwargs):
+        _ = db
+        store_calls.append(kwargs)
+        return type("StoredMessage", (), {"id": f"db-{len(store_calls)}"})()
+
+    async def fake_send_telegram_message(message):
+        routed_messages.append(message)
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(im_routes, "get_execution_coordinator", lambda: FakeCoordinator(), raising=False)
+    monkeypatch.setattr(im_routes, "store_message", fake_store_message, raising=False)
+    monkeypatch.setattr(im_routes, "_send_telegram_message", fake_send_telegram_message, raising=False)
+    app.dependency_overrides[im_routes.get_telegram_client] = lambda: FakeTelegramClient()
+    app.dependency_overrides[im_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+
+    try:
+        response = api_client.post(
+            "/im/telegram/updates",
+            json={
+                "update_id": 101,
+                "message": {
+                    "message_id": 2001,
+                    "text": "hello telegram",
+                    "chat": {"id": -3001, "type": "group"},
+                    "from": {"id": 4001},
+                },
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+        monkeypatch.undo()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "dispatched"
+    assert resolve_calls == ["telegram:-3001"]
+    assert ensure_calls[0]["jid"] == "telegram:-3001"
+    assert ensure_calls[0]["folder"] == im_routes._build_group_folder("telegram:-3001")
+    assert submit_calls[0].group_folder == "main"
+    assert submit_calls[0].chat_jid == "telegram:-3001"
+    assert routed_messages[0].chat_jid == "telegram:-3001"
+    assert routed_messages[0].group_folder == "main"
+    assert store_calls[0]["group_folder"] == "main"
+
+
 def test_im_routes_return_ignored_for_unsupported_payloads(
     api_client: TestClient,
 ) -> None:

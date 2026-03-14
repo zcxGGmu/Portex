@@ -173,6 +173,126 @@ async def test_dispatch_inbound_message_uses_resolver_when_group_folder_missing(
 
 
 @pytest.mark.asyncio
+async def test_dispatch_inbound_message_awaits_async_resolver_for_unbound_im_workspace() -> None:
+    from infra.runtime.adapter import RunResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    trigger_calls: list[dict[str, object]] = []
+    routed_messages: list[object] = []
+
+    async def resolver(message):
+        return ResolvedMessageTarget(group_folder="chat-abc123", chat_jid=message.chat_jid)
+
+    async def runtime_trigger(**kwargs):
+        trigger_calls.append(kwargs)
+        return RunResult(
+            run_id=kwargs["request_id"],
+            status="completed",
+            final_output="agent reply",
+        )
+
+    async def store_message(**kwargs):
+        return SimpleNamespace(id="db-message")
+
+    class Router:
+        async def route_message(self, message):
+            routed_messages.append(message)
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        runtime_trigger=runtime_trigger,
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    result = await service.dispatch_inbound_message(_build_message(group_folder=None))
+
+    assert result.group_folder == "chat-abc123"
+    assert trigger_calls[0]["group_folder"] == "chat-abc123"
+    assert routed_messages[0].chat_jid == "telegram:chat-1"
+    assert routed_messages[0].group_folder == "chat-abc123"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_inbound_message_awaits_async_resolver_for_bound_workspace() -> None:
+    from infra.runtime.adapter import RunResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    trigger_calls: list[dict[str, object]] = []
+    routed_messages: list[object] = []
+
+    async def resolver(message):
+        return ResolvedMessageTarget(group_folder="main", chat_jid=message.chat_jid)
+
+    async def runtime_trigger(**kwargs):
+        trigger_calls.append(kwargs)
+        return RunResult(
+            run_id=kwargs["request_id"],
+            status="completed",
+            final_output="agent reply",
+        )
+
+    async def store_message(**kwargs):
+        return SimpleNamespace(id="db-message")
+
+    class Router:
+        async def route_message(self, message):
+            routed_messages.append(message)
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        runtime_trigger=runtime_trigger,
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    result = await service.dispatch_inbound_message(_build_message(group_folder=None))
+
+    assert result.group_folder == "main"
+    assert trigger_calls[0]["group_folder"] == "main"
+    assert routed_messages[0].chat_jid == "telegram:chat-1"
+    assert routed_messages[0].group_folder == "main"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_inbound_message_awaits_async_resolver_for_orphan_binding_fallback() -> None:
+    from infra.runtime.adapter import RunResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    trigger_calls: list[dict[str, object]] = []
+
+    async def resolver(message):
+        return ResolvedMessageTarget(group_folder="chat-abc123", chat_jid=message.chat_jid)
+
+    async def runtime_trigger(**kwargs):
+        trigger_calls.append(kwargs)
+        return RunResult(
+            run_id=kwargs["request_id"],
+            status="completed",
+            final_output="agent reply",
+        )
+
+    async def store_message(**kwargs):
+        return SimpleNamespace(id="db-message")
+
+    class Router:
+        async def route_message(self, message):
+            _ = message
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        runtime_trigger=runtime_trigger,
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    result = await service.dispatch_inbound_message(_build_message(group_folder=None))
+
+    assert result.group_folder == "chat-abc123"
+    assert trigger_calls[0]["group_folder"] == "chat-abc123"
+
+
+@pytest.mark.asyncio
 async def test_dispatch_inbound_message_registers_resolved_target_before_storage() -> None:
     from infra.runtime.adapter import RunResult
     from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget

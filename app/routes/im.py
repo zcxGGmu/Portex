@@ -43,6 +43,29 @@ def _resolve_target(message: UnifiedMessage) -> ResolvedMessageTarget:
     )
 
 
+async def _resolve_registered_im_target(
+    message: UnifiedMessage,
+    group_registry: GroupRegistryService,
+) -> ResolvedMessageTarget:
+    fallback_target = _resolve_target(message)
+    if message.channel == "web":
+        return fallback_target
+
+    await group_registry.ensure_registered_group(
+        jid=message.chat_jid,
+        name=_build_registered_group_name(message, fallback_target),
+        folder=fallback_target.group_folder,
+        created_by=None,
+    )
+    resolved_workspace = await group_registry.resolve_im_workspace(jid=message.chat_jid)
+    return ResolvedMessageTarget(
+        group_folder=resolved_workspace.folder
+        if resolved_workspace is not None
+        else fallback_target.group_folder,
+        chat_jid=message.chat_jid,
+    )
+
+
 async def _noop_web_handler(message: UnifiedMessage) -> None:
     _ = message
 
@@ -108,15 +131,20 @@ def get_message_dispatch_service(
     db: AsyncSession = Depends(get_db),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
 ) -> MessageDispatchService:
-    return MessageDispatchService(
-        target_resolver=_resolve_target,
-        execution_coordinator=get_execution_coordinator(),
-        register_target=lambda message, target: group_registry.ensure_registered_group(
+    async def register_target(message: UnifiedMessage, target: ResolvedMessageTarget) -> None:
+        if message.channel != "web":
+            return
+        await group_registry.ensure_registered_group(
             jid=target.chat_jid,
             name=_build_registered_group_name(message, target),
             folder=target.group_folder,
-            created_by=message.sender_id if message.channel == "web" else None,
-        ),
+            created_by=message.sender_id,
+        )
+
+    return MessageDispatchService(
+        target_resolver=lambda message: _resolve_registered_im_target(message, group_registry),
+        execution_coordinator=get_execution_coordinator(),
+        register_target=register_target,
         store_message=lambda **kwargs: store_message(db=db, **kwargs),
         message_router=MessageRouter(
             feishu_handler=_send_feishu_message,
