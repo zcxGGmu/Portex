@@ -2230,6 +2230,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "messages" in tags
     assert "executions" in tags
     assert "monitor" in tags
+    assert "files" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2274,6 +2275,12 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     bindings_operation = schema["paths"]["/groups/{group_id}/bindings/im"]["get"]
     assert "binding" in bindings_operation["summary"].lower()
 
+    list_files_operation = schema["paths"]["/groups/{group_id}/files"]["get"]
+    assert "file" in list_files_operation["summary"].lower()
+
+    upload_files_operation = schema["paths"]["/groups/{group_id}/files"]["post"]
+    assert "multipart/form-data" in upload_files_operation["requestBody"]["content"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -2299,6 +2306,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "ConversationSlotResponse" in schema["components"]["schemas"]
     assert "GroupIMBindingResponse" in schema["components"]["schemas"]
     assert "MonitorResponse" in schema["components"]["schemas"]
+    assert "WorkspaceFileListResponse" in schema["components"]["schemas"]
     assert "ExecutionRunStatusResponse" in schema["components"]["schemas"]
 
 

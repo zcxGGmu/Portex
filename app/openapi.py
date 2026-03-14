@@ -41,6 +41,10 @@ OPENAPI_TAGS = [
         "slot management, IM binding management, and member management.",
     },
     {
+        "name": "files",
+        "description": "Workspace-scoped file browsing, upload, preview, text editing, download, and delete endpoints.",
+    },
+    {
         "name": "messages",
         "description": "HTTP message dispatch entrypoint backed by the current "
         "runtime-chain orchestration boundary.",

@@ -6,6 +6,7 @@ __all__ = [
     "auth",
     "users",
     "groups",
+    "files",
     "executions",
     "im",
     "messages",

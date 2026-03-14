@@ -15,6 +15,7 @@ export function AppLayout({ title, children }: AppLayoutProps) {
   const currentUser = useAuthStore((state) => state.currentUser)
   const navItems = [
     { to: '/chat', label: 'Chat' },
+    { to: '/files', label: 'Files' },
     ...(currentUser?.role === 'owner' || currentUser?.role === 'admin'
       ? [{ to: '/monitor', label: 'Monitor' }]
       : []),

@@ -73,11 +73,17 @@
 - `M7.3.5` 已完成（workspace 下的最小 persistent conversation slots 模型）。
 - `M7.3.6` 已完成（workspace/slot/IM binding 管理 API）。
 - `M7.4.1` 已完成（monitor/status API + page）。
-- 当前起点：继续 parity backlog 时，从 `M7.4.2` 开始，围绕 workspace file-management API/UI 补 operator surface；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.4.2` 已完成（workspace file-management API + UI）。
+- 当前起点：继续 parity backlog 时，从 `M7.4.3` 开始，围绕 memory-management API/UI 补 operator surface；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M7.4.2`：新增 workspace file-management service 与 `/groups/{group_id}/files...` 路由族，补齐 browse、upload、download、preview、text content read/write、delete 六类文件操作，并把访问控制绑定到现有 workspace membership / `groups.write` 权限边界。
+- `M7.4.2`：新增 `WorkspaceFileService`，以 `data/groups/{workspace_folder}` 为根目录统一处理 path normalization、root containment、symlink escape、workspace root delete guard、文本类型白名单和文件大小限制。
+- `M7.4.2`：新增前端 `/files` 页面、导航入口、workspace selector、目录浏览、上传、下载、预览、文本编辑保存与删除操作，不把该能力提前耦合到当前 `ChatPanel`。
+- `M7.4.2`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_workspace_files.py tests/app/routes/test_file_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .`、`git diff --check`、`cd web && npm run lint` 与 `cd web && npm run build`。
 
 - `M7.4.1`：新增只读 `GET /monitor` 聚合路由与 `monitor` OpenAPI tag，返回 queue by workspace、recent run summaries、以及 best-effort backend/runtime health；仅 `owner/admin` 可访问，`member` 返回 `403`。
 - `M7.4.1`：扩展 `ExecutionCoordinator`，新增 monitor read-side helpers 用于 queue 聚合和 recent run snapshot 列表，避免路由直接探测私有执行态。

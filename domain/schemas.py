@@ -214,6 +214,81 @@ class DeleteGroupMemberResponse(BaseModel):
     )
 
 
+class WorkspaceFileEntryResponse(BaseModel):
+    name: str = Field(
+        description="File or directory name relative to its parent listing.",
+        examples=["readme.txt"],
+    )
+    path: str = Field(
+        description="Workspace-relative path for the file or directory.",
+        examples=["docs/readme.txt"],
+    )
+    type: Literal["file", "directory"] = Field(
+        description="Filesystem entry type.",
+        examples=["file"],
+    )
+    size: int = Field(
+        description="Entry size in bytes.",
+        examples=[128],
+    )
+    modified_at: datetime = Field(
+        description="Last-modified timestamp in UTC.",
+        examples=["2026-03-14T08:00:00Z"],
+    )
+
+    @field_validator("modified_at", mode="after")
+    @classmethod
+    def normalize_workspace_file_modified_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("WorkspaceFileEntryResponse.modified_at normalization returned None")
+        return normalized
+
+
+class WorkspaceFileListResponse(BaseModel):
+    current_path: str = Field(
+        description="Current workspace-relative directory path. Empty string means workspace root.",
+        examples=["docs"],
+    )
+    entries: list[WorkspaceFileEntryResponse]
+
+
+class WorkspaceFileUploadResponse(BaseModel):
+    files: list[str] = Field(
+        description="Workspace-relative paths for the uploaded files.",
+        examples=[["notes.txt"]],
+    )
+
+
+class WorkspaceFileContentResponse(BaseModel):
+    path: str = Field(
+        description="Workspace-relative path for the text file.",
+        examples=["notes.txt"],
+    )
+    content: str = Field(
+        description="UTF-8 text content read from the workspace file.",
+        examples=["hello workspace"],
+    )
+    size: int = Field(
+        description="Text file size in bytes.",
+        examples=[15],
+    )
+
+
+class UpdateWorkspaceFileContentRequest(BaseModel):
+    content: str = Field(
+        description="Replacement UTF-8 text content for the target workspace file.",
+        examples=["updated text"],
+    )
+
+
+class DeleteWorkspaceFileResponse(BaseModel):
+    status: str = Field(
+        description="Delete result for the target workspace file or directory.",
+        examples=["deleted"],
+    )
+
+
 class CreateConversationSlotRequest(BaseModel):
     slot_id: str = Field(
         min_length=1,

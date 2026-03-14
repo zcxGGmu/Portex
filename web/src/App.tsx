@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { Chat } from './pages/Chat'
+import { Files } from './pages/Files'
 import { Login } from './pages/Login'
 import { Monitor } from './pages/Monitor'
 import { Register } from './pages/Register'
@@ -57,6 +58,14 @@ function App() {
           </ProtectedRoute>
         }
         path="/chat"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Files />
+          </ProtectedRoute>
+        }
+        path="/files"
       />
       <Route
         element={

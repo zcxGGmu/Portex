@@ -10,9 +10,33 @@ export interface CurrentUser {
   status: string
 }
 
+export interface GroupSummary {
+  group_id: string
+  name: string
+}
+
 export interface HealthResponse {
   status: string
   version: string
+}
+
+export interface WorkspaceFileEntry {
+  name: string
+  path: string
+  type: 'file' | 'directory'
+  size: number
+  modified_at: string
+}
+
+export interface WorkspaceFileListResponse {
+  current_path: string
+  entries: WorkspaceFileEntry[]
+}
+
+export interface WorkspaceFileContentResponse {
+  path: string
+  content: string
+  size: number
 }
 
 export interface MonitorBackendHealth {
@@ -89,10 +113,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { token, headers, ...restOptions } = options
+  const { token, headers, body, ...restOptions } = options
   const resolvedHeaders = new Headers(headers)
 
-  if (!resolvedHeaders.has('Content-Type')) {
+  if (!(body instanceof FormData) && !resolvedHeaders.has('Content-Type')) {
     resolvedHeaders.set('Content-Type', 'application/json')
   }
 
@@ -102,6 +126,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...restOptions,
+    body,
     headers: resolvedHeaders,
   })
 
@@ -129,6 +154,48 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T
 }
 
+async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const { token, headers, body, ...restOptions } = options
+  const resolvedHeaders = new Headers(headers)
+
+  if (token) {
+    resolvedHeaders.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...restOptions,
+    body,
+    headers: resolvedHeaders,
+  })
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type')
+    const details = contentType?.includes('application/json')
+      ? await response.json()
+      : await response.text()
+
+    const detailMessage =
+      typeof details === 'object' &&
+      details !== null &&
+      'detail' in details &&
+      typeof (details as { detail: unknown }).detail === 'string'
+        ? (details as { detail: string }).detail
+        : `Request failed with status ${response.status}`
+
+    throw new ApiError(detailMessage, response.status, details)
+  }
+
+  return response.blob()
+}
+
+function encodePathSegments(path: string): string {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+}
+
 export const apiClient = {
   login(username: string, password: string): Promise<TokenResponse> {
     return request<TokenResponse>('/auth/login', {
@@ -139,10 +206,75 @@ export const apiClient = {
   getCurrentUser(token: string): Promise<CurrentUser> {
     return request<CurrentUser>('/users/me', { token })
   },
+  getGroups(token: string): Promise<{ groups: GroupSummary[] }> {
+    return request<{ groups: GroupSummary[] }>('/groups', { token })
+  },
   getHealth(): Promise<HealthResponse> {
     return request<HealthResponse>('/health')
   },
   getMonitor(token: string): Promise<MonitorResponse> {
     return request<MonitorResponse>('/monitor', { token })
+  },
+  listWorkspaceFiles(token: string, groupId: string, currentPath = ''): Promise<WorkspaceFileListResponse> {
+    const query = currentPath ? `?path=${encodeURIComponent(currentPath)}` : ''
+    return request<WorkspaceFileListResponse>(`/groups/${encodeURIComponent(groupId)}/files${query}`, {
+      token,
+    })
+  },
+  uploadWorkspaceFiles(token: string, groupId: string, currentPath: string, files: File[]): Promise<{ files: string[] }> {
+    const body = new FormData()
+    body.set('path', currentPath)
+    files.forEach((file) => body.append('files', file))
+    return request<{ files: string[] }>(`/groups/${encodeURIComponent(groupId)}/files`, {
+      method: 'POST',
+      token,
+      body,
+    })
+  },
+  getWorkspaceFileContent(
+    token: string,
+    groupId: string,
+    filePath: string,
+  ): Promise<WorkspaceFileContentResponse> {
+    return request<WorkspaceFileContentResponse>(
+      `/groups/${encodeURIComponent(groupId)}/files/content/${encodePathSegments(filePath)}`,
+      { token },
+    )
+  },
+  updateWorkspaceFileContent(
+    token: string,
+    groupId: string,
+    filePath: string,
+    content: string,
+  ): Promise<WorkspaceFileContentResponse> {
+    return request<WorkspaceFileContentResponse>(
+      `/groups/${encodeURIComponent(groupId)}/files/content/${encodePathSegments(filePath)}`,
+      {
+        method: 'PUT',
+        token,
+        body: JSON.stringify({ content }),
+      },
+    )
+  },
+  deleteWorkspaceFile(token: string, groupId: string, filePath: string): Promise<{ status: string }> {
+    return request<{ status: string }>(
+      `/groups/${encodeURIComponent(groupId)}/files/${encodePathSegments(filePath)}`,
+      {
+        method: 'DELETE',
+        token,
+      },
+    )
+  },
+  downloadWorkspaceFile(token: string, groupId: string, filePath: string): Promise<Blob> {
+    return requestBlob(
+      `/groups/${encodeURIComponent(groupId)}/files/download/${encodePathSegments(filePath)}`,
+      { token },
+    )
+  },
+  previewWorkspaceFile(token: string, groupId: string, filePath: string): Promise<Blob> {
+    return requestBlob(
+      `/groups/${encodeURIComponent(groupId)}/files/preview/${encodePathSegments(filePath)}`,
+      { token },
+    )
   },
 }
