@@ -19,7 +19,6 @@ if str(PROJECT_ROOT) not in sys.path:
 def api_client() -> Iterator[TestClient]:
     from app.main import app
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     try:
         from services.task_service import task_service
@@ -31,7 +30,6 @@ def api_client() -> Iterator[TestClient]:
         task_log_service = None
 
     auth_service.reset()
-    group_member_service.reset()
     if task_service is not None:
         task_service.reset()
     if task_log_service is not None:
@@ -39,7 +37,6 @@ def api_client() -> Iterator[TestClient]:
     with TestClient(app) as client:
         yield client
     auth_service.reset()
-    group_member_service.reset()
     if task_service is not None:
         task_service.reset()
     if task_log_service is not None:
@@ -54,6 +51,147 @@ def _login_headers(api_client: TestClient, username: str, password: str) -> dict
     assert login_response.status_code == 200
     token = login_response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def _workspace(
+    *,
+    jid: str,
+    folder: str,
+    name: str,
+    created_by: str | None,
+    is_home: bool = False,
+    target_workspace_jid: str | None = None,
+):
+    return SimpleNamespace(
+        jid=jid,
+        folder=folder,
+        name=name,
+        created_by=created_by,
+        is_home=is_home,
+        target_workspace_jid=target_workspace_jid,
+    )
+
+
+class FakeGroupMemberService:
+    def __init__(self) -> None:
+        from domain.models.group_member import GroupMember
+
+        self._member_type = GroupMember
+        self._members_by_folder: dict[str, dict[str, GroupMember]] = {}
+
+    async def list_members(self, group_folder: str):
+        members = self._members_by_folder.get(group_folder, {})
+        return sorted(members.values(), key=lambda member: member.user_id)
+
+    async def add_member(
+        self,
+        group_folder: str,
+        user_id: str,
+        role: str = "member",
+        *,
+        added_by: str | None = None,
+    ):
+        if role not in {"owner", "admin", "member"}:
+            raise ValueError(f"invalid group member role: {role}")
+
+        members = self._members_by_folder.setdefault(group_folder, {})
+        existing_member = members.get(user_id)
+        if role == "owner":
+            if existing_member is not None and existing_member.role != "owner":
+                raise ValueError("owner role changes are not supported")
+        elif existing_member is not None and existing_member.role == "owner":
+            raise ValueError("owner role changes are not supported")
+
+        joined_at = existing_member.joined_at if existing_member is not None else datetime.utcnow()
+        member = self._member_type(
+            group_folder=group_folder,
+            user_id=user_id,
+            role=role,
+            joined_at=joined_at,
+            added_by=existing_member.added_by if existing_member is not None else added_by,
+        )
+        members[user_id] = member
+        return member
+
+    async def remove_member(self, group_folder: str, user_id: str) -> bool:
+        members = self._members_by_folder.get(group_folder)
+        if members is None:
+            return False
+        member = members.get(user_id)
+        if member is None:
+            return False
+        if member.role == "owner":
+            raise ValueError("group owner cannot be removed")
+
+        del members[user_id]
+        if not members:
+            del self._members_by_folder[group_folder]
+        return True
+
+    async def get_member(self, group_folder: str, user_id: str):
+        members = self._members_by_folder.get(group_folder)
+        if members is None:
+            return None
+        return members.get(user_id)
+
+    async def get_member_role(self, group_folder: str, user_id: str) -> str | None:
+        member = await self.get_member(group_folder, user_id)
+        if member is None:
+            return None
+        return member.role
+
+
+class FakeGroupRegistry:
+    def __init__(self, groups) -> None:
+        self.groups = list(groups)
+
+    async def ensure_home_workspace(
+        self,
+        *,
+        user_id: str,
+        role: str,
+        username: str,
+    ):
+        _ = role
+        _ = username
+        return next(
+            group
+            for group in self.groups
+            if getattr(group, "is_home", False) and getattr(group, "created_by", None) == user_id
+        )
+
+    async def list_registered_groups(self):
+        return list(self.groups)
+
+    async def get_web_workspace_by_folder(self, folder: str):
+        for group in self.groups:
+            if (
+                getattr(group, "folder", None) == folder
+                and isinstance(getattr(group, "jid", None), str)
+                and group.jid.startswith("web:")
+            ):
+                return group
+        return None
+
+    async def user_can_access_group(self, *, user_id: str, group) -> bool:
+        if getattr(group, "is_home", False):
+            return getattr(group, "created_by", None) == user_id
+        if str(getattr(group, "jid", "")).startswith("web:"):
+            return getattr(group, "created_by", None) == user_id or user_id in getattr(
+                group,
+                "member_ids",
+                set(),
+            )
+        if getattr(group, "target_workspace_jid", None):
+            target = next((item for item in self.groups if item.jid == group.target_workspace_jid), None)
+            if target is not None:
+                return await self.user_can_access_group(user_id=user_id, group=target)
+        return getattr(group, "created_by", None) == user_id
+
+    async def user_can_manage_members(self, *, user_id: str, group) -> bool:
+        if getattr(group, "is_home", False):
+            return False
+        return str(getattr(group, "jid", "")).startswith("web:") and getattr(group, "created_by", None) == user_id
 
 
 def test_health_check_endpoint(api_client: TestClient) -> None:
@@ -132,7 +270,7 @@ def test_register_ensures_home_workspace_for_new_user(api_client: TestClient) ->
 
     ensure_calls: list[dict[str, str]] = []
 
-    class FakeGroupRegistry:
+    class HomeEnsureRegistry(FakeGroupRegistry):
         async def ensure_home_workspace(
             self,
             *,
@@ -149,7 +287,7 @@ def test_register_ensures_home_workspace_for_new_user(api_client: TestClient) ->
             )
             return None
 
-    app.dependency_overrides[auth_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+    app.dependency_overrides[auth_routes.get_group_registry_service] = lambda: HomeEnsureRegistry([])
 
     try:
         response = api_client.post(
@@ -186,7 +324,8 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     )
     assert messages_unauthorized.status_code == 401
 
-    api_client.post("/auth/register", json={"username": "bob", "password": "secret"})
+    register_response = api_client.post("/auth/register", json={"username": "bob", "password": "secret"})
+    bob_user_id = register_response.json()["user_id"]
     login_response = api_client.post(
         "/auth/login",
         json={"username": "bob", "password": "secret"},
@@ -194,53 +333,40 @@ def test_groups_and_messages_require_authentication(api_client: TestClient) -> N
     token = login_response.json()["access_token"]
     auth_headers = {"Authorization": f"Bearer {token}"}
 
-    class FakeGroupRegistry:
-        def __init__(self) -> None:
-            self._home_owner_id: str | None = None
-
-        async def ensure_home_workspace(
-            self,
-            *,
-            user_id: str,
-            role: str,
-            username: str,
-        ):
-            _ = role
-            _ = username
-            self._home_owner_id = user_id
-            return SimpleNamespace(
+    fake_group_registry = FakeGroupRegistry(
+        [
+            _workspace(
                 jid="web:home-bob",
                 folder="home-bob",
                 name="Bob Home",
-                created_by=user_id,
+                created_by="user-placeholder",
                 is_home=True,
-            )
+            ),
+            _workspace(
+                jid="web:home-other",
+                folder="home-other",
+                name="Other Home",
+                created_by="user-other",
+                is_home=True,
+            ),
+            _workspace(
+                jid="web:group-alpha",
+                folder="group-alpha",
+                name="Alpha Workspace",
+                created_by="user-placeholder",
+            ),
+            _workspace(
+                jid="web:group-beta",
+                folder="group-beta",
+                name="Beta Workspace",
+                created_by="user-placeholder",
+            ),
+        ]
+    )
+    for group in fake_group_registry.groups:
+        if group.folder in {"home-bob", "group-alpha", "group-beta"}:
+            group.created_by = bob_user_id
 
-        async def list_registered_groups(self):
-            return [
-                SimpleNamespace(
-                    jid="web:home-bob",
-                    folder="home-bob",
-                    name="Bob Home",
-                    created_by=self._home_owner_id,
-                    is_home=True,
-                ),
-                SimpleNamespace(
-                    jid="web:home-other",
-                    folder="home-other",
-                    name="Other Home",
-                    created_by="user-other",
-                    is_home=True,
-                ),
-                SimpleNamespace(folder="group-alpha", name="Alpha Workspace"),
-                SimpleNamespace(folder="group-beta", name="Beta Workspace"),
-            ]
-
-        async def get_web_workspace_by_folder(self, folder: str):
-            _ = folder
-            return None
-
-    fake_group_registry = FakeGroupRegistry()
     app.dependency_overrides[auth_routes.get_group_registry_service] = lambda: fake_group_registry
     app.dependency_overrides[group_routes.get_group_registry_service] = lambda: fake_group_registry
     app.dependency_overrides[message_routes.get_group_registry_service] = lambda: fake_group_registry
@@ -299,7 +425,7 @@ def test_groups_route_ensures_home_workspace_and_hides_other_users_home_rows(
     auth_headers = _login_headers(api_client, "alice", "secret")
     ensure_calls: list[dict[str, str]] = []
 
-    class FakeGroupRegistry:
+    class HomeAwareRegistry(FakeGroupRegistry):
         async def ensure_home_workspace(
             self,
             *,
@@ -314,40 +440,36 @@ def test_groups_route_ensures_home_workspace_and_hides_other_users_home_rows(
                     "username": username,
                 }
             )
-            return SimpleNamespace(
-                jid=f"web:home-{user_id}",
-                folder=f"home-{user_id}",
-                name=f"{username} Home",
-                created_by=user_id,
-                is_home=True,
+            return await super().ensure_home_workspace(
+                user_id=user_id,
+                role=role,
+                username=username,
             )
 
-        async def list_registered_groups(self):
-            return [
-                SimpleNamespace(
-                    jid=f"web:home-{current_user.id}",
-                    folder=f"home-{current_user.id}",
-                    name="alice Home",
-                    created_by=current_user.id,
-                    is_home=True,
-                ),
-                SimpleNamespace(
-                    jid="web:home-other-user",
-                    folder="home-other-user",
-                    name="other Home",
-                    created_by="other-user-id",
-                    is_home=True,
-                ),
-                SimpleNamespace(
-                    jid="telegram:chat-1",
-                    folder="chat-1",
-                    name="Shared Chat",
-                    created_by=None,
-                    is_home=False,
-                ),
-            ]
-
-    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: HomeAwareRegistry(
+        [
+            _workspace(
+                jid=f"web:home-{current_user.id}",
+                folder=f"home-{current_user.id}",
+                name="alice Home",
+                created_by=current_user.id,
+                is_home=True,
+            ),
+            _workspace(
+                jid="web:home-other-user",
+                folder="home-other-user",
+                name="other Home",
+                created_by="other-user-id",
+                is_home=True,
+            ),
+            _workspace(
+                jid="telegram:chat-1",
+                folder="chat-1",
+                name="Shared Chat",
+                created_by=None,
+            ),
+        ]
+    )
 
     try:
         response = api_client.get("/groups", headers=auth_headers)
@@ -379,56 +501,35 @@ def test_groups_route_hides_raw_im_endpoint_rows_but_keeps_workspace_rows(
     current_user = auth_service.register_user("alice", "secret")
     auth_headers = _login_headers(api_client, "alice", "secret")
 
-    class FakeGroupRegistry:
-        async def ensure_home_workspace(
-            self,
-            *,
-            user_id: str,
-            role: str,
-            username: str,
-        ):
-            _ = role
-            return SimpleNamespace(
-                jid=f"web:home-{user_id}",
-                folder=f"home-{user_id}",
-                name=f"{username} Home",
-                created_by=user_id,
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry(
+        [
+            _workspace(
+                jid=f"web:home-{current_user.id}",
+                folder=f"home-{current_user.id}",
+                name="alice Home",
+                created_by=current_user.id,
                 is_home=True,
-            )
-
-        async def list_registered_groups(self):
-            return [
-                SimpleNamespace(
-                    jid=f"web:home-{current_user.id}",
-                    folder=f"home-{current_user.id}",
-                    name="alice Home",
-                    created_by=current_user.id,
-                    is_home=True,
-                ),
-                SimpleNamespace(
-                    jid="telegram:chat-1",
-                    folder="chat-1",
-                    name="Telegram Chat",
-                    created_by=None,
-                    is_home=False,
-                ),
-                SimpleNamespace(
-                    jid="feishu:oc_chat",
-                    folder="chat-2",
-                    name="Feishu Chat",
-                    created_by=None,
-                    is_home=False,
-                ),
-                SimpleNamespace(
-                    jid="group-alpha",
-                    folder="group-alpha",
-                    name="Alpha Workspace",
-                    created_by=None,
-                    is_home=False,
-                ),
-            ]
-
-    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+            ),
+            _workspace(
+                jid="telegram:chat-1",
+                folder="chat-1",
+                name="Telegram Chat",
+                created_by=None,
+            ),
+            _workspace(
+                jid="feishu:oc_chat",
+                folder="chat-2",
+                name="Feishu Chat",
+                created_by=None,
+            ),
+            _workspace(
+                jid="web:group-alpha",
+                folder="group-alpha",
+                name="Alpha Workspace",
+                created_by=current_user.id,
+            ),
+        ]
+    )
 
     try:
         response = api_client.get("/groups", headers=auth_headers)
@@ -455,7 +556,7 @@ def test_owner_can_list_shared_main_workspace_created_by_another_owner(
     second_owner = auth_service.register_user("owner-two", "secret", role="owner")
     owner_headers = _login_headers(api_client, "owner-two", "secret")
 
-    class FakeGroupRegistry:
+    class OwnerMainRegistry(FakeGroupRegistry):
         async def ensure_home_workspace(
             self,
             *,
@@ -474,25 +575,24 @@ def test_owner_can_list_shared_main_workspace_created_by_another_owner(
                 is_home=True,
             )
 
-        async def list_registered_groups(self):
-            return [
-                SimpleNamespace(
-                    jid="web:main",
-                    folder="main",
-                    name="Main",
-                    created_by=first_owner.id,
-                    is_home=True,
-                ),
-                SimpleNamespace(
-                    jid=f"web:home-{first_owner.id}",
-                    folder=f"home-{first_owner.id}",
-                    name="owner-one Home",
-                    created_by=first_owner.id,
-                    is_home=True,
-                ),
-            ]
-
-    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: OwnerMainRegistry(
+        [
+            _workspace(
+                jid="web:main",
+                folder="main",
+                name="Main",
+                created_by=first_owner.id,
+                is_home=True,
+            ),
+            _workspace(
+                jid=f"web:home-{first_owner.id}",
+                folder=f"home-{first_owner.id}",
+                name="owner-one Home",
+                created_by=first_owner.id,
+                is_home=True,
+            ),
+        ]
+    )
 
     try:
         response = api_client.get("/groups", headers=owner_headers)
@@ -508,12 +608,12 @@ def test_owner_can_list_shared_main_workspace_created_by_another_owner(
 
 
 def test_group_member_routes_require_authentication(api_client: TestClient) -> None:
-    list_response = api_client.get("/groups/group-demo/members")
+    list_response = api_client.get("/groups/project-alpha/members")
     create_response = api_client.post(
-        "/groups/group-demo/members",
+        "/groups/project-alpha/members",
         json={"user_id": "user-1", "role": "member"},
     )
-    remove_response = api_client.delete("/groups/group-demo/members/user-1")
+    remove_response = api_client.delete("/groups/project-alpha/members/user-1")
 
     assert list_response.status_code == 401
     assert create_response.status_code == 401
@@ -521,16 +621,42 @@ def test_group_member_routes_require_authentication(api_client: TestClient) -> N
 
 
 def test_group_member_can_list_group_members(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     member_user = auth_service.register_user("member", "secret")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
-    group_member_service.add_member("group-demo", member_user.id, role="member")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    asyncio.run(
+        member_service.add_member(
+            "project-alpha",
+            member_user.id,
+            role="member",
+            added_by=owner_user.id,
+        )
+    )
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+    registry.groups[0].member_ids = {member_user.id}
     member_headers = _login_headers(api_client, "member", "secret")
 
-    response = api_client.get("/groups/group-demo/members", headers=member_headers)
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.get("/groups/project-alpha/members", headers=member_headers)
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     payload = response.json()
@@ -543,165 +669,468 @@ def test_group_member_can_list_group_members(api_client: TestClient) -> None:
 
 
 def test_non_member_cannot_list_group_members(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     auth_service.register_user("outsider", "secret")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     outsider_headers = _login_headers(api_client, "outsider", "secret")
 
-    response = api_client.get("/groups/group-demo/members", headers=outsider_headers)
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
 
-    assert response.status_code == 403
+    try:
+        response = api_client.get("/groups/project-alpha/members", headers=outsider_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
 
 
 def test_group_owner_can_add_member(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     target_user = auth_service.register_user("target", "secret")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.post(
-        "/groups/group-demo/members",
-        json={"user_id": target_user.id, "role": "member"},
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.post(
+            "/groups/project-alpha/members",
+            json={"user_id": target_user.id, "role": "member"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["group_id"] == "group-demo"
+    assert payload["group_id"] == "project-alpha"
     assert payload["user_id"] == target_user.id
     assert payload["role"] == "member"
 
 
 def test_group_admin_cannot_add_member(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     admin_user = auth_service.register_user("admin", "secret", role="admin")
     target_user = auth_service.register_user("target", "secret")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
-    group_member_service.add_member("group-demo", admin_user.id, role="admin")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    asyncio.run(
+        member_service.add_member(
+            "project-alpha",
+            admin_user.id,
+            role="admin",
+            added_by=owner_user.id,
+        )
+    )
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+    registry.groups[0].member_ids = {admin_user.id}
     admin_headers = _login_headers(api_client, "admin", "secret")
 
-    response = api_client.post(
-        "/groups/group-demo/members",
-        json={"user_id": target_user.id, "role": "member"},
-        headers=admin_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.post(
+            "/groups/project-alpha/members",
+            json={"user_id": target_user.id, "role": "member"},
+            headers=admin_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 403
 
 
 def test_group_owner_can_remove_member(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     target_user = auth_service.register_user("target", "secret")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
-    group_member_service.add_member("group-demo", target_user.id, role="member")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    asyncio.run(
+        member_service.add_member(
+            "project-alpha",
+            target_user.id,
+            role="member",
+            added_by=owner_user.id,
+        )
+    )
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+    registry.groups[0].member_ids = {target_user.id}
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.delete(
-        f"/groups/group-demo/members/{target_user.id}",
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.delete(
+            f"/groups/project-alpha/members/{target_user.id}",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     assert response.json() == {"status": "removed"}
 
 
 def test_group_owner_cannot_add_invalid_member_role(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     target_user = auth_service.register_user("target", "secret")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.post(
-        "/groups/group-demo/members",
-        json={"user_id": target_user.id, "role": "guest"},
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.post(
+            "/groups/project-alpha/members",
+            json={"user_id": target_user.id, "role": "guest"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 400
 
 
 def test_group_owner_cannot_promote_another_member_to_owner(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
     target_user = auth_service.register_user("target", "secret", role="admin")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.post(
-        "/groups/group-demo/members",
-        json={"user_id": target_user.id, "role": "owner"},
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.post(
+            "/groups/project-alpha/members",
+            json={"user_id": target_user.id, "role": "owner"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 400
-    assert group_member_service.get_member_role("group-demo", target_user.id) is None
+    assert asyncio.run(member_service.get_member_role("project-alpha", target_user.id)) is None
 
 
 def test_group_owner_cannot_demote_self_via_member_update(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.post(
-        "/groups/group-demo/members",
-        json={"user_id": owner_user.id, "role": "member"},
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.post(
+            "/groups/project-alpha/members",
+            json={"user_id": owner_user.id, "role": "member"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 400
-    assert group_member_service.get_member_role("group-demo", owner_user.id) == "owner"
+    assert asyncio.run(member_service.get_member_role("project-alpha", owner_user.id)) == "owner"
 
 
 def test_group_owner_remove_missing_member_returns_404(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.delete(
-        "/groups/group-demo/members/missing-user-id",
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.delete(
+            "/groups/project-alpha/members/missing-user-id",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 404
 
 
 def test_group_owner_cannot_remove_self(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
     from services.auth import auth_service
-    from services.group_member_service import group_member_service
 
     owner_user = auth_service.register_user("owner", "secret", role="owner")
-    group_member_service.add_member("group-demo", owner_user.id, role="owner")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
     owner_headers = _login_headers(api_client, "owner", "secret")
 
-    response = api_client.delete(
-        f"/groups/group-demo/members/{owner_user.id}",
-        headers=owner_headers,
-    )
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.delete(
+            f"/groups/project-alpha/members/{owner_user.id}",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 400
+
+
+def test_groups_route_lists_shared_workspace_for_member(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    member_user = auth_service.register_user("member", "secret")
+    member_headers = _login_headers(api_client, "member", "secret")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid=f"web:home-{member_user.id}",
+                folder=f"home-{member_user.id}",
+                name="member Home",
+                created_by=member_user.id,
+                is_home=True,
+            ),
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            ),
+        ]
+    )
+    registry.groups[1].member_ids = {member_user.id}
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+
+    try:
+        response = api_client.get("/groups", headers=member_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "groups": [
+            {"group_id": f"home-{member_user.id}", "name": "member Home"},
+            {"group_id": "project-alpha", "name": "Project Alpha"},
+        ]
+    }
+
+
+def test_home_workspace_member_management_returns_400(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    target_user = auth_service.register_user("target", "secret")
+    owner_headers = _login_headers(api_client, "owner", "secret")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("home-owner", owner_user.id, role="owner"))
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:home-owner",
+                folder="home-owner",
+                name="owner Home",
+                created_by=owner_user.id,
+                is_home=True,
+            )
+        ]
+    )
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.post(
+            "/groups/home-owner/members",
+            json={"user_id": target_user.id, "role": "member"},
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+
+
+def test_non_owner_member_can_leave_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import groups as group_routes
+    from services.auth import auth_service
+
+    owner_user = auth_service.register_user("owner", "secret", role="owner")
+    member_user = auth_service.register_user("member", "secret")
+    member_headers = _login_headers(api_client, "member", "secret")
+    member_service = FakeGroupMemberService()
+    asyncio.run(member_service.add_member("project-alpha", owner_user.id, role="owner"))
+    asyncio.run(
+        member_service.add_member(
+            "project-alpha",
+            member_user.id,
+            role="member",
+            added_by=owner_user.id,
+        )
+    )
+    registry = FakeGroupRegistry(
+        [
+            _workspace(
+                jid="web:project-alpha",
+                folder="project-alpha",
+                name="Project Alpha",
+                created_by=owner_user.id,
+            )
+        ]
+    )
+    registry.groups[0].member_ids = {member_user.id}
+
+    app.dependency_overrides[group_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[group_routes.get_group_member_service] = lambda: member_service
+
+    try:
+        response = api_client.delete(
+            f"/groups/project-alpha/members/{member_user.id}",
+            headers=member_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "removed"}
 
 
 def test_task_routes_require_authentication(api_client: TestClient) -> None:

@@ -50,14 +50,6 @@ def get_group_member_service(
     return GroupMemberService(db=db)
 
 
-def _is_group_visible_to_user(group, current_user: AuthUser) -> bool:
-    if not bool(getattr(group, "is_home", False)):
-        return True
-    if current_user.role == "owner":
-        return group.folder == "main"
-    return getattr(group, "created_by", None) == current_user.id
-
-
 def _is_raw_im_endpoint(group) -> bool:
     jid = getattr(group, "jid", None)
     if not isinstance(jid, str):
@@ -65,37 +57,21 @@ def _is_raw_im_endpoint(group) -> bool:
     return jid.startswith("telegram:") or jid.startswith("feishu:")
 
 
-async def _require_group_membership(
+async def _resolve_workspace_by_group_id(
     group_id: str,
-    current_user: AuthUser,
-    group_member_service: GroupMemberService,
-) -> None:
-    if await group_member_service.get_member(group_id, current_user.id) is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="permission denied",
-        )
-
-
-async def _require_group_owner(
-    group_id: str,
-    current_user: AuthUser,
-    group_member_service: GroupMemberService,
-) -> None:
-    if await group_member_service.get_member_role(group_id, current_user.id) != "owner":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="permission denied",
-        )
+    group_registry: GroupRegistryService,
+):
+    return await group_registry.get_web_workspace_by_folder(group_id)
 
 
 async def _ensure_owner_role_change_supported(
-    group_id: str,
+    *,
+    group_folder: str,
     user_id: str,
     requested_role: str,
     group_member_service: GroupMemberService,
 ) -> None:
-    existing_member = await group_member_service.get_member(group_id, user_id)
+    existing_member = await group_member_service.get_member(group_folder, user_id)
     if requested_role == "owner":
         if existing_member is None or existing_member.role != "owner":
             raise HTTPException(
@@ -133,7 +109,18 @@ async def list_groups(
         groups=[
             _to_group_summary_response(group)
             for group in await group_registry.list_registered_groups()
-            if _is_group_visible_to_user(group, current_user) and not _is_raw_im_endpoint(group)
+            if (
+                isinstance(getattr(group, "jid", None), str)
+                and group.jid.startswith("web:")
+                and not _is_raw_im_endpoint(group)
+                and (
+                    (current_user.role == "owner" and getattr(group, "folder", None) == "main")
+                    or await group_registry.user_can_access_group(
+                        user_id=current_user.id,
+                        group=group,
+                    )
+                )
+            )
         ]
     )
 
@@ -154,10 +141,27 @@ async def list_groups(
 async def list_group_members(
     group_id: str,
     current_user: AuthUser = Depends(require_permission("groups", "read")),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
     group_member_service: GroupMemberService = Depends(get_group_member_service),
 ) -> GroupMemberListResponse:
-    await _require_group_membership(group_id, current_user, group_member_service)
-    members = await group_member_service.list_members(group_id)
+    workspace = await _resolve_workspace_by_group_id(group_id, group_registry)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="group not found",
+        )
+    if not await group_registry.user_can_access_group(user_id=current_user.id, group=workspace):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="group not found",
+        )
+    if workspace.is_home:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="home workspaces do not support member management",
+        )
+
+    members = await group_member_service.list_members(workspace.folder)
     return GroupMemberListResponse(
         members=[_to_group_member_response(member) for member in members]
     )
@@ -182,9 +186,30 @@ async def add_group_member(
     group_id: str,
     request: CreateGroupMemberRequest,
     current_user: AuthUser = Depends(require_permission("groups", "write")),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
     group_member_service: GroupMemberService = Depends(get_group_member_service),
 ) -> GroupMemberResponse:
-    await _require_group_owner(group_id, current_user, group_member_service)
+    workspace = await _resolve_workspace_by_group_id(group_id, group_registry)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="group not found",
+        )
+    if not await group_registry.user_can_access_group(user_id=current_user.id, group=workspace):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="group not found",
+        )
+    if workspace.is_home:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="home workspaces do not support member management",
+        )
+    if not await group_registry.user_can_manage_members(user_id=current_user.id, group=workspace):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="permission denied",
+        )
 
     if auth_service.get_user_by_id(request.user_id) is None:
         raise HTTPException(
@@ -192,15 +217,15 @@ async def add_group_member(
             detail="user not found",
         )
     await _ensure_owner_role_change_supported(
-        group_id,
-        request.user_id,
-        request.role,
-        group_member_service,
+        group_folder=workspace.folder,
+        user_id=request.user_id,
+        requested_role=request.role,
+        group_member_service=group_member_service,
     )
 
     try:
         member = await group_member_service.add_member(
-            group_id,
+            workspace.folder,
             request.user_id,
             role=request.role,
             added_by=current_user.id,
@@ -231,19 +256,55 @@ async def add_group_member(
 async def remove_group_member(
     group_id: str,
     user_id: str,
-    current_user: AuthUser = Depends(require_permission("groups", "write")),
+    current_user: AuthUser = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
     group_member_service: GroupMemberService = Depends(get_group_member_service),
 ) -> DeleteGroupMemberResponse:
-    await _require_group_owner(group_id, current_user, group_member_service)
-
-    if user_id == current_user.id:
+    workspace = await _resolve_workspace_by_group_id(group_id, group_registry)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="group not found",
+        )
+    if not await group_registry.user_can_access_group(user_id=current_user.id, group=workspace):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="group not found",
+        )
+    if workspace.is_home:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="group owner cannot remove self",
+            detail="home workspaces do not support member management",
+        )
+
+    if user_id == current_user.id:
+        current_role = await group_member_service.get_member_role(workspace.folder, current_user.id)
+        if current_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="group member not found",
+            )
+        if current_role == "owner":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="group owner cannot remove self",
+            )
+        removed = await group_member_service.remove_member(workspace.folder, user_id)
+        if not removed:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="group member not found",
+            )
+        return DeleteGroupMemberResponse(status="removed")
+
+    if not await group_registry.user_can_manage_members(user_id=current_user.id, group=workspace):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="permission denied",
         )
 
     try:
-        removed = await group_member_service.remove_member(group_id, user_id)
+        removed = await group_member_service.remove_member(workspace.folder, user_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
