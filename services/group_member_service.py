@@ -1,8 +1,11 @@
-"""In-memory group member management service."""
+"""Persistent workspace membership service."""
 
 from __future__ import annotations
 
 from datetime import datetime
+
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.group_member import GroupMember
 
@@ -10,58 +13,146 @@ VALID_GROUP_MEMBER_ROLES = ("owner", "admin", "member")
 
 
 class GroupMemberService:
-    """Manage group members using an in-memory store."""
+    """Manage workspace members through the database."""
 
-    def __init__(self) -> None:
-        self._members_by_group: dict[str, dict[str, GroupMember]] = {}
+    def __init__(self, *, db: AsyncSession) -> None:
+        self._db = db
 
-    def list_members(self, group_id: str) -> list[GroupMember]:
-        members = self._members_by_group.get(group_id, {})
-        return sorted(members.values(), key=lambda member: member.user_id)
+    async def list_members(self, group_folder: str) -> list[GroupMember]:
+        await self._ensure_schema()
+        result = await self._db.execute(
+            select(GroupMember)
+            .where(GroupMember.group_folder == group_folder)
+            .order_by(GroupMember.user_id)
+        )
+        return list(result.scalars().all())
 
-    def add_member(
+    async def add_member(
         self,
-        group_id: str,
+        group_folder: str,
         user_id: str,
         role: str = "member",
+        *,
+        added_by: str | None = None,
     ) -> GroupMember:
+        await self._ensure_schema()
         normalized_role = self._validate_role(role)
-        members = self._members_by_group.setdefault(group_id, {})
-        existing_member = members.get(user_id)
+        existing_member = await self.get_member(group_folder, user_id)
+
+        if normalized_role == "owner":
+            if existing_member is not None and existing_member.role != "owner":
+                raise ValueError("owner role changes are not supported")
+        elif existing_member is not None and existing_member.role == "owner":
+            raise ValueError("owner role changes are not supported")
+
         joined_at = existing_member.joined_at if existing_member is not None else datetime.utcnow()
         member = GroupMember(
-            group_jid=group_id,
+            group_folder=group_folder,
             user_id=user_id,
             role=normalized_role,
             joined_at=joined_at,
+            added_by=existing_member.added_by if existing_member is not None else added_by,
         )
-        members[user_id] = member
-        return member
+        await self._db.merge(member)
+        await self._db.commit()
 
-    def remove_member(self, group_id: str, user_id: str) -> bool:
-        members = self._members_by_group.get(group_id)
-        if members is None or user_id not in members:
+        persisted_member = await self.get_member(group_folder, user_id)
+        if persisted_member is None:
+            raise RuntimeError("failed to persist group member")
+        return persisted_member
+
+    async def remove_member(self, group_folder: str, user_id: str) -> bool:
+        await self._ensure_schema()
+        member = await self.get_member(group_folder, user_id)
+        if member is None:
             return False
+        if member.role == "owner":
+            raise ValueError("group owner cannot be removed")
 
-        del members[user_id]
-        if not members:
-            del self._members_by_group[group_id]
+        await self._db.delete(member)
+        await self._db.commit()
         return True
 
-    def get_member(self, group_id: str, user_id: str) -> GroupMember | None:
-        members = self._members_by_group.get(group_id)
-        if members is None:
-            return None
-        return members.get(user_id)
+    async def get_member(self, group_folder: str, user_id: str) -> GroupMember | None:
+        await self._ensure_schema()
+        result = await self._db.execute(
+            select(GroupMember).where(
+                GroupMember.group_folder == group_folder,
+                GroupMember.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
 
-    def get_member_role(self, group_id: str, user_id: str) -> str | None:
-        member = self.get_member(group_id, user_id)
+    async def get_member_role(self, group_folder: str, user_id: str) -> str | None:
+        member = await self.get_member(group_folder, user_id)
         if member is None:
             return None
         return member.role
 
-    def reset(self) -> None:
-        self._members_by_group.clear()
+    async def _ensure_schema(self) -> None:
+        await self._db.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS group_members ("
+                "group_folder VARCHAR NOT NULL, "
+                "user_id VARCHAR NOT NULL, "
+                "role VARCHAR NOT NULL, "
+                "joined_at DATETIME NOT NULL, "
+                "added_by VARCHAR, "
+                "PRIMARY KEY (group_folder, user_id)"
+                ")"
+            )
+        )
+        await self._db.commit()
+
+        result = await self._db.execute(text("PRAGMA table_info('group_members')"))
+        columns = {row[1] for row in result.all()}
+        legacy_columns = {"group_jid", "group_folder"} & columns
+
+        if "group_jid" in columns:
+            source_group_expr = "COALESCE(group_folder, group_jid)" if "group_folder" in columns else "group_jid"
+            added_by_expr = "added_by" if "added_by" in columns else "NULL"
+            await self._db.execute(text("DROP TABLE IF EXISTS group_members_new"))
+            await self._db.execute(
+                text(
+                    "CREATE TABLE group_members_new ("
+                    "group_folder VARCHAR NOT NULL, "
+                    "user_id VARCHAR NOT NULL, "
+                    "role VARCHAR NOT NULL, "
+                    "joined_at DATETIME NOT NULL, "
+                    "added_by VARCHAR, "
+                    "PRIMARY KEY (group_folder, user_id)"
+                    ")"
+                )
+            )
+            await self._db.execute(
+                text(
+                    "INSERT OR IGNORE INTO group_members_new "
+                    "(group_folder, user_id, role, joined_at, added_by) "
+                    "SELECT "
+                    f"{source_group_expr}, user_id, role, joined_at, {added_by_expr} "
+                    "FROM group_members"
+                )
+            )
+            await self._db.execute(text("DROP TABLE group_members"))
+            await self._db.execute(text("ALTER TABLE group_members_new RENAME TO group_members"))
+            await self._db.commit()
+            return
+
+        if "group_folder" not in legacy_columns:
+            await self._db.execute(
+                text(
+                    "ALTER TABLE group_members "
+                    "ADD COLUMN group_folder VARCHAR"
+                )
+            )
+        if "added_by" not in columns:
+            await self._db.execute(
+                text(
+                    "ALTER TABLE group_members "
+                    "ADD COLUMN added_by VARCHAR"
+                )
+            )
+        await self._db.commit()
 
     def _validate_role(self, role: str) -> str:
         if role not in VALID_GROUP_MEMBER_ROLES:
@@ -69,7 +160,4 @@ class GroupMemberService:
         return role
 
 
-group_member_service = GroupMemberService()
-
-
-__all__ = ["GroupMemberService", "VALID_GROUP_MEMBER_ROLES", "group_member_service"]
+__all__ = ["GroupMemberService", "VALID_GROUP_MEMBER_ROLES"]

@@ -16,7 +16,7 @@ from domain.schemas import (
     GroupSummaryResponse,
 )
 from services.auth import AuthUser, auth_service
-from services.group_member_service import group_member_service
+from services.group_member_service import GroupMemberService
 from services.group_registry import GroupRegistryService
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/groups", tags=["groups"])
 
 def _to_group_member_response(member: GroupMember) -> GroupMemberResponse:
     return GroupMemberResponse(
-        group_id=member.group_jid,
+        group_id=member.group_folder,
         user_id=member.user_id,
         role=member.role,
         joined_at=member.joined_at,
@@ -44,6 +44,12 @@ def get_group_registry_service(
     return GroupRegistryService(db=db)
 
 
+def get_group_member_service(
+    db: AsyncSession = Depends(get_db),
+) -> GroupMemberService:
+    return GroupMemberService(db=db)
+
+
 def _is_group_visible_to_user(group, current_user: AuthUser) -> bool:
     if not bool(getattr(group, "is_home", False)):
         return True
@@ -59,28 +65,37 @@ def _is_raw_im_endpoint(group) -> bool:
     return jid.startswith("telegram:") or jid.startswith("feishu:")
 
 
-def _require_group_membership(group_id: str, current_user: AuthUser) -> None:
-    if group_member_service.get_member(group_id, current_user.id) is None:
+async def _require_group_membership(
+    group_id: str,
+    current_user: AuthUser,
+    group_member_service: GroupMemberService,
+) -> None:
+    if await group_member_service.get_member(group_id, current_user.id) is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="permission denied",
         )
 
 
-def _require_group_owner(group_id: str, current_user: AuthUser) -> None:
-    if group_member_service.get_member_role(group_id, current_user.id) != "owner":
+async def _require_group_owner(
+    group_id: str,
+    current_user: AuthUser,
+    group_member_service: GroupMemberService,
+) -> None:
+    if await group_member_service.get_member_role(group_id, current_user.id) != "owner":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="permission denied",
         )
 
 
-def _ensure_owner_role_change_supported(
+async def _ensure_owner_role_change_supported(
     group_id: str,
     user_id: str,
     requested_role: str,
+    group_member_service: GroupMemberService,
 ) -> None:
-    existing_member = group_member_service.get_member(group_id, user_id)
+    existing_member = await group_member_service.get_member(group_id, user_id)
     if requested_role == "owner":
         if existing_member is None or existing_member.role != "owner":
             raise HTTPException(
@@ -139,9 +154,10 @@ async def list_groups(
 async def list_group_members(
     group_id: str,
     current_user: AuthUser = Depends(require_permission("groups", "read")),
+    group_member_service: GroupMemberService = Depends(get_group_member_service),
 ) -> GroupMemberListResponse:
-    _require_group_membership(group_id, current_user)
-    members = group_member_service.list_members(group_id)
+    await _require_group_membership(group_id, current_user, group_member_service)
+    members = await group_member_service.list_members(group_id)
     return GroupMemberListResponse(
         members=[_to_group_member_response(member) for member in members]
     )
@@ -166,21 +182,28 @@ async def add_group_member(
     group_id: str,
     request: CreateGroupMemberRequest,
     current_user: AuthUser = Depends(require_permission("groups", "write")),
+    group_member_service: GroupMemberService = Depends(get_group_member_service),
 ) -> GroupMemberResponse:
-    _require_group_owner(group_id, current_user)
+    await _require_group_owner(group_id, current_user, group_member_service)
 
     if auth_service.get_user_by_id(request.user_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="user not found",
         )
-    _ensure_owner_role_change_supported(group_id, request.user_id, request.role)
+    await _ensure_owner_role_change_supported(
+        group_id,
+        request.user_id,
+        request.role,
+        group_member_service,
+    )
 
     try:
-        member = group_member_service.add_member(
+        member = await group_member_service.add_member(
             group_id,
             request.user_id,
             role=request.role,
+            added_by=current_user.id,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -209,8 +232,9 @@ async def remove_group_member(
     group_id: str,
     user_id: str,
     current_user: AuthUser = Depends(require_permission("groups", "write")),
+    group_member_service: GroupMemberService = Depends(get_group_member_service),
 ) -> DeleteGroupMemberResponse:
-    _require_group_owner(group_id, current_user)
+    await _require_group_owner(group_id, current_user, group_member_service)
 
     if user_id == current_user.id:
         raise HTTPException(
@@ -218,7 +242,13 @@ async def remove_group_member(
             detail="group owner cannot remove self",
         )
 
-    removed = group_member_service.remove_member(group_id, user_id)
+    try:
+        removed = await group_member_service.remove_member(group_id, user_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     if not removed:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -227,4 +257,4 @@ async def remove_group_member(
     return DeleteGroupMemberResponse(status="removed")
 
 
-__all__ = ["get_group_registry_service", "router"]
+__all__ = ["get_group_member_service", "get_group_registry_service", "router"]
