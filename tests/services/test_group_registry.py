@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+import sqlite3
 import sys
 
 import pytest
@@ -144,6 +145,32 @@ async def test_ensure_registered_group_preserves_existing_binding_until_explicit
     )
 
     assert updated.target_workspace_jid == "web:home-user-1"
+
+
+@pytest.mark.asyncio
+async def test_ensure_registered_group_can_explicitly_clear_existing_binding(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+
+    original = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat 1",
+        folder="chat-abc123",
+        target_workspace_jid="web:main",
+    )
+    assert original.target_workspace_jid == "web:main"
+
+    cleared = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat 1",
+        folder="chat-abc123",
+        target_workspace_jid=None,
+    )
+
+    assert cleared.target_workspace_jid is None
 
 
 @pytest.mark.asyncio
@@ -305,6 +332,32 @@ async def test_resolve_im_workspace_returns_bound_target_workspace_when_present(
 
 
 @pytest.mark.asyncio
+async def test_resolve_im_workspace_ignores_bound_im_endpoint_rows(
+    db_session: AsyncSession,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    service = GroupRegistryService(db=db_session)
+    fallback_endpoint = await service.ensure_registered_group(
+        jid="telegram:chat-1",
+        name="Telegram Chat",
+        folder="chat-abc123",
+        target_workspace_jid="telegram:chat-2",
+    )
+    await service.ensure_registered_group(
+        jid="telegram:chat-2",
+        name="Another Telegram Chat",
+        folder="chat-def456",
+    )
+
+    resolved = await service.resolve_im_workspace(jid="telegram:chat-1")
+
+    assert resolved is not None
+    assert resolved.jid == fallback_endpoint.jid
+    assert resolved.folder == fallback_endpoint.folder
+
+
+@pytest.mark.asyncio
 async def test_resolve_im_workspace_falls_back_when_binding_target_is_missing(
     db_session: AsyncSession,
 ) -> None:
@@ -323,3 +376,52 @@ async def test_resolve_im_workspace_falls_back_when_binding_target_is_missing(
     assert resolved is not None
     assert resolved.jid == endpoint.jid
     assert resolved.folder == endpoint.folder
+
+
+@pytest.mark.asyncio
+async def test_runtime_schema_healing_backfills_binding_columns_for_older_tables(
+    tmp_path: Path,
+) -> None:
+    from services.group_registry import GroupRegistryService
+
+    database_path = tmp_path / "group-registry-legacy.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE registered_groups (
+                jid VARCHAR PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                folder VARCHAR NOT NULL,
+                added_at DATETIME NOT NULL,
+                container_config TEXT,
+                created_by VARCHAR
+            )
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    engine = create_async_engine(database_url)
+    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with session_factory() as session:
+        service = GroupRegistryService(db=session)
+        await service.list_registered_groups()
+
+    await engine.dispose()
+
+    connection = sqlite3.connect(database_path)
+    try:
+        columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info('registered_groups')").fetchall()
+        }
+    finally:
+        connection.close()
+
+    assert "is_home" in columns
+    assert "target_workspace_jid" in columns

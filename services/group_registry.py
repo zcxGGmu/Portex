@@ -118,7 +118,7 @@ class GroupRegistryService:
             return None
         if endpoint.target_workspace_jid:
             bound_workspace = await self.get_registered_group(endpoint.target_workspace_jid)
-            if bound_workspace is not None:
+            if bound_workspace is not None and bound_workspace.jid.startswith("web:"):
                 return bound_workspace
         return endpoint
 
