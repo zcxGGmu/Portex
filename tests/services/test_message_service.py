@@ -59,12 +59,14 @@ async def test_store_message_persists_with_default_direction(db_session: AsyncSe
     assert message.sender == "alice"
     assert message.content == "hello world"
     assert message.is_from_me is False
+    assert message.slot_id == "main"
     assert isinstance(message.timestamp, datetime)
 
     persisted = await db_session.get(_message_model(), message.id)
     assert persisted is not None
     assert persisted.chat_jid == "group-demo"
     assert persisted.sender == "alice"
+    assert persisted.slot_id == "main"
 
 
 @pytest.mark.asyncio
@@ -84,6 +86,26 @@ async def test_store_message_supports_outbound_flag(db_session: AsyncSession) ->
     persisted = await db_session.get(_message_model(), message.id)
     assert persisted is not None
     assert persisted.is_from_me is True
+
+
+@pytest.mark.asyncio
+async def test_store_message_persists_slot_id(db_session: AsyncSession) -> None:
+    from services.message_service import store_message
+
+    message = await store_message(
+        db=db_session,
+        chat_jid="web:project-alpha",
+        sender="alice",
+        content="hello draft",
+        group_folder="project-alpha",
+        slot_id="draft",
+    )
+
+    assert message.slot_id == "draft"
+
+    persisted = await db_session.get(_message_model(), message.id)
+    assert persisted is not None
+    assert persisted.slot_id == "draft"
 
 
 @pytest.mark.asyncio

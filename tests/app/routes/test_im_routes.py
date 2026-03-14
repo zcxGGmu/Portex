@@ -75,6 +75,7 @@ def test_feishu_webhook_route_dispatches_normalized_message(
     assert len(dispatched_messages) == 1
     assert dispatched_messages[0].channel == "feishu"
     assert dispatched_messages[0].content == "hello feishu"
+    assert dispatched_messages[0].slot_id == "main"
 
 
 def test_telegram_update_route_dispatches_normalized_message(
@@ -126,6 +127,7 @@ def test_telegram_update_route_dispatches_normalized_message(
     assert len(dispatched_messages) == 1
     assert dispatched_messages[0].channel == "telegram"
     assert dispatched_messages[0].content == "hello telegram"
+    assert dispatched_messages[0].slot_id == "main"
 
 
 def test_telegram_update_route_default_dependency_uses_bound_workspace_resolution(
@@ -260,9 +262,12 @@ def test_telegram_update_route_default_dependency_uses_bound_workspace_resolutio
     assert ensure_calls[0]["folder"] == im_routes._build_group_folder("telegram:-3001")
     assert submit_calls[0].group_folder == "main"
     assert submit_calls[0].chat_jid == "telegram:-3001"
+    assert submit_calls[0].slot_id == "main"
     assert routed_messages[0].chat_jid == "telegram:-3001"
     assert routed_messages[0].group_folder == "main"
+    assert routed_messages[0].slot_id == "main"
     assert store_calls[0]["group_folder"] == "main"
+    assert store_calls[0]["slot_id"] == "main"
 
 
 def test_im_routes_return_ignored_for_unsupported_payloads(

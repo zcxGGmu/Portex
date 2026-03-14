@@ -52,6 +52,14 @@ def _login_headers_with_user_id(
     return {"Authorization": f"Bearer {login_response.json()['access_token']}"}, user_id
 
 
+def test_send_message_request_defaults_slot_id_to_main() -> None:
+    from domain.schemas import SendMessageRequest
+
+    request = SendMessageRequest(group_id="group-demo", content="hello from http")
+
+    assert request.slot_id == "main"
+
+
 def test_post_messages_dispatches_through_real_service_boundary(api_client: TestClient) -> None:
     from app.main import app
     from app.routes import im as im_routes
@@ -114,6 +122,7 @@ def test_post_messages_dispatches_through_real_service_boundary(api_client: Test
     assert dispatched_messages[0].group_folder == "group-demo"
     assert dispatched_messages[0].chat_jid == "group-demo"
     assert dispatched_messages[0].content == "hello from http"
+    assert dispatched_messages[0].slot_id == "main"
     assert received_modes == [None]
 
 
@@ -288,9 +297,11 @@ def test_post_messages_default_dependency_uses_execution_coordinator(api_client:
     ]
     assert submit_calls[0].group_folder == "group-demo"
     assert submit_calls[0].source == "web"
+    assert submit_calls[0].slot_id == "main"
     assert submit_calls[0].requested_mode == "host"
     assert response.json()["run_id"] == submit_calls[0].request_id
     assert len(store_calls) == 2
+    assert store_calls[0]["slot_id"] == "main"
     assert store_calls[0]["run_id"] == submit_calls[0].request_id
 
 
@@ -549,6 +560,96 @@ def test_post_messages_allows_shared_workspace_member(api_client: TestClient) ->
     assert dispatched_messages[0].group_folder == "shared"
 
 
+def test_post_messages_accepts_explicit_slot_for_existing_workspace(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+
+    dispatched_messages: list[UnifiedMessage] = []
+    _, owner_id = _login_headers_with_user_id(api_client, "owner", "secret")
+    member_headers, member_id = _login_headers_with_user_id(api_client, "member", "secret")
+    shared_workspace = type(
+        "RegisteredGroup",
+        (),
+        {
+            "jid": "web:shared",
+            "folder": "shared",
+            "name": "Shared",
+            "created_by": owner_id,
+            "is_home": False,
+        },
+    )()
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-shared-draft",
+                    "status": "completed",
+                    "final_output": "shared draft reply",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return None
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder == "shared":
+                return shared_workspace
+            return None
+
+        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+            _ = group
+            return user_id in {owner_id, member_id}
+
+    class FakeSlotService:
+        async def get_slot(self, workspace_folder: str, slot_id: str):
+            if workspace_folder == "shared" and slot_id == "draft":
+                return type(
+                    "ConversationSlot",
+                    (),
+                    {
+                        "workspace_folder": workspace_folder,
+                        "slot_id": slot_id,
+                    },
+                )()
+            return None
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+    app.dependency_overrides[message_routes.get_conversation_slot_service] = lambda: FakeSlotService()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "shared", "content": "hello shared", "slot_id": "draft"},
+            headers=member_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["run_id"] == "run-shared-draft"
+    assert len(dispatched_messages) == 1
+    assert dispatched_messages[0].chat_jid == "web:shared"
+    assert dispatched_messages[0].group_folder == "shared"
+    assert dispatched_messages[0].slot_id == "draft"
+
+
 def test_post_messages_hides_inaccessible_shared_workspace(api_client: TestClient) -> None:
     from app.main import app
     from app.routes import im as im_routes
@@ -612,7 +713,7 @@ def test_post_messages_hides_inaccessible_shared_workspace(api_client: TestClien
     try:
         response = api_client.post(
             "/messages",
-            json={"group_id": "shared", "content": "hello shared"},
+            json={"group_id": "shared", "content": "hello shared", "slot_id": "draft"},
             headers=outsider_headers,
         )
     finally:
@@ -621,4 +722,85 @@ def test_post_messages_hides_inaccessible_shared_workspace(api_client: TestClien
     assert outsider_id not in {owner_id, member_id}
     assert response.status_code == 404
     assert response.json() == {"detail": "group not found"}
+    assert dispatched_messages == []
+
+
+def test_post_messages_returns_404_for_missing_non_main_slot(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import im as im_routes
+    from app.routes import messages as message_routes
+    from domain.schemas import UnifiedMessage
+
+    dispatched_messages: list[UnifiedMessage] = []
+    _, owner_id = _login_headers_with_user_id(api_client, "owner", "secret")
+    member_headers, member_id = _login_headers_with_user_id(api_client, "member", "secret")
+    shared_workspace = type(
+        "RegisteredGroup",
+        (),
+        {
+            "jid": "web:shared",
+            "folder": "shared",
+            "name": "Shared",
+            "created_by": owner_id,
+            "is_home": False,
+        },
+    )()
+
+    class FakeDispatchService:
+        async def dispatch_inbound_message(
+            self,
+            message: UnifiedMessage,
+            *,
+            execution_mode: str | None = None,
+        ):
+            _ = message
+            _ = execution_mode
+            dispatched_messages.append(message)
+            return type(
+                "DispatchResult",
+                (),
+                {
+                    "run_id": "run-should-not-dispatch",
+                    "status": "completed",
+                    "final_output": "should not dispatch",
+                },
+            )()
+
+    class FakeGroupRegistry:
+        async def ensure_home_workspace(self, *, user_id: str, role: str, username: str):
+            _ = user_id
+            _ = role
+            _ = username
+            return None
+
+        async def get_web_workspace_by_folder(self, folder: str):
+            if folder == "shared":
+                return shared_workspace
+            return None
+
+        async def user_can_access_group(self, *, user_id: str, group) -> bool:
+            _ = group
+            return user_id in {owner_id, member_id}
+
+    class FakeSlotService:
+        async def get_slot(self, workspace_folder: str, slot_id: str):
+            _ = workspace_folder
+            _ = slot_id
+            return None
+
+    app.dependency_overrides[im_routes.get_message_dispatch_service] = lambda: FakeDispatchService()
+    app.dependency_overrides[message_routes.get_group_registry_service] = lambda: FakeGroupRegistry()
+    app.dependency_overrides[message_routes.get_conversation_slot_service] = lambda: FakeSlotService()
+
+    try:
+        response = api_client.post(
+            "/messages",
+            json={"group_id": "shared", "content": "hello shared", "slot_id": "draft"},
+            headers=member_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "slot not found"}
     assert dispatched_messages == []

@@ -39,6 +39,7 @@ async def store_message(
     sender: str,
     content: str,
     is_from_me: bool = False,
+    slot_id: str = "main",
     channel: str | None = None,
     group_folder: str | None = None,
     run_id: str | None = None,
@@ -52,6 +53,7 @@ async def store_message(
         content=content,
         is_from_me=is_from_me,
         timestamp=datetime.utcnow(),
+        slot_id=slot_id,
         attachments=_build_attachments_payload(
             channel=channel,
             group_folder=group_folder,

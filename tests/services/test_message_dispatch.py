@@ -12,18 +12,40 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def _build_message(*, group_folder: str | None = "group-explicit"):
+def _build_message(
+    *,
+    channel: str = "telegram",
+    group_folder: str | None = "group-explicit",
+    slot_id: str = "main",
+):
     from domain.schemas import UnifiedMessage
 
     return UnifiedMessage(
-        channel="telegram",
-        chat_jid="telegram:chat-1",
+        channel=channel,
+        chat_jid="web:shared" if channel == "web" else "telegram:chat-1",
         sender_id="user-1",
         group_folder=group_folder,
+        slot_id=slot_id,
         content="hello from telegram",
         message_id="external-msg-1",
         timestamp=datetime(2026, 3, 12, 12, 0, tzinfo=timezone.utc),
     )
+
+
+def test_unified_message_defaults_slot_id_to_main() -> None:
+    from domain.schemas import UnifiedMessage
+
+    message = UnifiedMessage(
+        channel="telegram",
+        chat_jid="telegram:chat-1",
+        sender_id="user-1",
+        group_folder="group-explicit",
+        content="hello from telegram",
+        message_id="external-msg-1",
+        timestamp=datetime(2026, 3, 12, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert message.slot_id == "main"
 
 
 @pytest.mark.asyncio
@@ -75,12 +97,15 @@ async def test_dispatch_inbound_message_uses_explicit_group_folder() -> None:
     assert trigger_calls[0]["group_folder"] == "group-explicit"
     assert trigger_calls[0]["request_id"] == result.run_id
     assert store_calls[0]["group_folder"] == "group-explicit"
+    assert store_calls[0]["slot_id"] == "main"
     assert store_calls[0]["run_id"] == result.run_id
     assert store_calls[0]["external_message_id"] == "external-msg-1"
     assert store_calls[0]["is_from_me"] is False
+    assert store_calls[1]["slot_id"] == "main"
     assert store_calls[1]["is_from_me"] is True
     assert routed_messages[0].content == "agent reply"
     assert routed_messages[0].group_folder == "group-explicit"
+    assert routed_messages[0].slot_id == "main"
 
 
 @pytest.mark.asyncio
@@ -435,12 +460,16 @@ async def test_dispatch_inbound_message_uses_execution_coordinator_when_configur
     assert submit_calls[0].group_folder == "resolved-group"
     assert submit_calls[0].prompt == "hello from telegram"
     assert submit_calls[0].source == "im"
+    assert submit_calls[0].slot_id == "main"
     assert submit_calls[0].request_id == result.run_id
     assert wait_calls == [result.run_id]
     assert len(store_calls) == 2
+    assert store_calls[0]["slot_id"] == "main"
     assert store_calls[0]["run_id"] == result.run_id
+    assert store_calls[1]["slot_id"] == "main"
     assert store_calls[1]["run_id"] == result.run_id
     assert routed_messages[0].content == "reply from coordinator"
+    assert routed_messages[0].slot_id == "main"
 
 
 @pytest.mark.asyncio
@@ -545,3 +574,117 @@ async def test_dispatch_inbound_message_propagates_explicit_execution_mode() -> 
     )
 
     assert submit_calls[0].requested_mode == "host"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_inbound_message_propagates_web_slot_id_to_storage_and_execution() -> None:
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    submit_calls: list[object] = []
+    store_calls: list[dict[str, object]] = []
+    routed_messages: list[object] = []
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id=request.request_id or "run-coordinator",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="shared",
+                backend="openai_runtime",
+                session_id="shared#slot:draft",
+                slot_id="draft",
+                final_output="reply from draft slot",
+            )
+
+    def resolver(message):
+        return ResolvedMessageTarget(group_folder="shared", chat_jid=message.chat_jid)
+
+    async def store_message(**kwargs):
+        store_calls.append(kwargs)
+        return SimpleNamespace(id=f"db-{len(store_calls)}")
+
+    class Router:
+        async def route_message(self, message):
+            routed_messages.append(message)
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        execution_coordinator=FakeCoordinator(),
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    await service.dispatch_inbound_message(
+        _build_message(channel="web", group_folder="shared", slot_id="draft")
+    )
+
+    assert submit_calls[0].slot_id == "draft"
+    assert store_calls[0]["slot_id"] == "draft"
+    assert store_calls[1]["slot_id"] == "draft"
+    assert routed_messages[0].slot_id == "draft"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_inbound_message_pins_im_messages_to_main_slot() -> None:
+    from services.execution_coordinator import ExecutionHandle, ExecutionResult
+    from services.message_dispatch import MessageDispatchService, ResolvedMessageTarget
+
+    submit_calls: list[object] = []
+    store_calls: list[dict[str, object]] = []
+    routed_messages: list[object] = []
+
+    class FakeCoordinator:
+        async def submit_execution(self, request):
+            submit_calls.append(request)
+            return ExecutionHandle(
+                run_id=request.request_id or "run-coordinator",
+                group_folder=request.group_folder,
+                status="queued",
+            )
+
+        async def wait_for_run(self, run_id: str):
+            return ExecutionResult(
+                run_id=run_id,
+                status="completed",
+                group_folder="main",
+                backend="openai_runtime",
+                session_id="main#slot:main",
+                slot_id="main",
+                final_output="reply from main slot",
+            )
+
+    def resolver(message):
+        return ResolvedMessageTarget(group_folder="main", chat_jid=message.chat_jid)
+
+    async def store_message(**kwargs):
+        store_calls.append(kwargs)
+        return SimpleNamespace(id=f"db-{len(store_calls)}")
+
+    class Router:
+        async def route_message(self, message):
+            routed_messages.append(message)
+
+    service = MessageDispatchService(
+        target_resolver=resolver,
+        execution_coordinator=FakeCoordinator(),
+        store_message=store_message,
+        message_router=Router(),
+    )
+
+    await service.dispatch_inbound_message(
+        _build_message(channel="telegram", group_folder=None, slot_id="draft")
+    )
+
+    assert submit_calls[0].slot_id == "main"
+    assert store_calls[0]["slot_id"] == "main"
+    assert store_calls[1]["slot_id"] == "main"
+    assert routed_messages[0].slot_id == "main"

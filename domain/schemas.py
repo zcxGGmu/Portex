@@ -203,6 +203,15 @@ class SendMessageRequest(BaseModel):
         description="Message content to dispatch through the current runtime chain.",
         examples=["hello from HTTP"],
     )
+    slot_id: str = Field(
+        default="main",
+        min_length=1,
+        description=(
+            "Conversation slot identifier under the target workspace. When omitted, "
+            "the workspace main slot is used."
+        ),
+        examples=["main"],
+    )
     execution_mode: ExecutionMode | None = Field(
         default=None,
         description=(
@@ -337,6 +346,7 @@ class UnifiedMessage(BaseModel):
     chat_jid: str = Field(min_length=1)
     sender_id: str = Field(min_length=1)
     group_folder: str | None = None
+    slot_id: str = Field(default="main", min_length=1)
     content: str
     message_id: str = Field(min_length=1)
     timestamp: datetime

@@ -101,12 +101,14 @@ class MessageDispatchService:
         if self._register_target is not None:
             await self._register_target(message, target)
         run_id = uuid4().hex
+        slot_id = self._resolve_slot_id(message)
 
         inbound_record = await self._store_message(
             chat_jid=target.chat_jid,
             sender=message.sender_id,
             content=message.content,
             is_from_me=False,
+            slot_id=slot_id,
             channel=message.channel,
             group_folder=target.group_folder,
             run_id=run_id,
@@ -119,6 +121,7 @@ class MessageDispatchService:
                     target,
                     message,
                     run_id=run_id,
+                    slot_id=slot_id,
                     execution_mode=execution_mode,
                 )
             )
@@ -133,6 +136,7 @@ class MessageDispatchService:
                 session_id_factory=self._session_id_factory,
                 request_id=run_id,
             )
+        result_slot_id = getattr(run_result, "slot_id", slot_id)
 
         if run_result.status != "completed":
             return DispatchResult(
@@ -152,6 +156,7 @@ class MessageDispatchService:
             chat_jid=target.chat_jid,
             sender_id=self._assistant_sender_id,
             group_folder=target.group_folder,
+            slot_id=result_slot_id,
             content=run_result.final_output,
             message_id=f"out-{run_result.run_id}",
             timestamp=_utcnow(),
@@ -163,6 +168,7 @@ class MessageDispatchService:
             sender=self._assistant_sender_id,
             content=run_result.final_output,
             is_from_me=True,
+            slot_id=result_slot_id,
             channel=message.channel,
             group_folder=target.group_folder,
             run_id=run_result.run_id,
@@ -195,6 +201,7 @@ class MessageDispatchService:
         message: UnifiedMessage,
         *,
         run_id: str,
+        slot_id: str,
         execution_mode: ExecutionMode | None = None,
     ) -> ExecutionRequest:
         source = "web" if message.channel == "web" else "im"
@@ -205,8 +212,14 @@ class MessageDispatchService:
             user_id=message.sender_id,
             prompt=message.content,
             source=source,
+            slot_id=slot_id,
             requested_mode=execution_mode,
         )
+
+    def _resolve_slot_id(self, message: UnifiedMessage) -> str:
+        if message.channel == "web":
+            return message.slot_id
+        return "main"
 
     def _missing_runtime_factory(self, group_folder: str):
         _ = group_folder
