@@ -267,19 +267,19 @@ def test_init_db_backfills_group_members_workspace_columns_for_existing_tables(
             row[1]: row
             for row in connection.execute("PRAGMA table_info('group_members')").fetchall()
         }
+        assert "group_jid" not in columns
         row = connection.execute(
-            "SELECT group_folder, added_by FROM group_members WHERE group_jid = ? AND user_id = ?",
+            "SELECT group_folder, added_by FROM group_members WHERE group_folder = ? AND user_id = ?",
             ("group-demo", "user-1"),
         ).fetchone()
     finally:
         connection.close()
 
     assert "group_folder" in columns
-    assert columns["group_folder"][3] == 0
+    assert columns["group_folder"][3] == 1
     assert "added_by" in columns
     assert columns["added_by"][3] == 0
     assert row == ("group-demo", None)
-    assert "group_jid" not in columns
 
     connection = sqlite3.connect(database_path)
     try:
