@@ -867,6 +867,68 @@ class UpdateSettingsSystemRequest(BaseModel):
     )
 
 
+class CreateTerminalSessionRequest(BaseModel):
+    requested_mode: ExecutionMode = Field(
+        default="container",
+        description="Requested execution mode for the terminal session. Terminal v1 only supports container mode.",
+        examples=["container"],
+    )
+
+
+class TerminalSessionResponse(BaseModel):
+    session_id: str = Field(
+        description="Current terminal session identifier.",
+        examples=["terminal-session-123"],
+    )
+    group_id: str = Field(
+        description="Workspace identifier that owns the terminal session.",
+        examples=["project-alpha"],
+    )
+    owner_user_id: str = Field(
+        description="User identifier that owns the current terminal session.",
+        examples=["user-1234567890ab"],
+    )
+    backend: Literal["docker_container"] = Field(
+        description="Execution backend currently used by the terminal session.",
+        examples=["docker_container"],
+    )
+    container_name: str | None = Field(
+        default=None,
+        description="Docker container name reserved for the current terminal session when known.",
+        examples=["portex-terminal-project-alpha-123"],
+    )
+    status: Literal["created", "attached", "detached", "closed", "exited"] = Field(
+        description="Current terminal session lifecycle state.",
+        examples=["attached"],
+    )
+    created_at: datetime = Field(
+        description="Terminal session creation timestamp in UTC.",
+        examples=["2026-03-15T12:00:00Z"],
+    )
+    last_attached_at: datetime | None = Field(
+        default=None,
+        description="Last timestamp when a WebSocket client successfully attached to the session.",
+        examples=["2026-03-15T12:01:00Z"],
+    )
+    reconnect_deadline: datetime | None = Field(
+        default=None,
+        description="Reconnect deadline while the session is detached, when one exists.",
+        examples=["2026-03-15T12:01:30Z"],
+    )
+
+    @field_validator("created_at", "last_attached_at", "reconnect_deadline", mode="after")
+    @classmethod
+    def normalize_terminal_session_datetimes(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class DeleteTerminalSessionResponse(BaseModel):
+    status: Literal["closed"] = Field(
+        description="Result of the terminal-session close operation.",
+        examples=["closed"],
+    )
+
+
 class CreateConversationSlotRequest(BaseModel):
     slot_id: str = Field(
         min_length=1,
@@ -1543,8 +1605,10 @@ class TaskRunLogListResponse(BaseModel):
 __all__ = [
     "AuditMessageListResponse",
     "AuditMessageResponse",
+    "CreateTerminalSessionRequest",
     "CreateGroupMemberRequest",
     "DeleteTaskResponse",
+    "DeleteTerminalSessionResponse",
     "DeleteGroupMemberResponse",
     "ExecutionRecoveryResponse",
     "ExecutionRunStatusResponse",
@@ -1566,6 +1630,7 @@ __all__ = [
     "TaskRunLogListResponse",
     "TaskRunLogResponse",
     "TaskResponse",
+    "TerminalSessionResponse",
     "TokenResponse",
     "UnifiedMessage",
     "UpdateUserRequest",

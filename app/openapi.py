@@ -8,8 +8,8 @@ OPENAPI_DESCRIPTION = (
     "Portex HTTP API for authentication, admin operations, groups, messages, and "
     "scheduled tasks.\n\n"
     "This OpenAPI schema documents the current HTTP surface only. The WebSocket "
-    "entrypoint `/ws/{group_folder}` is implemented separately and is not represented "
-    "in this schema."
+    "entrypoints `/ws/{group_folder}` and `/ws/terminals/{session_id}` are implemented "
+    "separately and are not represented in this schema."
 )
 
 OPENAPI_TAGS = [
@@ -80,6 +80,10 @@ OPENAPI_TAGS = [
         "name": "executions",
         "description": "Execution run status query endpoints exposing coordinator "
         "run-state and minimal recovery signals.",
+    },
+    {
+        "name": "terminals",
+        "description": "Backend-only terminal session lifecycle endpoints for container-backed workspaces.",
     },
     {
         "name": "tasks",

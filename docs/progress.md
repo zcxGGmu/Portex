@@ -90,12 +90,20 @@
 - `M7.6.3` 已完成（slash-command parity scope decision，明确排除通用命令体系）。
 - `M7.6.4` 已完成（richer IM artifacts parity scope decision，明确排除）。
 - `M7.6.5` 已完成（intentionally unmatched HappyClaw surfaces consolidation）。
-- 当前起点：当前 `M7` parity decision track 已完成；`M7.6.2` 在当前决策下不适用；若继续扩展需先新建明确里程碑；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.1` 已完成（terminal session backend，backend-only）。
+- 当前起点：若继续扩展，下一自然入口是 `M8.2`（terminal UI / Web terminal panel），但尚未立项；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.1`：新增 `docs/plans/2026-03-15-m8-1-terminal-session-backend-design.md` 与 `docs/plans/2026-03-15-m8-1-terminal-session-backend.md`，将 terminal work 范围固定为“container-only backend/session/API/protocol”，不提前吞掉前端 terminal UI。
+- `M8.1`：新增 `services/terminal_sessions.py` 与 `services/terminal_bridge.py`，实现进程内 terminal session registry、ownership/reconnect timeout、bridge 抽象，以及 docker-backed terminal bridge 的最小生产实现边界。
+- `M8.1`：新增 `app/routes/terminals.py`，提供 `POST/GET/DELETE /terminals/{group_id}/sessions...` 和独立 `/ws/terminals/{session_id}` 协议，不复用现有聊天 `/ws/{group_folder}`。
+- `M8.1`：扩展 `services/execution_runtime.py`、`domain/schemas.py`、`app/openapi.py`、`app/main.py` 与 `tests/app/routes/test_api_routes.py`，补齐 terminal dependency wiring、HTTP schema/OpenAPI tag 和 route-contract coverage。
+- `M8.1`：新增 `tests/services/test_terminal_sessions.py`、`tests/app/routes/test_terminal_routes.py` 与 `tests/app/routes/test_terminal_websocket_routes.py`。red-green 证据已记录：先因 `services.terminal_sessions` 和 `app.routes.terminals` 缺失而失败，再补齐 service/route 后恢复通过。
+- `M8.1`：当前 v1 边界已明确锁定：仅支持 `requested_mode=container`，`openai` 返回 unsupported，`host` 返回 policy-disabled；session registry 仅在内存，owner 断线后 30 秒内允许重连，服务进程重启后活动 terminal 失效。
+- `M8.1`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M7.6.5`：新增 `docs/plans/2026-03-15-m7-6-5-intentionally-unmatched-surfaces-design.md` 与 `docs/plans/2026-03-15-m7-6-5-intentionally-unmatched-surfaces.md`，将范围固定为“汇总 HappyClaw-specific surfaces 中哪些在 Portex 当前 scope 下有意不对齐”。
 - `M7.6.5`：当前明确记为 intentionally unmatched 的表面包括：QQ parity、generic slash-command parity、provider-specific richer IM artifacts parity。
 - `M7.6.5`：terminal panel 继续被明确归类为“deferred but reopenable”，而不是 intentionally unmatched；其未来是否回到 roadmap，仍取决于专门的 backend/session/policy 里程碑，而不是当前 `M7.6` 汇总决策。
@@ -617,6 +625,7 @@
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
 - `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.6.1`、`M7.6.3`、`M7.6.4` 与 `M7.6.5` 的决策链现已完成：QQ、generic slash-command parity、richer IM artifacts parity 明确排除，terminal panel 仍维持 deferred 而非 rejected。当前没有新的 `M7` parity backlog 入口，后续扩展应以新的明确里程碑重新进入。
+- `M8.1` 当前已完成 terminal backend/session prerequisite slice：terminal 协议已与聊天 WS 解耦，container-only session lifecycle 已具备，但 host terminal、persistent session registry、terminal audit persistence、以及任何前端 terminal UI 仍未开始。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -627,10 +636,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M7.6.5` 已完成，关键文档在 `docs/plans/2026-03-15-m7-6-5-intentionally-unmatched-surfaces-design.md`、`docs/plans/2026-03-15-m7-6-5-intentionally-unmatched-surfaces.md` 与本文件；当前 restart 结论是：QQ、generic slash-command parity、richer IM artifacts parity 有意不对齐，terminal panel 仍只是 deferred。
-3. 当前 `M7` parity decision track 已耗尽。继续开发前，先确认是否要新开正式里程碑；不要再把已排除项重新当作默认待办，也不要把 terminal defer 误读成永久拒绝。
+2. `M8.1` 已完成，关键实现点在 `services/terminal_sessions.py`、`services/terminal_bridge.py`、`app/routes/terminals.py`、`services/execution_runtime.py`、`domain/schemas.py` 与 `app/openapi.py`；关键规划文档在 `docs/plans/2026-03-15-m8-1-terminal-session-backend-design.md` 与 `docs/plans/2026-03-15-m8-1-terminal-session-backend.md`。
+3. 当前有效起点可视为 `M8.2` 候选：如果继续 terminal 方向，下一步应是 Web terminal UI / panel 接线到现有 backend protocol，而不是回头重做 backend boundary。若改做别的方向，也应先显式开新里程碑。
 4. 复现当前基线建议命令：
-   - `M7.6.5 docs decision`：`cd web && npm run lint && npm run build`
+   - `M8.1 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -640,4 +649,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5` 已完成；QQ、通用 slash-command parity 和 richer IM artifacts parity 已明确排除出当前 scope，terminal panel 仍为 deferred，当前 `M7` parity 决策链已完成。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1` 已完成；当前终端后端契约已到位，下一自然入口是 `M8.2` terminal UI，但尚未立项。

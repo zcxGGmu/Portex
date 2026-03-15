@@ -17,6 +17,8 @@ from services.execution_backends import (
 )
 from services.execution_coordinator import ExecutionCoordinator
 from services.execution_policy import ExecutionPolicy
+from services.terminal_bridge import DockerExecTerminalBridge
+from services.terminal_sessions import TerminalSessionService
 
 
 def _default_runtime_factory(group_folder: str) -> OpenAIAgentsRuntime:
@@ -44,6 +46,23 @@ def get_execution_coordinator() -> ExecutionCoordinator:
 
 def reset_execution_coordinator() -> None:
     get_execution_coordinator.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def get_terminal_session_service() -> TerminalSessionService:
+    container_manager = ContainerManager(DockerClient())
+    return TerminalSessionService(
+        bridge_factory=lambda **kwargs: DockerExecTerminalBridge(
+            container_manager=container_manager,
+            group_folder=kwargs["group_folder"],
+            owner_user_id=kwargs["owner_user_id"],
+            session_id=kwargs["session_id"],
+        )
+    )
+
+
+def reset_terminal_session_service() -> None:
+    get_terminal_session_service.cache_clear()
 
 
 def build_monitor_backend_health(
@@ -104,5 +123,7 @@ def _probe_backend_health(backend_name: str, backend: Any) -> MonitorBackendHeal
 __all__ = [
     "build_monitor_backend_health",
     "get_execution_coordinator",
+    "get_terminal_session_service",
     "reset_execution_coordinator",
+    "reset_terminal_session_service",
 ]

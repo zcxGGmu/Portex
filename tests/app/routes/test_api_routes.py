@@ -2229,6 +2229,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "tasks" in tags
     assert "messages" in tags
     assert "executions" in tags
+    assert "terminals" in tags
     assert "monitor" in tags
     assert "files" in tags
     assert "memory" in tags
@@ -2261,6 +2262,18 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     execution_status_operation = schema["paths"]["/executions/{run_id}"]["get"]
     assert "status" in execution_status_operation["summary"].lower()
     assert "404" in execution_status_operation["responses"]
+
+    create_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions"]["post"]
+    assert "terminal" in create_terminal_session_operation["summary"].lower()
+    assert "409" in create_terminal_session_operation["responses"]
+
+    get_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions/current"]["get"]
+    assert "terminal" in get_terminal_session_operation["summary"].lower()
+    assert "404" in get_terminal_session_operation["responses"]
+
+    delete_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions/current"]["delete"]
+    assert "close" in delete_terminal_session_operation["summary"].lower()
+    assert "409" in delete_terminal_session_operation["responses"]
 
     monitor_operation = schema["paths"]["/monitor"]["get"]
     assert "monitor" in monitor_operation["summary"].lower()

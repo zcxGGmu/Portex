@@ -14,6 +14,7 @@ __all__ = [
     "usage",
     "audit",
     "executions",
+    "terminals",
     "im",
     "messages",
     "tasks",

@@ -21,6 +21,7 @@ from app.routes import (
     settings,
     skills,
     tasks,
+    terminals,
     usage,
     users,
     websocket,
@@ -59,6 +60,7 @@ app.include_router(usage.router)
 app.include_router(audit.router)
 app.include_router(im.router)
 app.include_router(executions.router)
+app.include_router(terminals.router)
 app.include_router(messages.router)
 app.include_router(tasks.router)
 app.include_router(websocket.router)
