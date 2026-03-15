@@ -86,12 +86,18 @@
 - `M7.5.5` 已完成（terminal panel 范围与边界决策）。
 - `M7.5.6` 已完成（setup/onboarding pages）。
 - `M7.5.7` 已完成（mobile/PWA shell）。
-- 当前起点：继续 parity backlog 时，从 `M7.6.1` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.6.1` 已完成（QQ parity scope decision，明确排除）。
+- 当前起点：继续 parity backlog 时，从 `M7.6.3` 开始；`M7.6.2` 在当前决策下不适用；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M7.6.1`：新增 `docs/plans/2026-03-15-m7-6-1-qq-scope-decision-design.md` 与 `docs/plans/2026-03-15-m7-6-1-qq-scope-decision.md`，将范围固定为“QQ 是否进入 Portex parity scope”的显式决策，不提前吞掉 `M7.6.3` slash-command、`M7.6.4` richer IM artifacts 或 `M7.6.5` unmatched-surface inventory。
+- `M7.6.1`：决策结果为当前 Portex parity roadmap 明确排除 QQ；HappyClaw 的 QQ 能力仅保留为参考实现，不进入现有 Portex active milestone track。
+- `M7.6.1`：根据该决策，`M7.6.2`（仅在 QQ in scope 时成立）当前不适用；下一步真实入口前移到 `M7.6.3`。
+- `M7.6.1`：本里程碑没有运行时代码改动，只更新设计/计划/handoff 文档；验证仍沿用仓库标准回归链确认没有意外回归。
+- `M7.6.1`：fresh 验证已通过 `cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M7.5.7`：新增 `docs/plans/2026-03-15-m7-5-7-mobile-pwa-design.md` 与 `docs/plans/2026-03-15-m7-5-7-mobile-pwa.md`，将范围固定为“installable PWA + mobile shell”，明确不提前吞掉离线消息、推送通知或 `M7.6` channel/ecosystem 决策。
 - `M7.5.7`：`web/package.json` / `web/package-lock.json` / `web/vite.config.ts` 已接入 `vite-plugin-pwa`，产出最小 `manifest.webmanifest`、`sw.js` 和 app-shell 级 precache，不引入 API runtime caching。
 - `M7.5.7`：新增 `web/src/pwa.ts`、`web/src/hooks/usePwaInstall.ts`、`web/src/components/pwa/PwaControls.tsx` 与 `web/src/vite-env.d.ts`，补齐 service worker 注册、dev stale-cache cleanup、install/update 状态读面、iOS/Safari 手动安装提示和安装控件。
@@ -592,7 +598,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.5.7` 已完成，下一步入口应前移到 `M7.6.1`（先做 channel/ecosystem parity scope decision），terminal panel 仍按 `M7.5.5` 决策维持 deferred。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.6.1` 已完成且明确排除 QQ，`M7.6.2` 因此前提不成立而不适用，下一步入口应前移到 `M7.6.3`（slash-command parity decision），terminal panel 仍按 `M7.5.5` 决策维持 deferred。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -603,10 +609,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M7.5.7` 已完成，关键实现点在 `web/vite.config.ts`、`web/index.html`、`web/src/main.tsx`、`web/src/pwa.ts`、`web/src/hooks/usePwaInstall.ts`、`web/src/components/pwa/PwaControls.tsx`、`web/src/components/layout/AppLayout.tsx`、`web/src/index.css`、`web/src/vite-env.d.ts` 与 `web/public/icons/`，以及规划文档 `docs/plans/2026-03-15-m7-5-7-mobile-pwa-design.md` / `docs/plans/2026-03-15-m7-5-7-mobile-pwa.md`。
-3. 当前有效起点前移到 `M7.6.1`。继续 parity 时先做 channel/ecosystem scope 决策，明确 QQ、slash-command 和 richer IM artifacts 哪些要进 Portex，哪些明确排除，不要直接跳到实现。
+2. `M7.6.1` 已完成，关键文档在 `docs/plans/2026-03-15-m7-6-1-qq-scope-decision-design.md`、`docs/plans/2026-03-15-m7-6-1-qq-scope-decision.md` 与本文件；结论是 QQ 明确排除出当前 Portex parity scope，`M7.6.2` 因此前提不成立而不适用。
+3. 当前有效起点前移到 `M7.6.3`。继续 parity 时先决定 Portex 需要多少 HappyClaw slash-command 行为，评估对象只保留当前已支持或明确保留的渠道，不要把 QQ 假定为隐含前提。
 4. 复现当前基线建议命令：
-   - `M7.5.7 focused`：`cd web && npm run lint && npm run build`
+   - `M7.6.1 docs decision`：`cd web && npm run lint && npm run build`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -616,4 +622,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7` 已完成；当前 parity backlog 的下一步入口是 `M7.6.1`。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1` 已完成；QQ 已明确排除出当前 parity scope，下一步入口是 `M7.6.3`。
