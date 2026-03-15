@@ -14,6 +14,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useChatStore } from '../../stores/chat'
 import { isStreamEvent } from '../../types/events'
 import { MessageList } from './MessageList'
+import { TerminalPanel } from './TerminalPanel'
 import { ThinkingPanel } from './ThinkingPanel'
 import { ToolCallTracker } from './ToolCallTracker'
 import { PrimaryButton } from '../ui/PrimaryButton'
@@ -583,6 +584,7 @@ export function ChatPanel() {
             </div>
           </form>
         </section>
+        <TerminalPanel activeGroupId={activeGroupId} activeGroupName={activeGroup?.name ?? null} />
       </div>
 
       <aside className="chat-shell-side">

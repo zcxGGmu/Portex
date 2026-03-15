@@ -121,6 +121,26 @@ export interface GroupImBindingListResponse {
   bindings: GroupImBindingSummary[]
 }
 
+export type TerminalBackend = 'docker_container'
+
+export type TerminalSessionStatus = 'created' | 'attached' | 'detached' | 'closed' | 'exited'
+
+export interface TerminalSessionResponse {
+  session_id: string
+  group_id: string
+  owner_user_id: string
+  backend: TerminalBackend
+  container_name: string | null
+  status: TerminalSessionStatus
+  created_at: string
+  last_attached_at: string | null
+  reconnect_deadline: string | null
+}
+
+export interface DeleteTerminalSessionResponse {
+  status: 'closed'
+}
+
 export interface HealthResponse {
   status: string
   version: string
@@ -526,6 +546,38 @@ export const apiClient = {
   },
   getGroupImBindings(token: string, groupId: string): Promise<GroupImBindingListResponse> {
     return request<GroupImBindingListResponse>(`/groups/${encodeURIComponent(groupId)}/bindings/im`, { token })
+  },
+  async getCurrentTerminalSession(
+    token: string,
+    groupId: string,
+  ): Promise<TerminalSessionResponse | null> {
+    try {
+      return await request<TerminalSessionResponse>(
+        `/terminals/${encodeURIComponent(groupId)}/sessions/current`,
+        { token },
+      )
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null
+      }
+      throw error
+    }
+  },
+  createTerminalSession(token: string, groupId: string): Promise<TerminalSessionResponse> {
+    return request<TerminalSessionResponse>(`/terminals/${encodeURIComponent(groupId)}/sessions`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ requested_mode: 'container' }),
+    })
+  },
+  closeCurrentTerminalSession(token: string, groupId: string): Promise<DeleteTerminalSessionResponse> {
+    return request<DeleteTerminalSessionResponse>(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/current`,
+      {
+        method: 'DELETE',
+        token,
+      },
+    )
   },
   bindGroupImEndpoint(token: string, groupId: string, imJid: string): Promise<GroupImBindingSummary> {
     return request<GroupImBindingSummary>(

@@ -93,6 +93,24 @@ export function useGroupImBindingsQuery(groupId: string | null, enabled = true) 
   })
 }
 
+export function useCurrentTerminalSessionQuery(groupId: string | null, enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['terminal-session-current', token, groupId],
+    enabled: Boolean(token && groupId && enabled),
+    queryFn: async () => {
+      if (!token || !groupId) {
+        throw new Error('Missing token or group id')
+      }
+
+      return apiClient.getCurrentTerminalSession(token, groupId)
+    },
+    staleTime: 1_000,
+    refetchInterval: 5_000,
+  })
+}
+
 export function useSettingsProviderQuery() {
   const token = useAuthStore((state) => state.token)
 

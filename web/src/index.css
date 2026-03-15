@@ -300,6 +300,8 @@ a {
 
 .chat-shell-center {
   min-width: 0;
+  display: grid;
+  gap: 1rem;
 }
 
 .chat-shell-card {
@@ -636,6 +638,10 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .terminal-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .files-list-row {
     grid-template-columns: 1fr;
   }
@@ -844,6 +850,98 @@ a {
 .status-badge--idle {
   background-color: #eef2f7;
   color: #516173;
+}
+
+.status-badge--danger {
+  background-color: #fdecec;
+  color: var(--danger);
+}
+
+.terminal-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.terminal-panel-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.terminal-meta-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.terminal-meta-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.2rem;
+  background: #fbfcfe;
+  font-size: 0.92rem;
+}
+
+.terminal-meta-card strong {
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.terminal-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.terminal-transcript {
+  min-height: 260px;
+  max-height: 420px;
+  overflow-y: auto;
+  border-radius: 14px;
+  border: 1px solid #0b2340;
+  background:
+    linear-gradient(180deg, rgba(13, 25, 45, 0.98), rgba(8, 16, 29, 0.98)),
+    radial-gradient(circle at top right, rgba(42, 116, 255, 0.2), transparent 45%);
+  color: #dbe7ff;
+  padding: 0.9rem 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.terminal-transcript pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 0.92rem/1.55 "IBM Plex Mono", "Fira Code", "SFMono-Regular", monospace;
+}
+
+.terminal-transcript .muted {
+  color: #a9bad5;
+}
+
+.terminal-command-form {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.terminal-command-input {
+  flex: 1 1 320px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.68rem 0.75rem;
+  font: inherit;
+  background: #fff;
+}
+
+.terminal-command-input:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .settings-grid {
@@ -1189,6 +1287,14 @@ a {
   .files-editor-actions,
   .audit-toolbar {
     align-items: stretch;
+  }
+
+  .terminal-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .terminal-command-form {
+    flex-direction: column;
   }
 
   .mobile-more-sheet {

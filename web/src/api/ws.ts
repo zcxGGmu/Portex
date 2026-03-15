@@ -66,6 +66,18 @@ export function resolveWebSocketUrl(
   return `${baseUrl}/ws/${encodedGroupFolder}`
 }
 
+export function resolveTerminalWebSocketUrl(
+  sessionId: string,
+  accessToken: string,
+  options: Pick<CreateWebSocketOptions, 'baseUrl'> = {},
+): string {
+  const encodedSessionId = encodeURIComponent(sessionId)
+  const baseUrl = resolveWsBaseUrl(options.baseUrl).replace(/\/+$/, '')
+  const params = new URLSearchParams()
+  params.set('access_token', accessToken)
+  return `${baseUrl}/ws/terminals/${encodedSessionId}?${params.toString()}`
+}
+
 export function parseWebSocketMessage(rawData: unknown): WebSocketMessage {
   if (typeof rawData !== 'string') {
     return (rawData ?? null) as WebSocketMessage
@@ -95,4 +107,12 @@ export function createWebSocket(
   options: CreateWebSocketOptions = {},
 ): WebSocket {
   return new WebSocket(resolveWebSocketUrl(groupFolder, options), options.protocols)
+}
+
+export function createTerminalWebSocket(
+  sessionId: string,
+  accessToken: string,
+  options: CreateWebSocketOptions = {},
+): WebSocket {
+  return new WebSocket(resolveTerminalWebSocketUrl(sessionId, accessToken, options), options.protocols)
 }

@@ -93,10 +93,14 @@ def _map_terminal_error(exc: Exception) -> HTTPException:
 
 def _authenticate_websocket(websocket: WebSocket) -> UserResponse | None:
     authorization = websocket.headers.get("authorization")
-    if not authorization:
-        return None
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or token == "":
+    token = ""
+    if authorization:
+        scheme, _, header_token = authorization.partition(" ")
+        if scheme.lower() == "bearer" and header_token:
+            token = header_token
+    if token == "":
+        token = websocket.query_params.get("access_token", "")
+    if token == "":
         return None
     user_id = auth_service.decode_access_token(token)
     if user_id is None:
