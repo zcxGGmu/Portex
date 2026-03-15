@@ -91,12 +91,15 @@
 - `M7.6.4` 已完成（richer IM artifacts parity scope decision，明确排除）。
 - `M7.6.5` 已完成（intentionally unmatched HappyClaw surfaces consolidation）。
 - `M8.1` 已完成（terminal session backend，backend-only）。
-- 当前起点：若继续扩展，下一自然入口是 `M8.2`（terminal UI / Web terminal panel），但尚未立项；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- 当前起点：`M8.2`（terminal UI / Web terminal panel）设计与实施计划已落在 `docs/plans/2026-03-15-m8-2-terminal-ui-design.md` 与 `docs/plans/2026-03-15-m8-2-terminal-ui.md`；下一位 Codex 直接执行 browser-compatible terminal WebSocket auth shim + chat terminal panel implementation。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.2`：新增 `docs/plans/2026-03-15-m8-2-terminal-ui-design.md` 与 `docs/plans/2026-03-15-m8-2-terminal-ui.md`，将范围固定为“chat 内 Web terminal panel + 最小浏览器兼容 WS 鉴权补丁”，不提前吞掉 terminal persistence、TTY fidelity、host/openai terminal 或共享接管语义。
+- `M8.2`：设计已明确复用 `M8.1` terminal REST/WS 协议，仅为 `/ws/terminals/{session_id}` 增加 browser-usable token transport；终端 UI 继续保持 container-only、plain-text transcript、owner/admin only 和 local-only output buffer。
+- `M8.2`：实施计划已明确下一步 red-green 路径：先为 terminal WebSocket 增加 query-token auth focused test，再以 `ChatPanel` 引入未实现 `TerminalPanel` 触发前端 build 红灯，随后补齐 API/WS helpers、terminal panel 和样式实现。
 - `M8.1`：新增 `docs/plans/2026-03-15-m8-1-terminal-session-backend-design.md` 与 `docs/plans/2026-03-15-m8-1-terminal-session-backend.md`，将 terminal work 范围固定为“container-only backend/session/API/protocol”，不提前吞掉前端 terminal UI。
 - `M8.1`：新增 `services/terminal_sessions.py` 与 `services/terminal_bridge.py`，实现进程内 terminal session registry、ownership/reconnect timeout、bridge 抽象，以及 docker-backed terminal bridge 的最小生产实现边界。
 - `M8.1`：新增 `app/routes/terminals.py`，提供 `POST/GET/DELETE /terminals/{group_id}/sessions...` 和独立 `/ws/terminals/{session_id}` 协议，不复用现有聊天 `/ws/{group_folder}`。
