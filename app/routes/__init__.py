@@ -11,6 +11,8 @@ __all__ = [
     "skills",
     "mcp_servers",
     "settings",
+    "usage",
+    "audit",
     "executions",
     "im",
     "messages",

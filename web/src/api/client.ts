@@ -246,6 +246,56 @@ export interface MonitorResponse {
   }
 }
 
+export interface UsageSummary {
+  total_messages: number
+  total_runs: number
+  total_user_messages: number
+  total_assistant_messages: number
+  total_active_days: number
+}
+
+export interface UsageDailyBreakdown {
+  date: string
+  message_count: number
+  run_count: number
+  user_message_count: number
+  assistant_message_count: number
+}
+
+export interface UsageChannelBreakdown {
+  channel: 'web' | 'feishu' | 'telegram'
+  message_count: number
+  run_count: number
+}
+
+export interface UsageStatsResponse {
+  days: number
+  summary: UsageSummary
+  daily: UsageDailyBreakdown[]
+  channels: UsageChannelBreakdown[]
+}
+
+export interface AuditMessage {
+  message_id: string
+  chat_jid: string
+  group_id: string
+  channel: 'web' | 'feishu' | 'telegram'
+  run_id: string | null
+  external_message_id: string | null
+  sender: string
+  is_from_me: boolean
+  slot_id: string
+  content: string | null
+  timestamp: string
+}
+
+export interface AuditMessageListResponse {
+  limit: number
+  group_id: string | null
+  has_more: boolean
+  items: AuditMessage[]
+}
+
 interface RequestOptions extends RequestInit {
   token?: string | null
 }
@@ -435,6 +485,25 @@ export const apiClient = {
   },
   getMonitor(token: string): Promise<MonitorResponse> {
     return request<MonitorResponse>('/monitor', { token })
+  },
+  getUsageStats(token: string, days = 7): Promise<UsageStatsResponse> {
+    return request<UsageStatsResponse>(`/usage/stats?days=${encodeURIComponent(String(days))}`, {
+      token,
+    })
+  },
+  getAuditMessages(
+    token: string,
+    options: { limit?: number; groupId?: string | null } = {},
+  ): Promise<AuditMessageListResponse> {
+    const params = new URLSearchParams()
+    if (typeof options.limit === 'number') {
+      params.set('limit', String(options.limit))
+    }
+    if (options.groupId && options.groupId.trim()) {
+      params.set('group_id', options.groupId.trim())
+    }
+    const suffix = params.toString() ? `?${params.toString()}` : ''
+    return request<AuditMessageListResponse>(`/audit/messages${suffix}`, { token })
   },
   getGlobalMemory(token: string): Promise<MemoryGlobalResponse> {
     return request<MemoryGlobalResponse>('/memory/global', { token })

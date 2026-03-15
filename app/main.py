@@ -7,6 +7,7 @@ from app.config import setup_logging
 from app.middleware import SecurityHeadersMiddleware
 from app.openapi import OPENAPI_DESCRIPTION, OPENAPI_TAGS
 from app.routes import (
+    audit,
     auth,
     executions,
     files,
@@ -20,6 +21,7 @@ from app.routes import (
     settings,
     skills,
     tasks,
+    usage,
     users,
     websocket,
 )
@@ -53,6 +55,8 @@ app.include_router(memory.router)
 app.include_router(skills.router)
 app.include_router(mcp_servers.router)
 app.include_router(settings.router)
+app.include_router(usage.router)
+app.include_router(audit.router)
 app.include_router(im.router)
 app.include_router(executions.router)
 app.include_router(messages.router)

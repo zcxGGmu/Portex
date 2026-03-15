@@ -64,6 +64,14 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "usage",
+        "description": "Operator-facing usage aggregation endpoints built from persisted message records.",
+    },
+    {
+        "name": "audit",
+        "description": "Operator-facing reverse-chronological message audit feed endpoints.",
+    },
+    {
         "name": "messages",
         "description": "HTTP message dispatch entrypoint backed by the current "
         "runtime-chain orchestration boundary.",

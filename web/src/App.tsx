@@ -4,12 +4,14 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Chat } from './pages/Chat'
 import { Files } from './pages/Files'
 import { Login } from './pages/Login'
+import { Audit } from './pages/Audit'
 import { Memory } from './pages/Memory'
 import { McpServers } from './pages/McpServers'
 import { Monitor } from './pages/Monitor'
 import { Register } from './pages/Register'
 import { Settings } from './pages/Settings'
 import { Skills } from './pages/Skills'
+import { Usage } from './pages/Usage'
 import { useAuthStore } from './stores/auth'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -101,6 +103,22 @@ function App() {
           </ProtectedRoute>
         }
         path="/monitor"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Usage />
+          </ProtectedRoute>
+        }
+        path="/usage"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Audit />
+          </ProtectedRoute>
+        }
+        path="/audit"
       />
       <Route
         element={

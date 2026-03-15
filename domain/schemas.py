@@ -1165,6 +1165,152 @@ class MonitorResponse(BaseModel):
     runs: MonitorRunListResponse
 
 
+class UsageSummaryResponse(BaseModel):
+    total_messages: int = Field(
+        description="Total number of messages in the selected usage window.",
+        examples=[128],
+    )
+    total_runs: int = Field(
+        description="Total number of distinct run identifiers observed in the selected window.",
+        examples=[42],
+    )
+    total_user_messages: int = Field(
+        description="Number of inbound user messages in the selected window.",
+        examples=[64],
+    )
+    total_assistant_messages: int = Field(
+        description="Number of assistant/outbound messages in the selected window.",
+        examples=[64],
+    )
+    total_active_days: int = Field(
+        description="Number of days with at least one message in the selected window.",
+        examples=[6],
+    )
+
+
+class UsageDailyBreakdownResponse(BaseModel):
+    date: str = Field(
+        description="UTC calendar date for the aggregated usage row.",
+        examples=["2026-03-15"],
+    )
+    message_count: int = Field(
+        description="Total message count on this day.",
+        examples=[18],
+    )
+    run_count: int = Field(
+        description="Distinct run count observed on this day.",
+        examples=[9],
+    )
+    user_message_count: int = Field(
+        description="Inbound user message count on this day.",
+        examples=[10],
+    )
+    assistant_message_count: int = Field(
+        description="Assistant message count on this day.",
+        examples=[8],
+    )
+
+
+class UsageChannelBreakdownResponse(BaseModel):
+    channel: Literal["web", "feishu", "telegram"] = Field(
+        description="Channel identifier used for usage aggregation.",
+        examples=["web"],
+    )
+    message_count: int = Field(
+        description="Total message count observed on this channel.",
+        examples=[80],
+    )
+    run_count: int = Field(
+        description="Distinct run count observed on this channel.",
+        examples=[31],
+    )
+
+
+class UsageStatsResponse(BaseModel):
+    days: int = Field(
+        description="Effective usage window in days after server-side normalization.",
+        examples=[7],
+    )
+    summary: UsageSummaryResponse
+    daily: list[UsageDailyBreakdownResponse]
+    channels: list[UsageChannelBreakdownResponse]
+
+
+class AuditMessageResponse(BaseModel):
+    message_id: str = Field(
+        description="Message record identifier.",
+        examples=["msg-123abc"],
+    )
+    chat_jid: str = Field(
+        description="Chat transport identifier for this message.",
+        examples=["web:project-alpha"],
+    )
+    group_id: str = Field(
+        description="Resolved workspace/group identifier used by operator surfaces.",
+        examples=["project-alpha"],
+    )
+    channel: Literal["web", "feishu", "telegram"] = Field(
+        description="Resolved message channel.",
+        examples=["web"],
+    )
+    run_id: str | None = Field(
+        default=None,
+        description="Correlated execution run identifier when available.",
+        examples=["run-abcdef123456"],
+    )
+    external_message_id: str | None = Field(
+        default=None,
+        description="Transport-side message identifier when available.",
+        examples=["out-run-abcdef123456"],
+    )
+    sender: str = Field(
+        description="Message sender identifier.",
+        examples=["portex"],
+    )
+    is_from_me: bool = Field(
+        description="Whether this record was emitted by the assistant/runtime side.",
+        examples=[True],
+    )
+    slot_id: str = Field(
+        description="Conversation slot identifier for this message.",
+        examples=["main"],
+    )
+    content: str | None = Field(
+        default=None,
+        description="Stored message content.",
+        examples=["hello from Portex"],
+    )
+    timestamp: datetime = Field(
+        description="Stored message timestamp normalized to UTC.",
+        examples=["2026-03-15T10:00:00Z"],
+    )
+
+    @field_validator("timestamp", mode="after")
+    @classmethod
+    def normalize_audit_timestamp(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("AuditMessageResponse.timestamp normalization returned None")
+        return normalized
+
+
+class AuditMessageListResponse(BaseModel):
+    limit: int = Field(
+        description="Effective limit after server-side normalization.",
+        examples=[100],
+    )
+    group_id: str | None = Field(
+        default=None,
+        description="Optional workspace/group filter applied to this response.",
+        examples=["project-alpha"],
+    )
+    has_more: bool = Field(
+        description="Whether additional records remain beyond the current page limit.",
+        examples=[False],
+    )
+    items: list[AuditMessageResponse]
+
+
 class ExecutionRunStatusResponse(BaseModel):
     run_id: str = Field(
         description="Execution run identifier.",
@@ -1395,6 +1541,8 @@ class TaskRunLogListResponse(BaseModel):
 
 
 __all__ = [
+    "AuditMessageListResponse",
+    "AuditMessageResponse",
     "CreateGroupMemberRequest",
     "DeleteTaskResponse",
     "DeleteGroupMemberResponse",
@@ -1421,6 +1569,10 @@ __all__ = [
     "TokenResponse",
     "UnifiedMessage",
     "UpdateUserRequest",
+    "UsageChannelBreakdownResponse",
+    "UsageDailyBreakdownResponse",
+    "UsageStatsResponse",
+    "UsageSummaryResponse",
     "UserListResponse",
     "UserResponse",
 ]

@@ -20,7 +20,11 @@ export function AppLayout({ title, children }: AppLayoutProps) {
     { to: '/skills', label: 'Skills' },
     { to: '/mcp-servers', label: 'MCP' },
     ...(currentUser?.role === 'owner' || currentUser?.role === 'admin'
-      ? [{ to: '/monitor', label: 'Monitor' }]
+      ? [
+          { to: '/monitor', label: 'Monitor' },
+          { to: '/usage', label: 'Usage' },
+          { to: '/audit', label: 'Audit' },
+        ]
       : []),
     { to: '/settings', label: 'Settings' },
   ]

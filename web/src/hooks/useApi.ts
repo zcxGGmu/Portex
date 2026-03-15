@@ -148,6 +148,47 @@ export function useMonitorQuery(enabled = true) {
   })
 }
 
+export function useUsageStatsQuery(days: number, enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['usage-stats', token, days],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getUsageStats(token, days)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useAuditMessagesQuery(
+  options: { limit: number; groupId: string | null },
+  enabled = true,
+) {
+  const token = useAuthStore((state) => state.token)
+  const normalizedGroupId = options.groupId?.trim() ?? ''
+
+  return useQuery({
+    queryKey: ['audit-messages', token, options.limit, normalizedGroupId],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getAuditMessages(token, {
+        limit: options.limit,
+        groupId: normalizedGroupId || null,
+      })
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useGlobalMemoryQuery() {
   const token = useAuthStore((state) => state.token)
 

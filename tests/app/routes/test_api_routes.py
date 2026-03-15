@@ -2235,6 +2235,8 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "skills" in tags
     assert "mcp_servers" in tags
     assert "settings" in tags
+    assert "usage" in tags
+    assert "audit" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2381,6 +2383,14 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "system" in put_settings_system_operation["summary"].lower()
     assert "403" in put_settings_system_operation["responses"]
 
+    usage_stats_operation = schema["paths"]["/usage/stats"]["get"]
+    assert "usage" in usage_stats_operation["summary"].lower()
+    assert "403" in usage_stats_operation["responses"]
+
+    audit_messages_operation = schema["paths"]["/audit/messages"]["get"]
+    assert "audit" in audit_messages_operation["summary"].lower()
+    assert "403" in audit_messages_operation["responses"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -2422,6 +2432,12 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "SettingsRegistrationResponse" in schema["components"]["schemas"]
     assert "SettingsAppearanceResponse" in schema["components"]["schemas"]
     assert "SettingsSystemResponse" in schema["components"]["schemas"]
+    assert "UsageStatsResponse" in schema["components"]["schemas"]
+    assert "UsageSummaryResponse" in schema["components"]["schemas"]
+    assert "UsageDailyBreakdownResponse" in schema["components"]["schemas"]
+    assert "UsageChannelBreakdownResponse" in schema["components"]["schemas"]
+    assert "AuditMessageListResponse" in schema["components"]["schemas"]
+    assert "AuditMessageResponse" in schema["components"]["schemas"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(
