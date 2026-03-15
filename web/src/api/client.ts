@@ -10,6 +10,74 @@ export interface CurrentUser {
   status: string
 }
 
+export interface SettingsProviderResponse {
+  enabled: boolean
+  base_url: string
+  default_model: string
+  has_api_key: boolean
+  updated_at: string | null
+}
+
+export interface UpdateSettingsProviderPayload {
+  enabled: boolean
+  base_url: string
+  default_model: string
+  api_key?: string
+}
+
+export interface SettingsChannelsResponse {
+  feishu_enabled: boolean
+  feishu_app_id: string
+  feishu_has_app_secret: boolean
+  feishu_has_encrypt_key: boolean
+  feishu_has_verification_token: boolean
+  telegram_enabled: boolean
+  telegram_has_bot_token: boolean
+  updated_at: string | null
+}
+
+export interface UpdateSettingsChannelsPayload {
+  feishu_enabled: boolean
+  feishu_app_id: string
+  feishu_app_secret: string
+  feishu_encrypt_key: string
+  feishu_verification_token: string
+  telegram_enabled: boolean
+  telegram_bot_token: string
+}
+
+export interface SettingsRegistrationResponse {
+  allow_registration: boolean
+  require_invite_code: boolean
+  updated_at: string | null
+}
+
+export interface SettingsAppearanceResponse {
+  app_name: string
+  ai_name: string
+  ai_avatar_emoji: string
+  ai_avatar_color: string
+  updated_at: string | null
+}
+
+export interface UpdateSettingsAppearancePayload {
+  app_name: string
+  ai_name: string
+  ai_avatar_emoji: string
+  ai_avatar_color: string
+}
+
+export interface SettingsSystemResponse {
+  default_execution_mode: 'openai' | 'host' | 'container'
+  allow_host_execution: boolean
+  updated_at: string | null
+}
+
+export interface UpdateSettingsSystemPayload {
+  default_execution_mode: 'openai' | 'host' | 'container'
+  allow_host_execution: boolean
+}
+
 export interface GroupSummary {
   group_id: string
   name: string
@@ -289,6 +357,75 @@ export const apiClient = {
   },
   getCurrentUser(token: string): Promise<CurrentUser> {
     return request<CurrentUser>('/users/me', { token })
+  },
+  getSettingsProvider(token: string): Promise<SettingsProviderResponse> {
+    return request<SettingsProviderResponse>('/settings/provider', { token })
+  },
+  updateSettingsProvider(
+    token: string,
+    payload: UpdateSettingsProviderPayload,
+  ): Promise<SettingsProviderResponse> {
+    return request<SettingsProviderResponse>('/settings/provider', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+    })
+  },
+  getSettingsChannels(token: string): Promise<SettingsChannelsResponse> {
+    return request<SettingsChannelsResponse>('/settings/channels', { token })
+  },
+  updateSettingsChannels(
+    token: string,
+    payload: UpdateSettingsChannelsPayload,
+  ): Promise<SettingsChannelsResponse> {
+    return request<SettingsChannelsResponse>('/settings/channels', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+    })
+  },
+  getSettingsRegistration(token: string): Promise<SettingsRegistrationResponse> {
+    return request<SettingsRegistrationResponse>('/settings/registration', { token })
+  },
+  updateSettingsRegistration(
+    token: string,
+    allowRegistration: boolean,
+    requireInviteCode: boolean,
+  ): Promise<SettingsRegistrationResponse> {
+    return request<SettingsRegistrationResponse>('/settings/registration', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({
+        allow_registration: allowRegistration,
+        require_invite_code: requireInviteCode,
+      }),
+    })
+  },
+  getSettingsAppearance(token: string): Promise<SettingsAppearanceResponse> {
+    return request<SettingsAppearanceResponse>('/settings/appearance', { token })
+  },
+  updateSettingsAppearance(
+    token: string,
+    payload: UpdateSettingsAppearancePayload,
+  ): Promise<SettingsAppearanceResponse> {
+    return request<SettingsAppearanceResponse>('/settings/appearance', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+    })
+  },
+  getSettingsSystem(token: string): Promise<SettingsSystemResponse> {
+    return request<SettingsSystemResponse>('/settings/system', { token })
+  },
+  updateSettingsSystem(
+    token: string,
+    payload: UpdateSettingsSystemPayload,
+  ): Promise<SettingsSystemResponse> {
+    return request<SettingsSystemResponse>('/settings/system', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+    })
   },
   getGroups(token: string): Promise<{ groups: GroupSummary[] }> {
     return request<{ groups: GroupSummary[] }>('/groups', { token })

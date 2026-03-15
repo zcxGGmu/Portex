@@ -2234,6 +2234,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "memory" in tags
     assert "skills" in tags
     assert "mcp_servers" in tags
+    assert "settings" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2340,6 +2341,46 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "state" in patch_mcp_server_state_operation["summary"].lower()
     assert "404" in patch_mcp_server_state_operation["responses"]
 
+    get_settings_provider_operation = schema["paths"]["/settings/provider"]["get"]
+    assert "provider" in get_settings_provider_operation["summary"].lower()
+    assert "401" in get_settings_provider_operation["responses"]
+
+    put_settings_provider_operation = schema["paths"]["/settings/provider"]["put"]
+    assert "provider" in put_settings_provider_operation["summary"].lower()
+    assert "400" in put_settings_provider_operation["responses"]
+
+    get_settings_channels_operation = schema["paths"]["/settings/channels"]["get"]
+    assert "channel" in get_settings_channels_operation["summary"].lower()
+    assert "401" in get_settings_channels_operation["responses"]
+
+    put_settings_channels_operation = schema["paths"]["/settings/channels"]["put"]
+    assert "channel" in put_settings_channels_operation["summary"].lower()
+    assert "400" in put_settings_channels_operation["responses"]
+
+    get_settings_registration_operation = schema["paths"]["/settings/registration"]["get"]
+    assert "registration" in get_settings_registration_operation["summary"].lower()
+    assert "403" in get_settings_registration_operation["responses"]
+
+    put_settings_registration_operation = schema["paths"]["/settings/registration"]["put"]
+    assert "registration" in put_settings_registration_operation["summary"].lower()
+    assert "403" in put_settings_registration_operation["responses"]
+
+    get_settings_appearance_operation = schema["paths"]["/settings/appearance"]["get"]
+    assert "appearance" in get_settings_appearance_operation["summary"].lower()
+    assert "403" in get_settings_appearance_operation["responses"]
+
+    put_settings_appearance_operation = schema["paths"]["/settings/appearance"]["put"]
+    assert "appearance" in put_settings_appearance_operation["summary"].lower()
+    assert "403" in put_settings_appearance_operation["responses"]
+
+    get_settings_system_operation = schema["paths"]["/settings/system"]["get"]
+    assert "system" in get_settings_system_operation["summary"].lower()
+    assert "403" in get_settings_system_operation["responses"]
+
+    put_settings_system_operation = schema["paths"]["/settings/system"]["put"]
+    assert "system" in put_settings_system_operation["summary"].lower()
+    assert "403" in put_settings_system_operation["responses"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -2376,6 +2417,11 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "McpServerSummaryResponse" in schema["components"]["schemas"]
     assert "McpServerDetailResponse" in schema["components"]["schemas"]
     assert "McpServerListResponse" in schema["components"]["schemas"]
+    assert "SettingsProviderResponse" in schema["components"]["schemas"]
+    assert "SettingsChannelsResponse" in schema["components"]["schemas"]
+    assert "SettingsRegistrationResponse" in schema["components"]["schemas"]
+    assert "SettingsAppearanceResponse" in schema["components"]["schemas"]
+    assert "SettingsSystemResponse" in schema["components"]["schemas"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(

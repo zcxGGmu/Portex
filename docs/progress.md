@@ -77,12 +77,18 @@
 - `M7.4.3` 已完成（memory-management API + UI）。
 - `M7.4.4` 已完成（skills-management API + UI）。
 - `M7.4.5` 已完成（MCP server-management API + UI）。
-- 当前起点：继续 parity backlog 时，从 `M7.4.6` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.4.6` 已完成（settings/configuration API + UI，含注册策略生效）。
+- 当前起点：继续 parity backlog 时，从 `M7.4.7` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M7.4.6`：新增独立 `/settings` 路由族，补齐 `GET/PUT /settings/provider`、`GET/PUT /settings/channels`、`GET/PUT /settings/registration`、`GET/PUT /settings/appearance`、`GET/PUT /settings/system`，并在 OpenAPI 中新增 `settings` tag 与相关 DTO 契约。
+- `M7.4.6`：新增文件系统版 `SettingsService`，落地 `data/settings/users/{user_id}` 与 `data/settings/global` 的 provider/channel/registration/appearance/system 配置模型，并补齐 safe-segment/root-containment/symlink/file-size/atomic-write guard。
+- `M7.4.6`：`POST /auth/register` 已接入 registration policy；`allow_registration=false` 返回 `403`，`require_invite_code=true` 且未携带邀请码返回 `400`。
+- `M7.4.6`：扩展前端 `/settings` 页面为完整配置面，包含 provider/channel（用户级）与 registration/appearance/system（owner 可写、admin 只读、member 不可读）分区。
+- `M7.4.6`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_settings_service.py tests/app/routes/test_settings_routes.py tests/app/routes/test_api_routes.py`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .`、`git diff --check`、`cd web && npm run lint` 与 `cd web && npm run build`。
 - `M7.4.5`：新增独立 `/mcp-servers` 路由族，补齐 `GET /mcp-servers`、`GET/PUT/DELETE /mcp-servers/{server_id}` 与 `PATCH /mcp-servers/{server_id}/state`，并在 OpenAPI 中新增 `mcp_servers` tag 与相关 DTO 契约。
 - `M7.4.5`：新增文件系统版 `McpServersService`，落地 `data/mcp-servers/{user_id}/servers.json` 管理模型，支持 `stdio/http/sse` 三类 transport 的 list/detail/upsert/enable/disable/delete，并补齐 path/symlink/size guard。
 - `M7.4.5`：新增前端 `/mcp-servers` 页面与导航入口，支持 MCP server 列表、新建、编辑、启停和删除，不引入 host sync 或 runtime 注入改造。
@@ -350,6 +356,10 @@
 
 ## 3. 最新验证证据
 
+- M7.4.6 focused verification：`.venv/bin/pytest tests/services/test_settings_service.py tests/app/routes/test_settings_routes.py tests/app/routes/test_api_routes.py` -> `72 passed, 1 warning in 10.82s`
+- M7.4.6 frontend verification：`cd web && npm run lint && npm run build` -> `eslint exit 0`; `vite build completed successfully`
+- M7.4.6 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `538 passed, 1 warning in 25.42s`
+- M7.4.6 repo hygiene：`.venv/bin/ruff check .` -> `All checks passed!`; `git diff --check` -> `exit 0`
 - M7.4.5 focused verification：`.venv/bin/pytest tests/services/test_mcp_servers_service.py tests/app/routes/test_mcp_servers_routes.py tests/app/routes/test_api_routes.py -o addopts=''` -> `72 passed, 1 warning in 9.83s`
 - M7.4.5 frontend verification：`cd web && npm run lint && npm run build` -> `eslint exit 0`; `vite build completed successfully`
 - M7.4.5 repo regression：`.venv/bin/pytest -o addopts='' -q` -> `525 passed, 1 warning in 34.75s`
@@ -524,7 +534,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.4.5` 已完成，下一步入口应前移到 `M7.4.6`，避免重复回做 MCP server surface。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.4.6` 已完成，下一步入口应前移到 `M7.4.7`，避免重复回做 settings/configuration surface。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -535,10 +545,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M7.4.5` 已完成，关键实现点在 `services/mcp_servers.py`、`app/routes/mcp_servers.py`、`web/src/pages/McpServers.tsx`，以及对应测试 `tests/services/test_mcp_servers_service.py` 与 `tests/app/routes/test_mcp_servers_routes.py`。
-3. 当前有效起点前移到 `M7.4.6`。若 `M7.4.6` 规划尚未落盘，先在 parity backlog 里补 design/plan，再按 TDD 开始实现，不要回退重做 `M7.4.5`。
+2. `M7.4.6` 已完成，关键实现点在 `services/settings.py`、`app/routes/settings.py`、`app/routes/auth.py`、`web/src/pages/Settings.tsx`，以及对应测试 `tests/services/test_settings_service.py` 与 `tests/app/routes/test_settings_routes.py`。
+3. 当前有效起点前移到 `M7.4.7`。若 `M7.4.7` 规划尚未落盘，先在 parity backlog 里补 design/plan，再按 TDD 开始实现，不要回退重做 `M7.4.6`。
 4. 复现当前基线建议命令：
-   - `M7.4.5 focused`：`.venv/bin/pytest tests/services/test_mcp_servers_service.py tests/app/routes/test_mcp_servers_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M7.4.6 focused`：`.venv/bin/pytest tests/services/test_settings_service.py tests/app/routes/test_settings_routes.py tests/app/routes/test_api_routes.py`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -548,4 +558,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5` 已完成；当前 parity backlog 的下一步入口是 `M7.4.6`。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6` 已完成；当前 parity backlog 的下一步入口是 `M7.4.7`。

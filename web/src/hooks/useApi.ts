@@ -45,6 +45,91 @@ export function useGroupsQuery() {
   })
 }
 
+export function useSettingsProviderQuery() {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['settings-provider', token],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getSettingsProvider(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useSettingsChannelsQuery() {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['settings-channels', token],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getSettingsChannels(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useSettingsRegistrationQuery(enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['settings-registration', token],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getSettingsRegistration(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useSettingsAppearanceQuery(enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['settings-appearance', token],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getSettingsAppearance(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useSettingsSystemQuery(enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['settings-system', token],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getSettingsSystem(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useMonitorQuery(enabled = true) {
   const token = useAuthStore((state) => state.token)
 

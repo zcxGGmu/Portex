@@ -17,6 +17,7 @@ from app.routes import (
     memory,
     messages,
     monitor,
+    settings,
     skills,
     tasks,
     users,
@@ -51,6 +52,7 @@ app.include_router(files.router)
 app.include_router(memory.router)
 app.include_router(skills.router)
 app.include_router(mcp_servers.router)
+app.include_router(settings.router)
 app.include_router(im.router)
 app.include_router(executions.router)
 app.include_router(messages.router)

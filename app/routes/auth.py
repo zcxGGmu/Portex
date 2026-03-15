@@ -15,6 +15,7 @@ from domain.schemas import (
 from infra.db.database import get_db
 from services.auth import InviteCodeUnavailableError, UserAlreadyExistsError, auth_service
 from services.group_registry import GroupRegistryService
+from services.settings import SettingsService, settings_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,6 +30,10 @@ def get_group_registry_service(
     db: AsyncSession = Depends(get_db),
 ) -> GroupRegistryService:
     return GroupRegistryService(db=db)
+
+
+def get_settings_service() -> SettingsService:
+    return settings_service
 
 
 @router.post(
@@ -48,7 +53,20 @@ def get_group_registry_service(
 async def register(
     request: RegisterRequest,
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    settings: SettingsService = Depends(get_settings_service),
 ) -> RegisterResponse:
+    registration_policy = await settings.get_registration_policy()
+    if not registration_policy.allow_registration:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="registration is disabled",
+        )
+    if registration_policy.require_invite_code and not request.invite_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invite code is required by registration policy",
+        )
+
     try:
         user = auth_service.register_user(
             username=request.username,
@@ -99,4 +117,4 @@ async def login(request: LoginRequest) -> TokenResponse:
     return TokenResponse(access_token=access_token)
 
 
-__all__ = ["get_group_registry_service", "router"]
+__all__ = ["get_group_registry_service", "get_settings_service", "router"]

@@ -628,6 +628,245 @@ class DeleteMcpServerResponse(BaseModel):
     )
 
 
+class SettingsProviderResponse(BaseModel):
+    enabled: bool = Field(
+        description="Whether user-level provider config is enabled.",
+        examples=[True],
+    )
+    base_url: str = Field(
+        description="User-level OpenAI-compatible provider base URL.",
+        examples=["https://api.example.com/v1"],
+    )
+    default_model: str = Field(
+        description="Default model used by this user's provider profile.",
+        examples=["gpt-5.1"],
+    )
+    has_api_key: bool = Field(
+        description="Whether an API key is currently stored for this user.",
+        examples=[True],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description="Last-updated timestamp for this user's provider config.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_settings_provider_updated_at(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateSettingsProviderRequest(BaseModel):
+    enabled: bool = Field(
+        description="Whether user-level provider config should be enabled.",
+        examples=[True],
+    )
+    base_url: str = Field(
+        description="User-level OpenAI-compatible provider base URL.",
+        examples=["https://api.example.com/v1"],
+    )
+    default_model: str = Field(
+        description="Default model for user-level provider requests.",
+        examples=["gpt-5.1"],
+    )
+    api_key: str | None = Field(
+        default=None,
+        description=(
+            "Optional provider API key update. When omitted or null, the existing "
+            "stored key is preserved."
+        ),
+        examples=["sk-demo"],
+    )
+
+
+class SettingsChannelsResponse(BaseModel):
+    feishu_enabled: bool = Field(
+        description="Whether Feishu channel config is enabled for this user profile.",
+        examples=[False],
+    )
+    feishu_app_id: str = Field(
+        description="Stored Feishu app id for this user profile.",
+        examples=["cli_app_id"],
+    )
+    feishu_has_app_secret: bool = Field(
+        description="Whether a Feishu app secret is currently stored.",
+        examples=[True],
+    )
+    feishu_has_encrypt_key: bool = Field(
+        description="Whether a Feishu encrypt key is currently stored.",
+        examples=[True],
+    )
+    feishu_has_verification_token: bool = Field(
+        description="Whether a Feishu verification token is currently stored.",
+        examples=[True],
+    )
+    telegram_enabled: bool = Field(
+        description="Whether Telegram channel config is enabled for this user profile.",
+        examples=[True],
+    )
+    telegram_has_bot_token: bool = Field(
+        description="Whether a Telegram bot token is currently stored.",
+        examples=[True],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description="Last-updated timestamp for this user's channel config.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_settings_channels_updated_at(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateSettingsChannelsRequest(BaseModel):
+    feishu_enabled: bool = Field(
+        description="Whether Feishu channel config should be enabled.",
+        examples=[True],
+    )
+    feishu_app_id: str = Field(
+        description="Feishu app id to store for this user profile.",
+        examples=["cli_app_id"],
+    )
+    feishu_app_secret: str = Field(
+        description="Feishu app secret to store for this user profile.",
+        examples=["cli_app_secret"],
+    )
+    feishu_encrypt_key: str = Field(
+        description="Feishu encrypt key to store for this user profile.",
+        examples=["encrypt-key"],
+    )
+    feishu_verification_token: str = Field(
+        description="Feishu verification token to store for this user profile.",
+        examples=["verify-token"],
+    )
+    telegram_enabled: bool = Field(
+        description="Whether Telegram channel config should be enabled.",
+        examples=[True],
+    )
+    telegram_bot_token: str = Field(
+        description="Telegram bot token to store for this user profile.",
+        examples=["bot-token"],
+    )
+
+
+class SettingsRegistrationResponse(BaseModel):
+    allow_registration: bool = Field(
+        description="Whether new users are currently allowed to self-register.",
+        examples=[True],
+    )
+    require_invite_code: bool = Field(
+        description="Whether registration currently requires an invite code.",
+        examples=[False],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description="Last-updated timestamp for registration policy.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_settings_registration_updated_at(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateSettingsRegistrationRequest(BaseModel):
+    allow_registration: bool = Field(
+        description="Whether self-registration should be enabled.",
+        examples=[True],
+    )
+    require_invite_code: bool = Field(
+        description="Whether self-registration should require invite codes.",
+        examples=[True],
+    )
+
+
+class SettingsAppearanceResponse(BaseModel):
+    app_name: str = Field(
+        description="Display name used for the web application shell.",
+        examples=["Portex"],
+    )
+    ai_name: str = Field(
+        description="Assistant display name used in operator surfaces.",
+        examples=["Portex Assistant"],
+    )
+    ai_avatar_emoji: str = Field(
+        description="Assistant avatar emoji shown in UI surfaces.",
+        examples=["🤖"],
+    )
+    ai_avatar_color: str = Field(
+        description="Assistant avatar accent color shown in UI surfaces.",
+        examples=["#0ea5e9"],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description="Last-updated timestamp for appearance config.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_settings_appearance_updated_at(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateSettingsAppearanceRequest(BaseModel):
+    app_name: str = Field(
+        description="Updated application display name.",
+        examples=["Portex Ops"],
+    )
+    ai_name: str = Field(
+        description="Updated assistant display name.",
+        examples=["Ops Assistant"],
+    )
+    ai_avatar_emoji: str = Field(
+        description="Updated assistant avatar emoji.",
+        examples=["🦀"],
+    )
+    ai_avatar_color: str = Field(
+        description="Updated assistant avatar color.",
+        examples=["#2563eb"],
+    )
+
+
+class SettingsSystemResponse(BaseModel):
+    default_execution_mode: ExecutionMode = Field(
+        description="Default execution mode used by operator workflows.",
+        examples=["openai"],
+    )
+    allow_host_execution: bool = Field(
+        description="Whether host execution mode is allowed by current system settings.",
+        examples=[False],
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        description="Last-updated timestamp for system settings.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_settings_system_updated_at(cls, value: datetime | None) -> datetime | None:
+        return _normalize_utc_datetime(value)
+
+
+class UpdateSettingsSystemRequest(BaseModel):
+    default_execution_mode: ExecutionMode = Field(
+        description="Desired default execution mode.",
+        examples=["container"],
+    )
+    allow_host_execution: bool = Field(
+        description="Whether host execution mode should be allowed.",
+        examples=[True],
+    )
+
+
 class CreateConversationSlotRequest(BaseModel):
     slot_id: str = Field(
         min_length=1,

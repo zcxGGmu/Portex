@@ -57,6 +57,13 @@ OPENAPI_TAGS = [
         "description": "User-local MCP server listing, editing, state-toggle, and delete endpoints.",
     },
     {
+        "name": "settings",
+        "description": (
+            "User-owned provider/channel configuration plus system registration, "
+            "appearance, and execution-setting endpoints."
+        ),
+    },
+    {
         "name": "messages",
         "description": "HTTP message dispatch entrypoint backed by the current "
         "runtime-chain orchestration boundary.",

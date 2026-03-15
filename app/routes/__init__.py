@@ -10,6 +10,7 @@ __all__ = [
     "memory",
     "skills",
     "mcp_servers",
+    "settings",
     "executions",
     "im",
     "messages",
