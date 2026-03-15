@@ -105,6 +105,7 @@
 - `M8.2`：扩展 `web/src/index.css`，为 terminal panel 增加独立的 shell-like transcript、metadata cards、状态 badge 和移动端响应式布局；当前 UI 明确保留 v1 边界：container-only、no ANSI/PTY fidelity、no shared takeover。
 - `M8.2`：前端 red-green 证据已记录：先在 `ChatPanel` 引入未实现 `./TerminalPanel` 触发 `cd web && npm run build` 失败，再补齐 terminal client/UI 后恢复通过；backend red-green 证据已记录：先新增 query-token terminal websocket focused test 触发失败，再补齐 route auth fallback 后恢复通过。
 - `M8.2`：fresh 验证已通过 `.venv/bin/pytest tests/app/routes/test_terminal_websocket_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
+- 最新 terminal 相关提交链为 `51a0172`（稳定 terminal websocket detach 测试时序）、`bb00905`（`M8.2` docs/plan）和 `a488e13`（`M8.2` Web terminal UI 实现）。
 - `M8.1`：新增 `docs/plans/2026-03-15-m8-1-terminal-session-backend-design.md` 与 `docs/plans/2026-03-15-m8-1-terminal-session-backend.md`，将 terminal work 范围固定为“container-only backend/session/API/protocol”，不提前吞掉前端 terminal UI。
 - `M8.1`：新增 `services/terminal_sessions.py` 与 `services/terminal_bridge.py`，实现进程内 terminal session registry、ownership/reconnect timeout、bridge 抽象，以及 docker-backed terminal bridge 的最小生产实现边界。
 - `M8.1`：新增 `app/routes/terminals.py`，提供 `POST/GET/DELETE /terminals/{group_id}/sessions...` 和独立 `/ws/terminals/{session_id}` 协议，不复用现有聊天 `/ws/{group_folder}`。
