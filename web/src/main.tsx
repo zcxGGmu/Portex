@@ -5,8 +5,11 @@ import { BrowserRouter } from 'react-router-dom'
 
 import './index.css'
 import App from './App.tsx'
+import { installPwaRuntime } from './pwa'
 
 const queryClient = new QueryClient()
+
+installPwaRuntime()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
