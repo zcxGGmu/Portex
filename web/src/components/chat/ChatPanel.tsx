@@ -4,7 +4,12 @@ import { Link } from 'react-router-dom'
 
 import { apiClient } from '../../api/client'
 import { createWebSocket, subscribeWebSocketMessages } from '../../api/ws'
-import { useGroupMembersQuery, useGroupsQuery, useGroupSlotsQuery } from '../../hooks/useApi'
+import {
+  useGroupImBindingsQuery,
+  useGroupMembersQuery,
+  useGroupsQuery,
+  useGroupSlotsQuery,
+} from '../../hooks/useApi'
 import { useAuthStore } from '../../stores/auth'
 import { useChatStore } from '../../stores/chat'
 import { isStreamEvent } from '../../types/events'
@@ -84,6 +89,7 @@ function setStoredWorkspaceId(workspaceId: string): void {
 export function ChatPanel() {
   const token = useAuthStore((state) => state.token)
   const currentUser = useAuthStore((state) => state.currentUser)
+  const isOwner = currentUser?.role === 'owner'
   const canUploadAttachments = currentUser?.role === 'owner' || currentUser?.role === 'admin'
   const { data: groupsData, isLoading: groupsLoading, error: groupsError } = useGroupsQuery()
   const groups = useMemo(() => groupsData?.groups ?? [], [groupsData])
@@ -96,6 +102,9 @@ export function ChatPanel() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null)
   const [latestUploadedPaths, setLatestUploadedPaths] = useState<string[]>([])
+  const [bindingError, setBindingError] = useState<string | null>(null)
+  const [bindingNotice, setBindingNotice] = useState<string | null>(null)
+  const [bindingActionTarget, setBindingActionTarget] = useState<string | null>(null)
   const [wsState, setWsState] = useState<'connecting' | 'open' | 'closed' | 'error'>('connecting')
   const wsRef = useRef<WebSocket | null>(null)
 
@@ -142,6 +151,13 @@ export function ChatPanel() {
     isLoading: membersLoading,
     error: membersError,
   } = useGroupMembersQuery(activeGroupId)
+  const {
+    data: bindingsData,
+    isLoading: bindingsLoading,
+    error: bindingsQueryError,
+    refetch: refetchBindings,
+  } = useGroupImBindingsQuery(activeGroupId, isOwner)
+  const bindings = bindingsData?.bindings ?? []
 
   const messages = useChatStore((state) => state.messages)
   const streamEvents = useChatStore((state) => state.streamEvents)
@@ -193,6 +209,9 @@ export function ChatPanel() {
     setAttachmentError(null)
     setAttachmentNotice(null)
     setLatestUploadedPaths([])
+    setBindingError(null)
+    setBindingNotice(null)
+    setBindingActionTarget(null)
   }, [targetGroupFolder])
 
   useEffect(() => {
@@ -330,6 +349,42 @@ export function ChatPanel() {
       setAttachmentError(error instanceof Error ? error.message : 'Failed to upload chat attachments')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  async function handleBindEndpoint(imJid: string) {
+    if (!token || !activeGroupId || !isOwner) {
+      return
+    }
+    try {
+      setBindingActionTarget(imJid)
+      setBindingError(null)
+      setBindingNotice(null)
+      await apiClient.bindGroupImEndpoint(token, activeGroupId, imJid)
+      await refetchBindings()
+      setBindingNotice(`Bound ${imJid} to ${activeGroupId}.`)
+    } catch (error) {
+      setBindingError(error instanceof Error ? error.message : 'Failed to bind endpoint')
+    } finally {
+      setBindingActionTarget(null)
+    }
+  }
+
+  async function handleUnbindEndpoint(imJid: string) {
+    if (!token || !activeGroupId || !isOwner) {
+      return
+    }
+    try {
+      setBindingActionTarget(imJid)
+      setBindingError(null)
+      setBindingNotice(null)
+      await apiClient.unbindGroupImEndpoint(token, activeGroupId, imJid)
+      await refetchBindings()
+      setBindingNotice(`Unbound ${imJid}.`)
+    } catch (error) {
+      setBindingError(error instanceof Error ? error.message : 'Failed to unbind endpoint')
+    } finally {
+      setBindingActionTarget(null)
     }
   }
 
@@ -586,6 +641,59 @@ export function ChatPanel() {
               Clear
             </PrimaryButton>
           </div>
+        </section>
+        <section className="panel chat-shell-card">
+          <h3 className="chat-shell-title">IM Bindings</h3>
+          {!isOwner ? <p className="muted">Only owner can manage IM endpoint bindings.</p> : null}
+          {isOwner && !activeGroupId ? <p className="muted">Select a workspace first.</p> : null}
+          {isOwner && activeGroupId && bindingsLoading ? <p className="muted">Loading bindings...</p> : null}
+          {bindingsQueryError ? (
+            <p className="error-text">
+              {bindingsQueryError instanceof Error ? bindingsQueryError.message : 'Failed to load bindings'}
+            </p>
+          ) : null}
+          {bindingError ? <p className="error-text">{bindingError}</p> : null}
+          {bindingNotice ? <p className="muted">{bindingNotice}</p> : null}
+          {isOwner && !bindingsLoading && !bindingsQueryError && bindings.length === 0 ? (
+            <p className="muted">No IM endpoints available.</p>
+          ) : null}
+          <ul className="chat-binding-list">
+            {bindings.map((binding) => {
+              const isBoundHere = binding.bound_to_current_group
+              const isActionPending = bindingActionTarget === binding.im_jid
+              return (
+                <li className="chat-binding-item" key={binding.im_jid}>
+                  <div className="chat-binding-meta">
+                    <strong>{binding.im_jid}</strong>
+                    <span className="muted">
+                      {binding.channel} · {binding.binding_state}
+                    </span>
+                    <span className="muted">
+                      target: {binding.target_group_id ?? '-'} / fallback: {binding.fallback_group_id}
+                    </span>
+                  </div>
+                  {isOwner ? (
+                    <PrimaryButton
+                      className="button--ghost"
+                      disabled={Boolean(bindingActionTarget) || isRunning}
+                      onClick={() =>
+                        isBoundHere
+                          ? handleUnbindEndpoint(binding.im_jid)
+                          : handleBindEndpoint(binding.im_jid)
+                      }
+                      type="button"
+                    >
+                      {isActionPending
+                        ? 'Working...'
+                        : isBoundHere
+                          ? 'Unbind'
+                          : 'Bind Here'}
+                    </PrimaryButton>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
         </section>
       </aside>
     </section>

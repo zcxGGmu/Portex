@@ -77,6 +77,22 @@ export function useGroupSlotsQuery(groupId: string | null) {
   })
 }
 
+export function useGroupImBindingsQuery(groupId: string | null, enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['group-im-bindings', token, groupId],
+    enabled: Boolean(token && groupId && enabled),
+    queryFn: async () => {
+      if (!token || !groupId) {
+        throw new Error('Missing token or group id')
+      }
+      return apiClient.getGroupImBindings(token, groupId)
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useSettingsProviderQuery() {
   const token = useAuthStore((state) => state.token)
 

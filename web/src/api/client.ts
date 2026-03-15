@@ -106,6 +106,21 @@ export interface ConversationSlotListResponse {
   slots: ConversationSlotSummary[]
 }
 
+export interface GroupImBindingSummary {
+  im_jid: string
+  name: string
+  channel: 'telegram' | 'feishu'
+  fallback_group_id: string
+  binding_state: 'unbound' | 'bound' | 'orphaned'
+  target_group_id: string | null
+  target_group_name: string | null
+  bound_to_current_group: boolean
+}
+
+export interface GroupImBindingListResponse {
+  bindings: GroupImBindingSummary[]
+}
+
 export interface HealthResponse {
   status: string
   version: string
@@ -508,6 +523,27 @@ export const apiClient = {
   },
   getGroupSlots(token: string, groupId: string): Promise<ConversationSlotListResponse> {
     return request<ConversationSlotListResponse>(`/groups/${encodeURIComponent(groupId)}/slots`, { token })
+  },
+  getGroupImBindings(token: string, groupId: string): Promise<GroupImBindingListResponse> {
+    return request<GroupImBindingListResponse>(`/groups/${encodeURIComponent(groupId)}/bindings/im`, { token })
+  },
+  bindGroupImEndpoint(token: string, groupId: string, imJid: string): Promise<GroupImBindingSummary> {
+    return request<GroupImBindingSummary>(
+      `/groups/${encodeURIComponent(groupId)}/bindings/im/${encodeURIComponent(imJid)}`,
+      {
+        method: 'PUT',
+        token,
+      },
+    )
+  },
+  unbindGroupImEndpoint(token: string, groupId: string, imJid: string): Promise<GroupImBindingSummary> {
+    return request<GroupImBindingSummary>(
+      `/groups/${encodeURIComponent(groupId)}/bindings/im/${encodeURIComponent(imJid)}`,
+      {
+        method: 'DELETE',
+        token,
+      },
+    )
   },
   getHealth(): Promise<HealthResponse> {
     return request<HealthResponse>('/health')

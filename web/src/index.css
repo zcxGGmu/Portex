@@ -692,6 +692,27 @@ a {
   gap: 0.45rem;
 }
 
+.chat-binding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chat-binding-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.chat-binding-meta {
+  display: grid;
+  gap: 0.2rem;
+}
+
 .chat-form textarea {
   resize: vertical;
   min-height: 80px;
