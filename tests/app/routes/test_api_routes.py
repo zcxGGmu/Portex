@@ -2233,6 +2233,7 @@ def test_openapi_schema_includes_global_api_metadata(api_client: TestClient) -> 
     assert "files" in tags
     assert "memory" in tags
     assert "skills" in tags
+    assert "mcp_servers" in tags
     assert "scheduled" in tags["tasks"].lower()
 
 
@@ -2323,6 +2324,22 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "state" in patch_skill_state_operation["summary"].lower()
     assert "404" in patch_skill_state_operation["responses"]
 
+    list_mcp_servers_operation = schema["paths"]["/mcp-servers"]["get"]
+    assert "mcp" in list_mcp_servers_operation["summary"].lower()
+    assert "401" in list_mcp_servers_operation["responses"]
+
+    get_mcp_server_operation = schema["paths"]["/mcp-servers/{server_id}"]["get"]
+    assert "mcp" in get_mcp_server_operation["summary"].lower()
+    assert "404" in get_mcp_server_operation["responses"]
+
+    put_mcp_server_operation = schema["paths"]["/mcp-servers/{server_id}"]["put"]
+    assert "update" in put_mcp_server_operation["summary"].lower()
+    assert "400" in put_mcp_server_operation["responses"]
+
+    patch_mcp_server_state_operation = schema["paths"]["/mcp-servers/{server_id}/state"]["patch"]
+    assert "state" in patch_mcp_server_state_operation["summary"].lower()
+    assert "404" in patch_mcp_server_state_operation["responses"]
+
     delete_member_operation = schema["paths"]["/groups/{group_id}/members/{user_id}"]["delete"]
     delete_member_schema = delete_member_operation["responses"]["200"]["content"][
         "application/json"
@@ -2356,6 +2373,9 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "WorkspaceMemoryFileListResponse" in schema["components"]["schemas"]
     assert "WorkspaceMemoryFileResponse" in schema["components"]["schemas"]
     assert "WorkspaceMemorySearchResponse" in schema["components"]["schemas"]
+    assert "McpServerSummaryResponse" in schema["components"]["schemas"]
+    assert "McpServerDetailResponse" in schema["components"]["schemas"]
+    assert "McpServerListResponse" in schema["components"]["schemas"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(
