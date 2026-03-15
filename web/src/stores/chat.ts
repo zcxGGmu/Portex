@@ -11,18 +11,47 @@ export interface ChatMessage {
   createdAt: string
 }
 
-interface ChatState {
+interface ChatContextSnapshot {
   messages: ChatMessage[]
   streamEvents: StreamEvent[]
   draft: string
   isRunning: boolean
   activeRunId: string | null
-  addMessage: (message: Omit<ChatMessage, 'id' | 'createdAt'> & Partial<Pick<ChatMessage, 'id' | 'createdAt'>>) => void
+}
+
+interface ChatState extends ChatContextSnapshot {
+  contexts: Record<string, ChatContextSnapshot>
+  activeContextId: string
+  switchContext: (contextId: string) => void
+  addMessage: (
+    message: Omit<ChatMessage, 'id' | 'createdAt'> & Partial<Pick<ChatMessage, 'id' | 'createdAt'>>,
+  ) => void
   addStreamEvent: (event: StreamEvent) => void
   setDraft: (nextDraft: string) => void
-  sendDraft: () => void
   clearRunState: () => void
   clearMessages: () => void
+}
+
+const DEFAULT_CONTEXT_ID = 'group-demo::main'
+
+function createEmptyContext(): ChatContextSnapshot {
+  return {
+    messages: [],
+    streamEvents: [],
+    draft: '',
+    isRunning: false,
+    activeRunId: null,
+  }
+}
+
+function cloneContext(context: ChatContextSnapshot): ChatContextSnapshot {
+  return {
+    messages: [...context.messages],
+    streamEvents: [...context.streamEvents],
+    draft: context.draft,
+    isRunning: context.isRunning,
+    activeRunId: context.activeRunId,
+  }
 }
 
 function createMessage(role: ChatRole, content: string): ChatMessage {
@@ -40,11 +69,42 @@ function createMessage(role: ChatRole, content: string): ChatMessage {
 }
 
 export const useChatStore = create<ChatState>((set) => ({
-  messages: [],
-  streamEvents: [],
-  draft: '',
-  isRunning: false,
-  activeRunId: null,
+  ...createEmptyContext(),
+  contexts: {},
+  activeContextId: DEFAULT_CONTEXT_ID,
+  switchContext(contextId) {
+    const normalizedContextId = contextId.trim()
+    if (!normalizedContextId) {
+      return
+    }
+
+    set((state) => {
+      if (normalizedContextId === state.activeContextId) {
+        return {}
+      }
+
+      const currentSnapshot = cloneContext({
+        messages: state.messages,
+        streamEvents: state.streamEvents,
+        draft: state.draft,
+        isRunning: state.isRunning,
+        activeRunId: state.activeRunId,
+      })
+
+      const nextContexts = {
+        ...state.contexts,
+        [state.activeContextId]: currentSnapshot,
+      }
+      const restoredSnapshot = cloneContext(nextContexts[normalizedContextId] ?? createEmptyContext())
+      nextContexts[normalizedContextId] = cloneContext(restoredSnapshot)
+
+      return {
+        contexts: nextContexts,
+        activeContextId: normalizedContextId,
+        ...restoredSnapshot,
+      }
+    })
+  },
   addMessage(message) {
     const normalized =
       message.id && message.createdAt
@@ -81,23 +141,10 @@ export const useChatStore = create<ChatState>((set) => ({
   setDraft(nextDraft) {
     set({ draft: nextDraft })
   },
-  sendDraft() {
-    set((state) => {
-      const trimmedDraft = state.draft.trim()
-      if (!trimmedDraft) {
-        return {}
-      }
-
-      return {
-        draft: '',
-        messages: [...state.messages, createMessage('user', trimmedDraft)],
-      }
-    })
-  },
   clearRunState() {
     set({ isRunning: false, activeRunId: null })
   },
   clearMessages() {
-    set({ messages: [], streamEvents: [], isRunning: false, activeRunId: null })
+    set({ messages: [], streamEvents: [], draft: '', isRunning: false, activeRunId: null })
   },
 }))

@@ -254,6 +254,41 @@ a {
   overflow-wrap: anywhere;
 }
 
+.chat-workspace-filter,
+.chat-workspace-select {
+  min-width: 0;
+}
+
+.chat-room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chat-room-button {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.55rem 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-room-button:hover {
+  border-color: var(--primary);
+}
+
+.chat-room-button.active {
+  border-color: var(--primary);
+  background: #edf4ff;
+}
+
 .chat-shell-list {
   list-style: none;
   margin: 0;

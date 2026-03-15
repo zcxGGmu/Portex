@@ -14,6 +14,9 @@ import { ToolCallTracker } from './ToolCallTracker'
 import { PrimaryButton } from '../ui/PrimaryButton'
 
 const ATTACHMENT_PREVIEW_LIMIT = 6
+const SLOT_PREVIEW_LIMIT = 10
+const DEFAULT_ROOM_ID = 'main'
+const CHAT_WORKSPACE_STORAGE_KEY = 'portex-chat.active-workspace'
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -29,47 +32,117 @@ function buildAttachmentBulletList(paths: string[]): string {
   return paths.map((path) => `- ${path}`).join('\n')
 }
 
-function composePromptMessage(draft: string, uploadedPaths: string[]): string {
+function buildContextId(groupId: string, roomId: string): string {
+  return `${groupId}::${roomId}`
+}
+
+function resolveDefaultRoomId(slotIds: string[]): string {
+  if (slotIds.includes(DEFAULT_ROOM_ID)) {
+    return DEFAULT_ROOM_ID
+  }
+  return slotIds[0] ?? DEFAULT_ROOM_ID
+}
+
+function composePromptMessage(draft: string, uploadedPaths: string[], roomId: string): string {
   const text = draft.trim()
+  const roomSection =
+    roomId !== DEFAULT_ROOM_ID ? `Conversation room: ${roomId}\n` : ''
   if (uploadedPaths.length === 0) {
-    return text
+    return `${roomSection}${text}`.trim()
   }
 
   const body = text || 'Please review the uploaded attachments.'
-  return `${body}\n\nAttached workspace files:\n${buildAttachmentBulletList(uploadedPaths)}`
+  return `${roomSection}${body}\n\nAttached workspace files:\n${buildAttachmentBulletList(uploadedPaths)}`.trim()
 }
 
-function composeVisibleUserMessage(draft: string, uploadedPaths: string[]): string {
+function composeVisibleUserMessage(draft: string, uploadedPaths: string[], roomId: string): string {
   const text = draft.trim()
+  const roomTag = roomId !== DEFAULT_ROOM_ID ? `[Room: ${roomId}]` : ''
   if (uploadedPaths.length === 0) {
-    return text
+    return [roomTag, text].filter(Boolean).join('\n')
   }
 
   const attachmentsSection = `[Attachments]\n${buildAttachmentBulletList(uploadedPaths)}`
-  if (!text) {
-    return attachmentsSection
+  const body = text || '[No text]'
+  return [roomTag, body, attachmentsSection].filter(Boolean).join('\n\n')
+}
+
+function getStoredWorkspaceId(): string | null {
+  if (typeof window === 'undefined') {
+    return null
   }
-  return `${text}\n\n${attachmentsSection}`
+  return window.localStorage.getItem(CHAT_WORKSPACE_STORAGE_KEY)
+}
+
+function setStoredWorkspaceId(workspaceId: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  window.localStorage.setItem(CHAT_WORKSPACE_STORAGE_KEY, workspaceId)
 }
 
 export function ChatPanel() {
   const token = useAuthStore((state) => state.token)
   const currentUser = useAuthStore((state) => state.currentUser)
-  const { data: groupsData, isLoading: groupsLoading, error: groupsError } = useGroupsQuery()
-  const groups = groupsData?.groups ?? []
-  const activeGroup = groups[0] ?? null
-  const activeGroupId = activeGroup?.group_id ?? null
   const canUploadAttachments = currentUser?.role === 'owner' || currentUser?.role === 'admin'
+  const { data: groupsData, isLoading: groupsLoading, error: groupsError } = useGroupsQuery()
+  const groups = useMemo(() => groupsData?.groups ?? [], [groupsData])
+
+  const [workspaceFilter, setWorkspaceFilter] = useState('')
+  const [selectedGroupIdInput, setSelectedGroupIdInput] = useState<string | null>(() => getStoredWorkspaceId())
+  const [selectedRoomByWorkspace, setSelectedRoomByWorkspace] = useState<Record<string, string>>({})
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null)
+  const [latestUploadedPaths, setLatestUploadedPaths] = useState<string[]>([])
+  const [wsState, setWsState] = useState<'connecting' | 'open' | 'closed' | 'error'>('connecting')
+  const wsRef = useRef<WebSocket | null>(null)
+
+  const filteredGroups = useMemo(() => {
+    const query = workspaceFilter.trim().toLowerCase()
+    if (!query) {
+      return groups
+    }
+    return groups.filter(
+      (group) =>
+        group.name.toLowerCase().includes(query) || group.group_id.toLowerCase().includes(query),
+    )
+  }, [groups, workspaceFilter])
+
+  const activeGroupId = useMemo(() => {
+    if (selectedGroupIdInput && groups.some((group) => group.group_id === selectedGroupIdInput)) {
+      return selectedGroupIdInput
+    }
+    return groups[0]?.group_id ?? null
+  }, [groups, selectedGroupIdInput])
+  const activeGroup = groups.find((group) => group.group_id === activeGroupId) ?? null
+
   const {
     data: slotsData,
     isLoading: slotsLoading,
     error: slotsError,
   } = useGroupSlotsQuery(activeGroupId)
+  const availableSlots = slotsData?.slots ?? []
+  const slotIds = availableSlots.map((slot) => slot.slot_id)
+  const defaultRoomId = useMemo(() => resolveDefaultRoomId(slotIds), [slotIds])
+  const activeRoomId = useMemo(() => {
+    if (!activeGroupId) {
+      return DEFAULT_ROOM_ID
+    }
+    const storedRoomId = selectedRoomByWorkspace[activeGroupId]
+    if (storedRoomId && slotIds.includes(storedRoomId)) {
+      return storedRoomId
+    }
+    return defaultRoomId
+  }, [activeGroupId, selectedRoomByWorkspace, slotIds, defaultRoomId])
+
   const {
     data: membersData,
     isLoading: membersLoading,
     error: membersError,
   } = useGroupMembersQuery(activeGroupId)
+
   const messages = useChatStore((state) => state.messages)
   const streamEvents = useChatStore((state) => state.streamEvents)
   const draft = useChatStore((state) => state.draft)
@@ -77,18 +150,18 @@ export function ChatPanel() {
   const activeRunId = useChatStore((state) => state.activeRunId)
   const addMessage = useChatStore((state) => state.addMessage)
   const addStreamEvent = useChatStore((state) => state.addStreamEvent)
+  const switchContext = useChatStore((state) => state.switchContext)
   const setDraft = useChatStore((state) => state.setDraft)
   const clearRunState = useChatStore((state) => state.clearRunState)
   const clearMessages = useChatStore((state) => state.clearMessages)
-  const wsRef = useRef<WebSocket | null>(null)
-  const [wsState, setWsState] = useState<'connecting' | 'open' | 'closed' | 'error'>('connecting')
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const [attachmentError, setAttachmentError] = useState<string | null>(null)
-  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null)
-  const [latestUploadedPaths, setLatestUploadedPaths] = useState<string[]>([])
 
   const targetGroupFolder = activeGroupId ?? 'group-demo'
+  const activeContextId = useMemo(
+    () => buildContextId(targetGroupFolder, activeRoomId),
+    [targetGroupFolder, activeRoomId],
+  )
+  const canSwitchContext = !isRunning && !isUploading
+
   const tokenDeltaCount = useMemo(
     () => streamEvents.filter((event) => event.event_type === 'run.token.delta').length,
     [streamEvents],
@@ -110,6 +183,10 @@ export function ChatPanel() {
       ).length,
     [streamEvents],
   )
+
+  useEffect(() => {
+    switchContext(activeContextId)
+  }, [activeContextId, switchContext])
 
   useEffect(() => {
     setSelectedFiles([])
@@ -163,6 +240,28 @@ export function ChatPanel() {
       clearRunState()
     }
   }, [targetGroupFolder, addMessage, addStreamEvent, clearRunState])
+
+  function handleWorkspaceSwitch(nextGroupId: string) {
+    if (!canSwitchContext) {
+      return
+    }
+    setSelectedGroupIdInput(nextGroupId)
+    setStoredWorkspaceId(nextGroupId)
+    setWsState('connecting')
+    setSelectedFiles([])
+    setAttachmentError(null)
+    setAttachmentNotice(null)
+  }
+
+  function handleRoomSwitch(nextRoomId: string) {
+    if (!canSwitchContext || !activeGroupId) {
+      return
+    }
+    setSelectedRoomByWorkspace((current) => ({
+      ...current,
+      [activeGroupId]: nextRoomId,
+    }))
+  }
 
   function handleAttachmentSelection(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
@@ -218,11 +317,11 @@ export function ChatPanel() {
         )
       }
 
-      const promptMessage = composePromptMessage(trimmed, uploadedPaths)
+      const promptMessage = composePromptMessage(trimmed, uploadedPaths, activeRoomId)
       if (!promptMessage.trim()) {
         return
       }
-      const visibleMessage = composeVisibleUserMessage(trimmed, uploadedPaths)
+      const visibleMessage = composeVisibleUserMessage(trimmed, uploadedPaths, activeRoomId)
       setDraft('')
       addMessage({ role: 'user', content: visibleMessage })
       setSelectedFiles([])
@@ -252,7 +351,33 @@ export function ChatPanel() {
       <aside className="chat-shell-side">
         <section className="panel chat-shell-card">
           <h3 className="chat-shell-title">Workspace Snapshot</h3>
-          {groupsLoading ? <p className="muted">Loading workspaces...</p> : null}
+          <label className="field chat-workspace-filter" htmlFor="chat-workspace-filter">
+            <span>Search Workspace</span>
+            <input
+              id="chat-workspace-filter"
+              onChange={(event) => setWorkspaceFilter(event.target.value)}
+              placeholder="Filter by name or id"
+              type="text"
+              value={workspaceFilter}
+            />
+          </label>
+          <label className="field chat-workspace-select" htmlFor="chat-workspace-select">
+            <span>Active Workspace</span>
+            <select
+              disabled={!canSwitchContext || filteredGroups.length === 0}
+              id="chat-workspace-select"
+              onChange={(event) => handleWorkspaceSwitch(event.target.value)}
+              value={activeGroupId ?? ''}
+            >
+              {groupsLoading ? <option value="">Loading...</option> : null}
+              {!groupsLoading && filteredGroups.length === 0 ? <option value="">No workspace match</option> : null}
+              {filteredGroups.map((group) => (
+                <option key={group.group_id} value={group.group_id}>
+                  {group.name} ({group.group_id})
+                </option>
+              ))}
+            </select>
+          </label>
           {groupsError ? (
             <p className="error-text">
               {groupsError instanceof Error ? groupsError.message : 'Failed to load workspaces'}
@@ -264,12 +389,12 @@ export function ChatPanel() {
               <p className="chat-shell-entity">
                 <strong>{activeGroup.name}</strong>
               </p>
-              <p className="muted chat-shell-note">{activeGroup.group_id}</p>
+              <p className="muted chat-shell-note">Workspace ID: {activeGroup.group_id}</p>
             </>
           ) : null}
         </section>
         <section className="panel chat-shell-card">
-          <h3 className="chat-shell-title">Conversation Slots</h3>
+          <h3 className="chat-shell-title">Conversation Rooms</h3>
           {!activeGroupId ? <p className="muted">Workspace unavailable.</p> : null}
           {activeGroupId && slotsLoading ? <p className="muted">Loading slots...</p> : null}
           {slotsError ? (
@@ -277,14 +402,21 @@ export function ChatPanel() {
               {slotsError instanceof Error ? slotsError.message : 'Failed to load slots'}
             </p>
           ) : null}
-          {!slotsLoading && !slotsError && slotsData?.slots.length === 0 ? (
+          {!slotsLoading && !slotsError && availableSlots.length === 0 ? (
             <p className="muted">No slots configured.</p>
           ) : null}
-          <ul className="chat-shell-list">
-            {slotsData?.slots.slice(0, 6).map((slot) => (
+          <ul className="chat-room-list">
+            {availableSlots.slice(0, SLOT_PREVIEW_LIMIT).map((slot) => (
               <li key={slot.slot_id}>
-                <span>{slot.title}</span>
-                <span className="muted">{slot.slot_id}</span>
+                <button
+                  className={`chat-room-button ${activeRoomId === slot.slot_id ? 'active' : ''}`}
+                  disabled={!canSwitchContext}
+                  onClick={() => handleRoomSwitch(slot.slot_id)}
+                  type="button"
+                >
+                  <span>{slot.title}</span>
+                  <span className="muted">{slot.slot_id}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -352,7 +484,10 @@ export function ChatPanel() {
               {selectedFiles.length > 0 ? (
                 <ul className="chat-attachment-list">
                   {selectedFiles.map((file, index) => (
-                    <li className="chat-attachment-item" key={`${file.name}-${file.size}-${file.lastModified}-${index}`}>
+                    <li
+                      className="chat-attachment-item"
+                      key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                    >
                       <div className="chat-attachment-meta">
                         <strong>{file.name}</strong>
                         <span className="muted">{formatFileSize(file.size)}</span>
@@ -399,6 +534,9 @@ export function ChatPanel() {
         <section className="panel chat-shell-card">
           <h3 className="chat-shell-title">Resource Dock</h3>
           <p className="muted chat-shell-note">Jump to dedicated workspace surfaces.</p>
+          <p className="muted chat-shell-note">
+            Active context: {targetGroupFolder} / {activeRoomId}
+          </p>
           <div className="chat-shell-links">
             <Link className="app-nav-link" to="/files">
               Files
