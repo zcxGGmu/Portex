@@ -158,11 +158,13 @@ def test_terminal_websocket_forwards_input_resize_and_invalid_message_errors(api
             websocket.send_text(json.dumps({"type": "unexpected"}))
 
             error_payload = json.loads(websocket.receive_text())
+            websocket.close()
     finally:
         app.dependency_overrides.clear()
 
     assert received_inputs == ["pwd\n"]
     assert received_resizes == [(120, 40)]
     assert error_payload["type"] == "terminal.error"
-    assert detach_event.wait(1)
+    # Server-side detach runs during websocket cleanup after the close handshake.
+    assert detach_event.wait(3)
     assert detach_calls == ["session-2"]
