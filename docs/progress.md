@@ -90,6 +90,7 @@
 - `M7.4.7`：新增前端 `/usage` 与 `/audit` 页面、导航入口、API client + hooks，补齐 operator-only 可视化读面，不引入写操作与导出能力。
 - `M7.4.7`：新增 `tests/services/test_usage_audit_service.py` 与 `tests/app/routes/test_usage_audit_routes.py`，并扩展 `tests/app/routes/test_api_routes.py` 覆盖新 tags/paths/schemas。
 - `M7.4.7`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_usage_audit_service.py tests/app/routes/test_usage_audit_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .`、`git diff --check`、`cd web && npm run lint` 与 `cd web && npm run build`。
+- `M7.4.7`：里程碑提交为 `63e2aaf`（`feat(ops): complete M7.4.7 usage and audit surfaces`）。
 - `M7.4.6`：新增独立 `/settings` 路由族，补齐 `GET/PUT /settings/provider`、`GET/PUT /settings/channels`、`GET/PUT /settings/registration`、`GET/PUT /settings/appearance`、`GET/PUT /settings/system`，并在 OpenAPI 中新增 `settings` tag 与相关 DTO 契约。
 - `M7.4.6`：新增文件系统版 `SettingsService`，落地 `data/settings/users/{user_id}` 与 `data/settings/global` 的 provider/channel/registration/appearance/system 配置模型，并补齐 safe-segment/root-containment/symlink/file-size/atomic-write guard。
 - `M7.4.6`：`POST /auth/register` 已接入 registration policy；`allow_registration=false` 返回 `403`，`require_invite_code=true` 且未携带邀请码返回 `400`。

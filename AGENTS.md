@@ -49,7 +49,7 @@
 - `M7.4.7` is complete in the parity backlog (usage/audit operator API + UI).
 - `M7.3.5` implementation is split across commits `1e312f6`, `73b1bdd`, `be03ddd`, `f7a083a`, and `5ee93e6`.
 - Latest post-merge bugfix commit is `041b60e` (`fix(workspace): restore main access and endpoint slot healing`), restoring shared `web:main` owner access consistency across `/groups`, `/messages`, and `/executions/{run_id}` and ensuring `ensure_im_endpoint()` self-heals the `main` conversation slot for existing endpoint rows.
-- Latest completed operator-surface commits are `8ed3f18` (`feat(memory): add M7.4.3 memory management APIs`), `0c89e6c` (`feat(skills): add skills management APIs`), `e20de9f` (`feat(mcp): add mcp server management APIs`), and `05b558b` (`feat(web): add mcp servers page`).
+- Latest completed operator-surface commits are `8ed3f18` (`feat(memory): add M7.4.3 memory management APIs`), `0c89e6c` (`feat(skills): add skills management APIs`), `e20de9f` (`feat(mcp): add mcp server management APIs`), `05b558b` (`feat(web): add mcp servers page`), and `63e2aaf` (`feat(ops): complete M7.4.7 usage and audit surfaces`).
 - First release tag is `v1.0.0`; package/runtime version intentionally remains `0.1.0` until a later explicit sync decision.
 - The repository-root release-image build path is now fully verified on the current host. Repro path: export `PATH="$HOME/bin:$PATH"` and `DOCKER_HOST=unix:///run/user/1000/docker.sock`, then run `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` and `docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
 - Proposed post-`M6` parity milestones `M7.1` ~ `M7.6` now live in `tasks/todo.md`, but `docs/TODO.md` remains the formal source of truth and still stops at `M6.5.3`.
