@@ -92,12 +92,15 @@
 - `M7.6.5` 已完成（intentionally unmatched HappyClaw surfaces consolidation）。
 - `M8.1` 已完成（terminal session backend，backend-only）。
 - `M8.2` 已完成（terminal UI / Web terminal panel，含 browser-compatible terminal WebSocket auth shim）。
-- 当前起点：若继续扩展，下一自然入口是新的 post-`M8.2` terminal fidelity / operator UX 里程碑（例如真实 TTY resize、session persistence、shared terminal policy 或独立 terminal page），但尚未立项；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- 当前起点：`M8.3` 已立项并完成 planning，设计/实施文档为 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`；下一步直接按计划执行只读 `GET /terminals` operator API、独立 `/terminals` 页面和最小 `/chat?workspace=...` 深链支持。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.3` planning：新增 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`，将 post-`M8.2` terminal 后续范围固定为“独立只读 terminal operator surface”。
+- `M8.3` planning：范围明确为独立 `GET /terminals` 聚合 API、独立 `/terminals` 页面、最小 `/chat?workspace=...` 深链支持，以及避免误导跳转的 `chat_accessible` 标记；不提前引入 start/close/reconnect/takeover 控制。
+- `M8.3` planning：当前仅有文档改动，最新可运行基线仍沿用 `M8.2` 验证链：`.venv/bin/pytest tests/app/routes/test_terminal_websocket_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M8.2`：新增 `docs/plans/2026-03-15-m8-2-terminal-ui-design.md` 与 `docs/plans/2026-03-15-m8-2-terminal-ui.md`，将范围固定为“chat 内 Web terminal panel + 最小浏览器兼容 WS 鉴权补丁”，不提前吞掉 terminal persistence、TTY fidelity、host/openai terminal 或共享接管语义。
 - `M8.2`：扩展 `app/routes/terminals.py` 与 `tests/app/routes/test_terminal_websocket_routes.py`，让 `/ws/terminals/{session_id}` 在保留 bearer-header 鉴权的同时接受 query-string `access_token`，补齐浏览器原生 WebSocket 可用性，并新增 focused coverage。
 - `M8.2`：扩展 `web/src/api/client.ts`、`web/src/api/ws.ts` 与 `web/src/hooks/useApi.ts`，补齐 terminal session REST helpers、browser terminal WS URL helper 和当前 terminal session query surface。
@@ -645,10 +648,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M8.1` 已完成，关键实现点在 `services/terminal_sessions.py`、`services/terminal_bridge.py`、`app/routes/terminals.py`、`services/execution_runtime.py`、`domain/schemas.py` 与 `app/openapi.py`；关键规划文档在 `docs/plans/2026-03-15-m8-1-terminal-session-backend-design.md` 与 `docs/plans/2026-03-15-m8-1-terminal-session-backend.md`。
-3. 当前有效起点可视为 `M8.2` 候选：如果继续 terminal 方向，下一步应是 Web terminal UI / panel 接线到现有 backend protocol，而不是回头重做 backend boundary。若改做别的方向，也应先显式开新里程碑。
+2. `M8.1` 与 `M8.2` 已完成，关键实现点在 `services/terminal_sessions.py`、`services/terminal_bridge.py`、`app/routes/terminals.py`、`web/src/components/chat/TerminalPanel.tsx`、`web/src/components/chat/ChatPanel.tsx`、`web/src/api/client.ts`、`web/src/api/ws.ts` 与 `web/src/hooks/useApi.ts`；新 planning 文档在 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`。
+3. 当前有效起点是 `M8.3`：直接执行 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md` 的 Task 1，先给 `TerminalSessionService` 增加只读 `list_sessions()` 测试与实现，再补 `GET /terminals`、独立 `/terminals` 页面和最小 chat workspace 深链。
 4. 复现当前基线建议命令：
-   - `M8.1 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `terminal baseline focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -658,4 +661,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1` 已完成；当前终端后端契约已到位，下一自然入口是 `M8.2` terminal UI，但尚未立项。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2` 已完成；当前直接起点是已规划好的 `M8.3` terminal operator UX，只等按计划执行。
