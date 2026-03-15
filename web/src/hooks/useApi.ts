@@ -45,6 +45,38 @@ export function useGroupsQuery() {
   })
 }
 
+export function useGroupMembersQuery(groupId: string | null) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['group-members', token, groupId],
+    enabled: Boolean(token && groupId),
+    queryFn: async () => {
+      if (!token || !groupId) {
+        throw new Error('Missing token or group id')
+      }
+      return apiClient.getGroupMembers(token, groupId)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useGroupSlotsQuery(groupId: string | null) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['group-slots', token, groupId],
+    enabled: Boolean(token && groupId),
+    queryFn: async () => {
+      if (!token || !groupId) {
+        throw new Error('Missing token or group id')
+      }
+      return apiClient.getGroupSlots(token, groupId)
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useSettingsProviderQuery() {
   const token = useAuthStore((state) => state.token)
 

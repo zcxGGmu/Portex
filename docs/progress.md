@@ -79,12 +79,18 @@
 - `M7.4.5` 已完成（MCP server-management API + UI）。
 - `M7.4.6` 已完成（settings/configuration API + UI，含注册策略生效）。
 - `M7.4.7` 已完成（usage/audit operator API + UI）。
-- 当前起点：继续 parity backlog 时，从 `M7.5.1` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.5.1` 已完成（chat/workspace shell 前端能力）。
+- 当前起点：继续 parity backlog 时，从 `M7.5.2` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M7.5.1`：新增 `docs/plans/2026-03-15-m7-5-1-chat-workspace-shell-design.md` 与 `docs/plans/2026-03-15-m7-5-1-chat-workspace-shell.md`，将范围固定为“chat/workspace shell 扩展”，明确不提前吞掉 `M7.5.2` 附件上传和 `M7.5.3` 工作区切换。
+- `M7.5.1`：重构 `web/src/components/chat/ChatPanel.tsx` 为 workspace shell 三段式布局，补齐 Workspace Snapshot（工作区、slots、members）、Resource Dock（Files/Memory/Skills/MCP 快捷入口）与独立 Execution Controls（运行态、事件计数、cancel/clear）。
+- `M7.5.1`：扩展 `web/src/api/client.ts` 与 `web/src/hooks/useApi.ts`，补齐 `GET /groups/{group_id}/members` 和 `GET /groups/{group_id}/slots` 的前端 typed client/query 接口；`web/src/pages/Chat.tsx` 与 `web/src/index.css` 同步更新为新的 chat shell 文案与响应式布局契约。
+- `M7.5.1`：前端 red-green 证据已记录：先在 `ChatPanel` 引入未实现 hooks 触发 `cd web && npm run build` 失败，再补齐 client/hooks 后恢复通过。
+- `M7.5.1`：fresh 验证已通过 `cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M7.4.7`：新增 DB-backed `UsageAuditService`，基于 `messages` + `attachments` 元数据补齐 usage 聚合（summary/daily/channel）和 audit feed（recent messages/group filter/limit clamp），并对损坏 JSON 元数据保持容错。
 - `M7.4.7`：新增 `GET /usage/stats` 与 `GET /audit/messages`，统一 owner/admin 可读、member `403`，并在 OpenAPI 新增 `usage`/`audit` tags 与对应 DTO 契约。
 - `M7.4.7`：新增前端 `/usage` 与 `/audit` 页面、导航入口、API client + hooks，补齐 operator-only 可视化读面，不引入写操作与导出能力。
@@ -545,7 +551,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.4.7` 已完成，下一步入口应前移到 `M7.5.1`，避免重复回做 usage/audit operator surface。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.5.1` 已完成，下一步入口应前移到 `M7.5.2`，继续补 chat 附件上传能力。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -556,10 +562,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M7.4.7` 已完成，关键实现点在 `services/usage_audit.py`、`app/routes/usage.py`、`app/routes/audit.py`、`web/src/pages/Usage.tsx`、`web/src/pages/Audit.tsx`，以及对应测试 `tests/services/test_usage_audit_service.py` 与 `tests/app/routes/test_usage_audit_routes.py`。
-3. 当前有效起点前移到 `M7.5.1`。继续 parity 时优先补 chat/workspace shell 前端能力，不要回退重做 `M7.4.7` usage/audit 面。
+2. `M7.5.1` 已完成，关键实现点在 `web/src/components/chat/ChatPanel.tsx`、`web/src/api/client.ts`、`web/src/hooks/useApi.ts`、`web/src/pages/Chat.tsx`、`web/src/index.css`，以及规划文档 `docs/plans/2026-03-15-m7-5-1-chat-workspace-shell-design.md` / `docs/plans/2026-03-15-m7-5-1-chat-workspace-shell.md`。
+3. 当前有效起点前移到 `M7.5.2`。继续 parity 时优先补 Web chat 的文件上传/附件 UX，不要提前吞掉 `M7.5.3` 工作区切换。
 4. 复现当前基线建议命令：
-   - `M7.4.7 focused`：`.venv/bin/pytest tests/services/test_usage_audit_service.py tests/app/routes/test_usage_audit_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M7.5.1 focused`：`cd web && npm run lint && npm run build`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -569,4 +575,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7` 已完成；当前 parity backlog 的下一步入口是 `M7.5.1`。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1` 已完成；当前 parity backlog 的下一步入口是 `M7.5.2`。

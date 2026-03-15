@@ -213,6 +213,100 @@ a {
   gap: 1rem;
 }
 
+.chat-shell {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(260px, 320px);
+}
+
+.chat-shell-side {
+  display: grid;
+  gap: 1rem;
+}
+
+.chat-shell-center {
+  min-width: 0;
+}
+
+.chat-shell-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+}
+
+.chat-shell-title {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.chat-shell-entity {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.chat-shell-note {
+  margin: 0;
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.chat-shell-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chat-shell-list li {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chat-shell-links {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chat-shell-links .app-nav-link {
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.chat-shell-links .app-nav-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.chat-shell-stats {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.chat-shell-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chat-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .monitor-grid {
   display: grid;
   gap: 1rem;
@@ -409,9 +503,28 @@ a {
   border: 1px solid var(--border);
 }
 
+@media (max-width: 1280px) {
+  .chat-shell {
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  }
+
+  .chat-shell-side:last-child {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 920px) {
   .memory-layout,
   .files-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-shell-side:last-child {
     grid-template-columns: 1fr;
   }
 
@@ -539,6 +652,11 @@ a {
   color: #0e7d4b;
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.status-badge--idle {
+  background-color: #eef2f7;
+  color: #516173;
 }
 
 .settings-grid {

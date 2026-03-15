@@ -83,6 +83,29 @@ export interface GroupSummary {
   name: string
 }
 
+export interface GroupMemberSummary {
+  group_id: string
+  user_id: string
+  role: string
+  joined_at: string
+}
+
+export interface GroupMemberListResponse {
+  members: GroupMemberSummary[]
+}
+
+export interface ConversationSlotSummary {
+  group_id: string
+  slot_id: string
+  title: string
+  created_by: string | null
+  created_at: string
+}
+
+export interface ConversationSlotListResponse {
+  slots: ConversationSlotSummary[]
+}
+
 export interface HealthResponse {
   status: string
   version: string
@@ -479,6 +502,12 @@ export const apiClient = {
   },
   getGroups(token: string): Promise<{ groups: GroupSummary[] }> {
     return request<{ groups: GroupSummary[] }>('/groups', { token })
+  },
+  getGroupMembers(token: string, groupId: string): Promise<GroupMemberListResponse> {
+    return request<GroupMemberListResponse>(`/groups/${encodeURIComponent(groupId)}/members`, { token })
+  },
+  getGroupSlots(token: string, groupId: string): Promise<ConversationSlotListResponse> {
+    return request<ConversationSlotListResponse>(`/groups/${encodeURIComponent(groupId)}/slots`, { token })
   },
   getHealth(): Promise<HealthResponse> {
     return request<HealthResponse>('/health')
