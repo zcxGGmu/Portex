@@ -1,6 +1,6 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-15 (Asia/Shanghai)
+最后更新: 2026-03-16 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
 
@@ -92,15 +92,17 @@
 - `M7.6.5` 已完成（intentionally unmatched HappyClaw surfaces consolidation）。
 - `M8.1` 已完成（terminal session backend，backend-only）。
 - `M8.2` 已完成（terminal UI / Web terminal panel，含 browser-compatible terminal WebSocket auth shim）。
-- 当前起点：`M8.3` 已立项并完成 planning，设计/实施文档为 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`；下一步直接按计划执行只读 `GET /terminals` operator API、独立 `/terminals` 页面和最小 `/chat?workspace=...` 深链支持。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `main` 当前只包含 `M8.3` 的设计/实施文档，不含实现代码。
+- 本地 worktree 分支 `m8-3-terminal-operator-ux` 已完成 `M8.3`（terminal operator overview API + page + 最小 chat workspace 深链），但尚未合并回 `main`。
+- 当前起点：若要继续最新 terminal 进展，先切到或合并 `m8-3-terminal-operator-ux`；若继续在 `main` 上工作，应把 `M8.3` 视为“已规划、未合并实现”。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
-- `M8.3` planning：新增 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`，将 post-`M8.2` terminal 后续范围固定为“独立只读 terminal operator surface”。
-- `M8.3` planning：范围明确为独立 `GET /terminals` 聚合 API、独立 `/terminals` 页面、最小 `/chat?workspace=...` 深链支持，以及避免误导跳转的 `chat_accessible` 标记；不提前引入 start/close/reconnect/takeover 控制。
-- `M8.3` planning：当前仅有文档改动，最新可运行基线仍沿用 `M8.2` 验证链：`.venv/bin/pytest tests/app/routes/test_terminal_websocket_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
+- `M8.3` planning：`main` 上已新增 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`，把 post-`M8.2` terminal 后续范围固定为“独立只读 terminal operator surface”。
+- `M8.3` implementation：本地 branch `m8-3-terminal-operator-ux` 已完成 `GET /terminals`、`/terminals` 页面、`chat_accessible` 标记和最小 `/chat?workspace=...` 深链；当前提交链为 `819159d`、`cabc9ec`、`553eaf3`、`34c1792`、`24485a9`。
+- `M8.3` implementation：该分支的 fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`（`564 passed, 1 warning`）、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M8.2`：新增 `docs/plans/2026-03-15-m8-2-terminal-ui-design.md` 与 `docs/plans/2026-03-15-m8-2-terminal-ui.md`，将范围固定为“chat 内 Web terminal panel + 最小浏览器兼容 WS 鉴权补丁”，不提前吞掉 terminal persistence、TTY fidelity、host/openai terminal 或共享接管语义。
 - `M8.2`：扩展 `app/routes/terminals.py` 与 `tests/app/routes/test_terminal_websocket_routes.py`，让 `/ws/terminals/{session_id}` 在保留 bearer-header 鉴权的同时接受 query-string `access_token`，补齐浏览器原生 WebSocket 可用性，并新增 focused coverage。
 - `M8.2`：扩展 `web/src/api/client.ts`、`web/src/api/ws.ts` 与 `web/src/hooks/useApi.ts`，补齐 terminal session REST helpers、browser terminal WS URL helper 和当前 terminal session query surface。
@@ -648,10 +650,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M8.1` 与 `M8.2` 已完成，关键实现点在 `services/terminal_sessions.py`、`services/terminal_bridge.py`、`app/routes/terminals.py`、`web/src/components/chat/TerminalPanel.tsx`、`web/src/components/chat/ChatPanel.tsx`、`web/src/api/client.ts`、`web/src/api/ws.ts` 与 `web/src/hooks/useApi.ts`；新 planning 文档在 `docs/plans/2026-03-15-m8-3-terminal-operator-ux-design.md` 与 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md`。
-3. 当前有效起点是 `M8.3`：直接执行 `docs/plans/2026-03-15-m8-3-terminal-operator-ux.md` 的 Task 1，先给 `TerminalSessionService` 增加只读 `list_sessions()` 测试与实现，再补 `GET /terminals`、独立 `/terminals` 页面和最小 chat workspace 深链。
+2. `main` 当前到 `f63bb9d`，只包含 `M8.3` 设计/计划文档；最新实现不在 `main`，而在本地 worktree 分支 `m8-3-terminal-operator-ux`（HEAD `24485a9`）。
+3. 如果要继续最新 terminal/operator 进展，优先切到该分支，或把 `819159d`、`cabc9ec`、`553eaf3`、`34c1792`、`24485a9` 合并/摘樱到 `main`；分支上的关键实现点在 `services/terminal_sessions.py`、`app/routes/terminals.py`、`tests/app/routes/test_terminal_monitor_routes.py`、`web/src/pages/Terminals.tsx`、`web/src/components/chat/ChatPanel.tsx`、`web/src/api/client.ts` 与 `web/src/hooks/useApi.ts`。
 4. 复现当前基线建议命令：
-   - `terminal baseline focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `main baseline focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.3 branch focused`：切到 `m8-3-terminal-operator-ux` 后运行 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -661,4 +664,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2` 已完成；当前直接起点是已规划好的 `M8.3` terminal operator UX，只等按计划执行。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2` 已完成；`main` 上的 `M8.3` 仍处于“已规划未合并实现”，完整实现当前在本地分支 `m8-3-terminal-operator-ux`。
