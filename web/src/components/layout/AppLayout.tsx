@@ -14,6 +14,7 @@ export function AppLayout({ title, children }: AppLayoutProps) {
   const logout = useAuthStore((state) => state.logout)
   const currentUser = useAuthStore((state) => state.currentUser)
   const navItems = [
+    { to: '/setup', label: 'Setup' },
     { to: '/chat', label: 'Chat' },
     { to: '/files', label: 'Files' },
     { to: '/memory', label: 'Memory' },

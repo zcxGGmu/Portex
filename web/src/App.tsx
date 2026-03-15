@@ -9,6 +9,7 @@ import { Memory } from './pages/Memory'
 import { McpServers } from './pages/McpServers'
 import { Monitor } from './pages/Monitor'
 import { Register } from './pages/Register'
+import { Setup } from './pages/Setup'
 import { Settings } from './pages/Settings'
 import { Skills } from './pages/Skills'
 import { Usage } from './pages/Usage'
@@ -55,6 +56,14 @@ function App() {
           </GuestRoute>
         }
         path="/register"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Setup />
+          </ProtectedRoute>
+        }
+        path="/setup"
       />
       <Route
         element={

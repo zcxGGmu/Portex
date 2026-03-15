@@ -84,12 +84,19 @@
 - `M7.5.3` 已完成（room/workspace switching UX）。
 - `M7.5.4` 已完成（IM binding UX）。
 - `M7.5.5` 已完成（terminal panel 范围与边界决策）。
-- 当前起点：继续 parity backlog 时，从 `M7.5.6` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M7.5.6` 已完成（setup/onboarding pages）。
+- 当前起点：继续 parity backlog 时，从 `M7.5.7` 开始；正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M7.5.6`：新增 `docs/plans/2026-03-15-m7-5-6-setup-onboarding-design.md` 与 `docs/plans/2026-03-15-m7-5-6-setup-onboarding.md`，将范围固定为“最小多步骤 setup/onboarding 页面”，明确不提前吞掉 `M7.5.7` mobile/PWA。
+- `M7.5.6`：新增 `web/src/pages/Setup.tsx`，实现四步 onboarding（Provider、Channels、System、Finish），复用现有 settings API 写入，不改后端契约。
+- `M7.5.6`：新增 `web/src/onboarding.ts` 本地完成标记；`web/src/pages/Login.tsx` 默认登录落点改为“未完成 setup -> /setup，已完成 -> /chat”；`web/src/App.tsx` 与 `web/src/components/layout/AppLayout.tsx` 增加 `/setup` 路由与导航入口。
+- `M7.5.6`：扩展 `web/src/index.css`，新增 setup progress/step/actions 样式并补齐移动端响应式布局。
+- `M7.5.6`：前端 red-green 证据已记录：先在 `web/src/App.tsx` 引入未实现 `./pages/Setup` 触发 `cd web && npm run build` 失败，再补齐页面与路由逻辑后恢复通过。
+- `M7.5.6`：fresh 验证已通过 `cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M7.5.5`：新增 `docs/plans/2026-03-15-m7-5-5-terminal-panel-decision-design.md` 与 `docs/plans/2026-03-15-m7-5-5-terminal-panel-decision.md`，将范围固定为“terminal panel 决策 + execution-mode/permission 边界”，明确本里程碑不实现终端 UI/API。
 - `M7.5.5`：决策结果为当前阶段不引入 terminal panel；先锁定未来准入边界：execution mode 需显式可终端化、权限需经过鉴权 + workspace access gate + elevated role 控制，且 terminal 协议不能混入当前 chat text send/cancel 协议。
 - `M7.5.5`：保持现有 `ChatPanel`/`/ws/{group_folder}` 执行链不变，不提前吞掉 `M7.5.6` onboarding。
@@ -576,7 +583,7 @@
 - `M7.3.4` 当前仍刻意收敛：authenticated WebSocket access control 仍未接入，`/ws/{group_folder}` 还没有复用新的 workspace membership gate；这项风险需显式保留到后续阶段，而不是误读成 HTTP / IM / execution read 面都已完全一致。
 - `M7.3.5` 当前已完成：Portex 已具备 workspace 下的最小 persistent conversation slots 模型；slot 是 session/message boundary，不是新的权限/文件/记忆/IM-binding 边界；IM 继续只落到 workspace `main` slot。
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
-- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.5.5` 已完成，下一步入口应前移到 `M7.5.6`（setup/onboarding），terminal panel 仍按 `M7.5.5` 决策维持 deferred。
+- `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.5.6` 已完成，下一步入口应前移到 `M7.5.7`（mobile/PWA，且仅在核心面稳定后开始），terminal panel 仍按 `M7.5.5` 决策维持 deferred。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -587,10 +594,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `M7.5.5` 已完成，关键产物在 `docs/plans/2026-03-15-m7-5-5-terminal-panel-decision-design.md` / `docs/plans/2026-03-15-m7-5-5-terminal-panel-decision.md`，结论是 terminal panel 先 deferred，等待独立 terminal backend + execution-mode/permission boundary。
-3. 当前有效起点前移到 `M7.5.6`。继续 parity 时优先实现 setup/onboarding 页面，不要提前吞掉 `M7.5.7` mobile/PWA。
+2. `M7.5.6` 已完成，关键实现点在 `web/src/pages/Setup.tsx`、`web/src/onboarding.ts`、`web/src/pages/Login.tsx`、`web/src/App.tsx`、`web/src/components/layout/AppLayout.tsx`、`web/src/index.css`，以及规划文档 `docs/plans/2026-03-15-m7-5-6-setup-onboarding-design.md` / `docs/plans/2026-03-15-m7-5-6-setup-onboarding.md`。
+3. 当前有效起点前移到 `M7.5.7`。继续 parity 时先评估 core operator/runtime surfaces 是否已停止 placeholder，再决定 mobile/PWA 范围，不要提前吞掉 `M7.6` channel/ecosystem 决策。
 4. 复现当前基线建议命令：
-   - `M7.5.5 focused`：`cd web && npm run lint && npm run build`
+   - `M7.5.6 focused`：`cd web && npm run lint && npm run build`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -600,4 +607,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5` 已完成；当前 parity backlog 的下一步入口是 `M7.5.6`。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6` 已完成；当前 parity backlog 的下一步入口是 `M7.5.7`。

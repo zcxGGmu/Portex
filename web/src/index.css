@@ -779,6 +779,98 @@ a {
   gap: 1rem;
 }
 
+.setup-hero {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.setup-progress-panel {
+  margin-bottom: 1rem;
+}
+
+.setup-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.setup-step-chip {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.setup-step-chip span {
+  font-size: 0.8rem;
+}
+
+.setup-step-chip.active {
+  border-color: var(--primary);
+  background: #edf4ff;
+  color: var(--text-primary);
+}
+
+.setup-step-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.setup-step-content {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.setup-step-content h3 {
+  margin: 0;
+}
+
+.setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.setup-link-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.setup-link-row .app-nav-link {
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.setup-link-row .app-nav-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.setup-nav-actions {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .settings-panel {
   margin-top: 1rem;
 }
@@ -866,6 +958,10 @@ a {
 @media (max-width: 900px) {
   .app-header-content {
     flex-wrap: wrap;
+  }
+
+  .setup-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .settings-grid {

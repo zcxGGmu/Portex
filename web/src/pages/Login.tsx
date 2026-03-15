@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../api/client'
 import { PrimaryButton } from '../components/ui/PrimaryButton'
+import { hasCompletedSetup } from '../onboarding'
 import { useAuthStore } from '../stores/auth'
 
 interface LoginLocationState {
@@ -33,7 +34,8 @@ export function Login() {
     try {
       await login(username.trim(), password)
       const state = location.state as LoginLocationState | null
-      navigate(state?.from ?? '/chat', { replace: true })
+      const defaultTarget = hasCompletedSetup() ? '/chat' : '/setup'
+      navigate(state?.from ?? defaultTarget, { replace: true })
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message)
