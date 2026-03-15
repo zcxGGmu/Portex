@@ -87,6 +87,7 @@
 - `M7.4.5`：新增文件系统版 `McpServersService`，落地 `data/mcp-servers/{user_id}/servers.json` 管理模型，支持 `stdio/http/sse` 三类 transport 的 list/detail/upsert/enable/disable/delete，并补齐 path/symlink/size guard。
 - `M7.4.5`：新增前端 `/mcp-servers` 页面与导航入口，支持 MCP server 列表、新建、编辑、启停和删除，不引入 host sync 或 runtime 注入改造。
 - `M7.4.5`：fresh 验证已通过 `.venv/bin/pytest tests/services/test_mcp_servers_service.py tests/app/routes/test_mcp_servers_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .`、`git diff --check`、`cd web && npm run lint` 与 `cd web && npm run build`。
+- `M7.4.5`：handoff 同步完成，`docs/progress.md` 与 `AGENTS.md` 当前续做入口统一为 `M7.4.6`。
 - `M7.4.4`：新增独立 `/skills` 路由族，补齐 `GET /skills`、`GET/PUT/DELETE /skills/{skill_id}` 与 `PATCH /skills/{skill_id}/state`，并在 OpenAPI 中新增 `skills` tag 与相关 DTO 契约。
 - `M7.4.4`：用文件系统版 `SkillsService` 替换占位实现，落地 `data/skills/{user_id}/{skill_id}/SKILL.md(.disabled)` 管理模型，补齐 list/detail/upsert/enable/disable/delete 与 path/symlink/size guard。
 - `M7.4.4`：新增前端 `/skills` 页面与导航入口，支持 skills 列表、新建、编辑、启停和删除，不引入 marketplace/install/sync-host 复杂流程。
