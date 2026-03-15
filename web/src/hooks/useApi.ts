@@ -174,6 +174,40 @@ export function useSkillDetailQuery(skillId: string | null, enabled = true) {
   })
 }
 
+export function useMcpServersQuery() {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['mcp-servers', token],
+    enabled: Boolean(token),
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.listMcpServers(token)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useMcpServerDetailQuery(serverId: string | null, enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['mcp-server-detail', token, serverId],
+    enabled: Boolean(token && serverId && enabled),
+    queryFn: async () => {
+      if (!token || !serverId) {
+        throw new Error('Missing token or server id')
+      }
+
+      return apiClient.getMcpServer(token, serverId)
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useWorkspaceFilesQuery(groupId: string | null, currentPath: string) {
   const token = useAuthStore((state) => state.token)
 

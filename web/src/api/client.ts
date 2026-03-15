@@ -86,6 +86,43 @@ export interface SkillDetailResponse {
   content: string
 }
 
+export type McpTransport = 'stdio' | 'http' | 'sse'
+
+export interface McpServerSummary {
+  server_id: string
+  transport: McpTransport
+  enabled: boolean
+  updated_at: string
+}
+
+export interface McpServerListResponse {
+  servers: McpServerSummary[]
+}
+
+export interface McpServerDetailResponse {
+  server_id: string
+  transport: McpTransport
+  enabled: boolean
+  description: string | null
+  created_at: string
+  updated_at: string
+  command: string | null
+  args: string[] | null
+  env: Record<string, string> | null
+  url: string | null
+  headers: Record<string, string> | null
+}
+
+export interface UpdateMcpServerPayload {
+  transport: McpTransport
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  url?: string
+  headers?: Record<string, string>
+  description?: string
+}
+
 export interface MonitorBackendHealth {
   backend: string
   status: 'ok' | 'error'
@@ -335,6 +372,40 @@ export const apiClient = {
   },
   deleteSkill(token: string, skillId: string): Promise<{ status: string }> {
     return request<{ status: string }>(`/skills/${encodeURIComponent(skillId)}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+  listMcpServers(token: string): Promise<McpServerListResponse> {
+    return request<McpServerListResponse>('/mcp-servers', { token })
+  },
+  getMcpServer(token: string, serverId: string): Promise<McpServerDetailResponse> {
+    return request<McpServerDetailResponse>(`/mcp-servers/${encodeURIComponent(serverId)}`, { token })
+  },
+  updateMcpServer(
+    token: string,
+    serverId: string,
+    payload: UpdateMcpServerPayload,
+  ): Promise<McpServerDetailResponse> {
+    return request<McpServerDetailResponse>(`/mcp-servers/${encodeURIComponent(serverId)}`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+    })
+  },
+  updateMcpServerState(
+    token: string,
+    serverId: string,
+    enabled: boolean,
+  ): Promise<McpServerDetailResponse> {
+    return request<McpServerDetailResponse>(`/mcp-servers/${encodeURIComponent(serverId)}/state`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ enabled }),
+    })
+  },
+  deleteMcpServer(token: string, serverId: string): Promise<{ status: string }> {
+    return request<{ status: string }>(`/mcp-servers/${encodeURIComponent(serverId)}`, {
       method: 'DELETE',
       token,
     })

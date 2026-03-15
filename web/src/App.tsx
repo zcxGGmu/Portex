@@ -5,6 +5,7 @@ import { Chat } from './pages/Chat'
 import { Files } from './pages/Files'
 import { Login } from './pages/Login'
 import { Memory } from './pages/Memory'
+import { McpServers } from './pages/McpServers'
 import { Monitor } from './pages/Monitor'
 import { Register } from './pages/Register'
 import { Settings } from './pages/Settings'
@@ -84,6 +85,14 @@ function App() {
           </ProtectedRoute>
         }
         path="/skills"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <McpServers />
+          </ProtectedRoute>
+        }
+        path="/mcp-servers"
       />
       <Route
         element={

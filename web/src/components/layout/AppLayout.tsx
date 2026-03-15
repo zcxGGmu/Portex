@@ -18,6 +18,7 @@ export function AppLayout({ title, children }: AppLayoutProps) {
     { to: '/files', label: 'Files' },
     { to: '/memory', label: 'Memory' },
     { to: '/skills', label: 'Skills' },
+    { to: '/mcp-servers', label: 'MCP' },
     ...(currentUser?.role === 'owner' || currentUser?.role === 'admin'
       ? [{ to: '/monitor', label: 'Monitor' }]
       : []),
