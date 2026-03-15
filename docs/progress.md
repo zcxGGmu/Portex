@@ -97,6 +97,7 @@
 - `M7.5.6`：扩展 `web/src/index.css`，新增 setup progress/step/actions 样式并补齐移动端响应式布局。
 - `M7.5.6`：前端 red-green 证据已记录：先在 `web/src/App.tsx` 引入未实现 `./pages/Setup` 触发 `cd web && npm run build` 失败，再补齐页面与路由逻辑后恢复通过。
 - `M7.5.6`：fresh 验证已通过 `cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`、`.venv/bin/ruff check .` 与 `git diff --check`。
+- `M7.5.6`：里程碑提交为 `e8951b8`（`feat(web): complete M7.5.6 setup onboarding pages`）。
 - `M7.5.5`：新增 `docs/plans/2026-03-15-m7-5-5-terminal-panel-decision-design.md` 与 `docs/plans/2026-03-15-m7-5-5-terminal-panel-decision.md`，将范围固定为“terminal panel 决策 + execution-mode/permission 边界”，明确本里程碑不实现终端 UI/API。
 - `M7.5.5`：决策结果为当前阶段不引入 terminal panel；先锁定未来准入边界：execution mode 需显式可终端化、权限需经过鉴权 + workspace access gate + elevated role 控制，且 terminal 协议不能混入当前 chat text send/cancel 协议。
 - `M7.5.5`：保持现有 `ChatPanel`/`/ws/{group_folder}` 执行链不变，不提前吞掉 `M7.5.6` onboarding。
