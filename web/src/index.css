@@ -599,6 +599,64 @@ a {
   gap: 0.75rem;
 }
 
+.chat-attachments {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 0.65rem;
+  background: #fbfcfe;
+}
+
+.chat-attachment-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chat-attachment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.chat-attachment-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: #fff;
+}
+
+.chat-attachment-meta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.chat-attachment-remove {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 0.32rem 0.55rem;
+  cursor: pointer;
+}
+
+.chat-attachment-remove:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.chat-recent-uploads {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .chat-form textarea {
   resize: vertical;
   min-height: 80px;

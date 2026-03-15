@@ -661,6 +661,16 @@ export const apiClient = {
       body,
     })
   },
+  uploadChatAttachments(token: string, groupId: string, files: File[]): Promise<{ files: string[] }> {
+    const body = new FormData()
+    body.set('path', 'chat-attachments')
+    files.forEach((file) => body.append('files', file))
+    return request<{ files: string[] }>(`/groups/${encodeURIComponent(groupId)}/files`, {
+      method: 'POST',
+      token,
+      body,
+    })
+  },
   getWorkspaceFileContent(
     token: string,
     groupId: string,
