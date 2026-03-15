@@ -53,6 +53,10 @@ OPENAPI_TAGS = [
         "description": "User-local skills listing, editing, state-toggle, and delete endpoints.",
     },
     {
+        "name": "mcp_servers",
+        "description": "User-local MCP server listing, editing, state-toggle, and delete endpoints.",
+    },
+    {
         "name": "messages",
         "description": "HTTP message dispatch entrypoint backed by the current "
         "runtime-chain orchestration boundary.",

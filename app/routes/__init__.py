@@ -9,6 +9,7 @@ __all__ = [
     "files",
     "memory",
     "skills",
+    "mcp_servers",
     "executions",
     "im",
     "messages",

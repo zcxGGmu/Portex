@@ -485,6 +485,149 @@ class DeleteSkillResponse(BaseModel):
     )
 
 
+class McpServerSummaryResponse(BaseModel):
+    server_id: str = Field(
+        description="User-local MCP server identifier.",
+        examples=["local-cli"],
+    )
+    transport: Literal["stdio", "http", "sse"] = Field(
+        description="Transport family for the MCP server.",
+        examples=["stdio"],
+    )
+    enabled: bool = Field(
+        description="Whether the MCP server is currently enabled.",
+        examples=[True],
+    )
+    updated_at: datetime = Field(
+        description="Last-updated timestamp for the MCP server config.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+
+    @field_validator("updated_at", mode="after")
+    @classmethod
+    def normalize_mcp_server_summary_updated_at(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("McpServerSummaryResponse.updated_at normalization returned None")
+        return normalized
+
+
+class McpServerListResponse(BaseModel):
+    servers: list[McpServerSummaryResponse]
+
+
+class McpServerDetailResponse(BaseModel):
+    server_id: str = Field(
+        description="User-local MCP server identifier.",
+        examples=["local-cli"],
+    )
+    transport: Literal["stdio", "http", "sse"] = Field(
+        description="Transport family for the MCP server.",
+        examples=["stdio"],
+    )
+    enabled: bool = Field(
+        description="Whether the MCP server is currently enabled.",
+        examples=[True],
+    )
+    description: str | None = Field(
+        default=None,
+        description="Optional operator-facing description for the MCP server.",
+        examples=["Local stdio MCP server"],
+    )
+    created_at: datetime = Field(
+        description="Creation timestamp for this MCP server entry.",
+        examples=["2026-03-15T08:00:00Z"],
+    )
+    updated_at: datetime = Field(
+        description="Last-updated timestamp for this MCP server entry.",
+        examples=["2026-03-15T08:05:00Z"],
+    )
+    command: str | None = Field(
+        default=None,
+        description="Stdio transport command when `transport=stdio`.",
+        examples=["uvx"],
+    )
+    args: list[str] | None = Field(
+        default=None,
+        description="Stdio transport command arguments when `transport=stdio`.",
+        examples=[["mcp-server-sqlite"]],
+    )
+    env: dict[str, str] | None = Field(
+        default=None,
+        description="Stdio transport environment variables when `transport=stdio`.",
+        examples=[{"MCP_ROOT": "/workspace"}],
+    )
+    url: str | None = Field(
+        default=None,
+        description="HTTP/SSE transport URL when `transport=http|sse`.",
+        examples=["https://example.com/mcp"],
+    )
+    headers: dict[str, str] | None = Field(
+        default=None,
+        description="HTTP/SSE transport request headers when `transport=http|sse`.",
+        examples=[{"Authorization": "Bearer token"}],
+    )
+
+    @field_validator("created_at", "updated_at", mode="after")
+    @classmethod
+    def normalize_mcp_server_detail_datetimes(cls, value: datetime) -> datetime:
+        normalized = _normalize_utc_datetime(value)
+        if normalized is None:
+            raise ValueError("McpServerDetailResponse datetime normalization returned None")
+        return normalized
+
+
+class UpdateMcpServerRequest(BaseModel):
+    transport: Literal["stdio", "http", "sse"] = Field(
+        description="Target transport for the MCP server entry.",
+        examples=["stdio"],
+    )
+    command: str | None = Field(
+        default=None,
+        description="Required when `transport=stdio`.",
+        examples=["uvx"],
+    )
+    args: list[str] | None = Field(
+        default=None,
+        description="Optional stdio arguments when `transport=stdio`.",
+        examples=[["mcp-server-sqlite"]],
+    )
+    env: dict[str, str] | None = Field(
+        default=None,
+        description="Optional stdio environment variables when `transport=stdio`.",
+        examples=[{"MCP_ROOT": "/workspace"}],
+    )
+    url: str | None = Field(
+        default=None,
+        description="Required when `transport=http|sse`.",
+        examples=["https://example.com/mcp"],
+    )
+    headers: dict[str, str] | None = Field(
+        default=None,
+        description="Optional HTTP/SSE headers when `transport=http|sse`.",
+        examples=[{"Authorization": "Bearer token"}],
+    )
+    description: str | None = Field(
+        default=None,
+        description="Optional operator-facing description.",
+        examples=["Remote docs MCP"],
+    )
+
+
+class UpdateMcpServerStateRequest(BaseModel):
+    enabled: bool = Field(
+        description="Target enabled state for the selected MCP server.",
+        examples=[False],
+    )
+
+
+class DeleteMcpServerResponse(BaseModel):
+    status: str = Field(
+        description="Delete result for the selected MCP server.",
+        examples=["deleted"],
+    )
+
+
 class CreateConversationSlotRequest(BaseModel):
     slot_id: str = Field(
         min_length=1,
