@@ -11,7 +11,7 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-16)
+## Current Baseline Snapshot (2026-03-17)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
 - `M3` is complete (`M3.1` ~ `M3.6`).
 - `M4` is complete (`M4.1` ~ `M4.5`).
@@ -69,7 +69,9 @@
 - `M8.5.5` is complete and landed on `main` (active terminal session persistence/recovery across process restarts).
 - `M8.5.6` is complete and landed on `main` (persistence-aware terminal history inventory on `/terminals` overview).
 - `M8.5.7` is complete and landed on `main` (multi-snapshot terminal history timeline/pagination route + `/terminals` on-demand timeline view).
-- `M8.5.8` is complete on the current feature branch `feat/m8-5-8-terminal-history-filters-detail` (terminal history server-side filters + session detail on `/terminals`).
+- `M8.5.8` is complete and landed on `main` (terminal history server-side filters + session detail on `/terminals`).
+- `M8.5.9` is complete on the feature branch `feat/m8-5-9-terminal-history-output-search` (per-workspace terminal history output search + detail highlighting on `/terminals`).
+- `M8.5.10` is complete on the feature branch `feat/m8-5-10-terminal-detail-match-navigation` (local previous/next match navigation inside the terminal history detail panel).
 - `M7.3.5` implementation is split across commits `1e312f6`, `73b1bdd`, `be03ddd`, `f7a083a`, and `5ee93e6`.
 - Latest post-merge bugfix commit is `041b60e` (`fix(workspace): restore main access and endpoint slot healing`), restoring shared `web:main` owner access consistency across `/groups`, `/messages`, and `/executions/{run_id}` and ensuring `ensure_im_endpoint()` self-heals the `main` conversation slot for existing endpoint rows.
 - Latest completed operator-surface commits are `8ed3f18` (`feat(memory): add M7.4.3 memory management APIs`), `0c89e6c` (`feat(skills): add skills management APIs`), `e20de9f` (`feat(mcp): add mcp server management APIs`), `05b558b` (`feat(web): add mcp servers page`), and `63e2aaf` (`feat(ops): complete M7.4.7 usage and audit surfaces`).
@@ -78,7 +80,7 @@
 - The repository-root release-image build path is now fully verified on the current host. Repro path: export `PATH="$HOME/bin:$PATH"` and `DOCKER_HOST=unix:///run/user/1000/docker.sock`, then run `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` and `docker image inspect portex:v1.0.0 --format '{{.Id}}'`.
 - Proposed post-`M6` parity milestones `M7.1` ~ `M7.6` now live in `tasks/todo.md`, but `docs/TODO.md` remains the formal source of truth and still stops at `M6.5.3`.
 - `M7.1` planning docs now exist (`docs/plans/2026-03-11-m7-1-main-runtime-chain-parity-design.md`, `docs/plans/2026-03-11-m7-1-main-runtime-chain-parity.md`) and were refined by `docs/plans/2026-03-12-m7-1-runtime-dispatch-refinement-design.md` plus `docs/plans/2026-03-12-m7-1-runtime-dispatch-refinement.md` before implementation.
-- The formal `M6` roadmap is exhausted. The parity backlog through `M7.6.5` is complete. On the current feature branch, the immediate continuation point is post-`M8.5.8` terminal output search/highlighting work rather than earlier parity milestones.
+- The formal `M6` roadmap is exhausted. The parity backlog through `M7.6.5` is complete. `main` currently includes `M8.5.8`; the latest continuation point lives on `feat/m8-5-10-terminal-detail-match-navigation`, where the immediate next step is post-`M8.5.10` search-result pagination / cross-session match navigation rather than earlier parity milestones.
 - Likely local-only file in the worktree: `data/portex.db`. Do not stage it accidentally.
 - If unsure after restart, treat `docs/progress.md` as source of truth and continue from the `当前起点` / `下一位 Codex 直接执行` entries.
 
@@ -131,6 +133,9 @@
 - If the user explicitly chooses to continue post-`M8.5.7` terminal work, keep `latest.json`/`/sessions/current/history` compatibility and branch cleanly into timeline filtering/search/detail without changing current RBAC boundaries.
 - If resuming after `M8.5.8`, also skim `docs/plans/2026-03-16-m8-5-8-terminal-history-filters-detail-design.md`, `docs/plans/2026-03-16-m8-5-8-terminal-history-filters-detail.md`, `services/terminal_sessions.py`, `app/routes/terminals.py`, `domain/schemas.py`, `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, `web/src/pages/Terminals.tsx`, `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, `tests/app/routes/test_terminal_monitor_routes.py`, and `tests/app/routes/test_api_routes.py` because `M8.5.8` adds server-side timeline filters, session detail read surface, and the current post-`M8.5.8` starting boundary.
 - If the user explicitly chooses to continue post-`M8.5.8` terminal work, keep `latest.json`/`/sessions/current/history` compatibility and branch cleanly into terminal output search/highlighting without changing current RBAC boundaries.
+- If resuming after `M8.5.9`, also skim `docs/plans/2026-03-16-m8-5-9-terminal-history-output-search-design.md`, `docs/plans/2026-03-16-m8-5-9-terminal-history-output-search.md`, `services/terminal_sessions.py`, `app/routes/terminals.py`, `domain/schemas.py`, `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, `web/src/pages/Terminals.tsx`, `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, `tests/app/routes/test_terminal_monitor_routes.py`, and `tests/app/routes/test_api_routes.py` because `M8.5.9` adds output search/snippets/highlighting and defines the current search/detail boundary.
+- If resuming after `M8.5.10`, also skim `docs/plans/2026-03-16-m8-5-10-terminal-history-detail-match-navigation-design.md`, `docs/plans/2026-03-16-m8-5-10-terminal-history-detail-match-navigation.md`, `web/src/pages/Terminals.tsx`, `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, and the terminal route/service tests because `M8.5.10` adds local detail match navigation on top of the existing search/detail UI without backend API changes.
+- If the user explicitly chooses to continue post-`M8.5.10` terminal work, keep `latest.json`/`/sessions/current/history` compatibility and branch cleanly into search-result pagination / cross-session match navigation without changing current RBAC boundaries.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate`: create and activate env.
@@ -160,7 +165,7 @@
 - `.venv/bin/pytest tests/services/test_mcp_servers_service.py tests/app/routes/test_mcp_servers_routes.py tests/app/routes/test_api_routes.py -q`: run the current `M7.4.5` MCP server-management focused suite.
 - `.venv/bin/pytest tests/services/test_settings_service.py tests/app/routes/test_settings_routes.py tests/app/routes/test_api_routes.py`: run the current `M7.4.6` settings/configuration focused suite.
 - `.venv/bin/pytest tests/services/test_usage_audit_service.py tests/app/routes/test_usage_audit_routes.py tests/app/routes/test_api_routes.py -q`: run the current `M7.4.7` usage/audit operator-surface focused suite.
-- `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`: run the `M8.5.8` terminal history filters/detail focused suite on the current branch.
+- `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`: run the `M8.5.10` terminal history search/detail-navigation focused suite on the latest terminal feature branch.
 - `.venv/bin/pytest tests/ -v --cov`: run the current backend CI-equivalent test command with coverage.
 - `.venv/bin/python scripts/security_scan.py`: run the repository-local backend security scan (Ruff `S` rules on runtime code).
 - `.venv/bin/python scripts/dependency_audit.py`: run the repository-local backend dependency audit (`pip-audit` on the Python project).
