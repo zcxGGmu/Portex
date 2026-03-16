@@ -1038,3 +1038,41 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Commit: `87322e1` (`feat(terminal): complete M8.5.2 resize fidelity`).
+
+# Session Plan (2026-03-16) - M8.5.3 Terminal History Read Surface
+
+## Goal
+- Continue post-`M8.5.2` session-management work by adding a minimal read-only terminal history API for the current workspace session, reusing existing bounded in-memory output history.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and latest terminal slices
+- [x] Write focused `M8.5.3` design doc
+- [x] Write focused `M8.5.3` implementation plan doc
+- [x] Add failing tests for service history snapshot behavior
+- [x] Add failing route tests for terminal history read endpoint
+- [x] Add failing OpenAPI assertions for the new route contract
+- [x] Implement `TerminalSessionService` history snapshot read helper
+- [x] Add `TerminalSessionHistoryResponse` schema and wire route response model
+- [x] Implement `GET /terminals/{group_id}/sessions/current/history`
+- [x] Run focused terminal/backend verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md` with `M8.5.3` evidence and next-step guidance
+- [x] Add session review notes in `tasks/todo.md`
+- [ ] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-3-terminal-history-read-surface-design.md` and `docs/plans/2026-03-16-m8-5-3-terminal-history-read-surface.md` to lock this slice as “terminal history read surface only,” explicitly deferring cross-process persistence.
+- Extended `services/terminal_sessions.py` with `TerminalSessionHistorySnapshot` and `get_history_by_group()` to expose a lock-protected in-memory history snapshot (`output`, `output_bytes`, `history_max_bytes`, `truncated`) for the current workspace session.
+- Added `TerminalSessionHistoryResponse` in `domain/schemas.py` and exported it for OpenAPI/schema use.
+- Added route `GET /terminals/{group_id}/sessions/current/history` in `app/routes/terminals.py`, reusing existing terminal role + workspace access checks and existing terminal error mapping.
+- Expanded tests in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` with red-green coverage for service snapshot behavior, route auth/success/not-found behavior, and OpenAPI route contract.
+- Updated `docs/progress.md` to mark `M8.5.3` complete and move next-step guidance to post-`M8.5.3` persistence.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q` (red then green)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`574 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Commit: pending in this session.

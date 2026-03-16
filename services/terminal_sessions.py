@@ -63,6 +63,15 @@ class TerminalSessionRecord:
     reconnect_deadline: datetime | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class TerminalSessionHistorySnapshot:
+    record: TerminalSessionRecord
+    output: str
+    output_bytes: int
+    history_max_bytes: int
+    truncated: bool
+
+
 @dataclass(slots=True)
 class _ManagedTerminalSession:
     record: TerminalSessionRecord
@@ -71,6 +80,7 @@ class _ManagedTerminalSession:
     reconnect_task: asyncio.Task[None] | None = None
     output_history_chunks: deque[str] = field(default_factory=deque)
     output_history_bytes: int = 0
+    output_history_truncated: bool = False
 
 
 class TerminalSessionService:
@@ -199,6 +209,19 @@ class TerminalSessionService:
         managed = self._require_session(session_id)
         self._require_owner(managed, owner_user_id)
         await managed.bridge.resize(cols=cols, rows=rows)
+
+    async def get_history_by_group(self, group_folder: str) -> TerminalSessionHistorySnapshot:
+        async with self._lock:
+            managed = self._sessions_by_group.get(group_folder)
+            if managed is None:
+                raise TerminalSessionNotFoundError("terminal session not found")
+            return TerminalSessionHistorySnapshot(
+                record=managed.record,
+                output="".join(managed.output_history_chunks),
+                output_bytes=managed.output_history_bytes,
+                history_max_bytes=self._history_max_bytes,
+                truncated=managed.output_history_truncated,
+            )
 
     async def close_session_by_group(
         self,
@@ -337,6 +360,7 @@ class TerminalSessionService:
         while managed.output_history_bytes > self._history_max_bytes and managed.output_history_chunks:
             removed = managed.output_history_chunks.popleft()
             managed.output_history_bytes -= len(removed.encode("utf-8", errors="ignore"))
+            managed.output_history_truncated = True
         if managed.output_history_bytes < 0:
             managed.output_history_bytes = 0
 
@@ -363,6 +387,7 @@ __all__ = [
     "TerminalBackendUnsupportedError",
     "TerminalSessionConflictError",
     "TerminalSessionEvent",
+    "TerminalSessionHistorySnapshot",
     "TerminalSessionNotFoundError",
     "TerminalSessionOwnershipError",
     "TerminalSessionRecord",

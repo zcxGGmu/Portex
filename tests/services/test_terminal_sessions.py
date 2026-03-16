@@ -393,3 +393,50 @@ async def test_terminal_session_service_replay_history_is_bounded_by_max_bytes()
 
     assert replay_event_1.data == "67890"
     assert replay_event_2.data == "abc"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_returns_history_snapshot_with_metadata() -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=8,
+    )
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _first_attach, queue = await service.attach_session(session.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("12345")
+    await created_bridges[0].emit_output("67890")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+
+    snapshot = await service.get_history_by_group("project-alpha")
+
+    assert snapshot.record.session_id == session.session_id
+    assert snapshot.output == "67890"
+    assert snapshot.output_bytes == 5
+    assert snapshot.history_max_bytes == 8
+    assert snapshot.truncated is True
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_history_lookup_raises_for_missing_workspace() -> None:
+    from services.terminal_sessions import TerminalSessionNotFoundError, TerminalSessionService
+
+    service = TerminalSessionService(bridge_factory=lambda **_: FakeBridge())
+
+    with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
+        await service.get_history_by_group("missing-workspace")

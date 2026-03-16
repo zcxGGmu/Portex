@@ -922,6 +922,28 @@ class TerminalSessionResponse(BaseModel):
         return _normalize_utc_datetime(value)
 
 
+class TerminalSessionHistoryResponse(BaseModel):
+    session: TerminalSessionResponse = Field(
+        description="Current terminal session snapshot associated with this history payload.",
+    )
+    output: str = Field(
+        description="Buffered terminal output text for the current session in chronological order.",
+        examples=["$ pwd\n/workspace/group\n"],
+    )
+    output_bytes: int = Field(
+        description="Current buffered output size in UTF-8 bytes.",
+        examples=[2048],
+    )
+    history_max_bytes: int = Field(
+        description="Configured maximum number of UTF-8 bytes retained in memory for output history.",
+        examples=[32768],
+    )
+    truncated: bool = Field(
+        description="Whether older history chunks were dropped due to the configured history size cap.",
+        examples=[False],
+    )
+
+
 class TerminalWorkspaceSummaryResponse(BaseModel):
     group_id: str = Field(
         description="Workspace identifier represented in the terminal overview.",
@@ -1653,6 +1675,7 @@ __all__ = [
     "TaskRunLogListResponse",
     "TaskRunLogResponse",
     "TaskResponse",
+    "TerminalSessionHistoryResponse",
     "TerminalSessionResponse",
     "TerminalWorkspaceListResponse",
     "TerminalWorkspaceSummaryResponse",

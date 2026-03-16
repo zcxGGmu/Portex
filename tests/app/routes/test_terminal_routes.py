@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 from typing import Iterator
 
 from fastapi.testclient import TestClient
@@ -66,11 +67,13 @@ class FakeGroupRegistry:
 def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     create_response = api_client.post("/terminals/project-alpha/sessions", json={})
     get_response = api_client.get("/terminals/project-alpha/sessions/current")
+    history_response = api_client.get("/terminals/project-alpha/sessions/current/history")
     delete_response = api_client.delete("/terminals/project-alpha/sessions/current")
     force_delete_response = api_client.delete("/terminals/project-alpha/sessions/force")
 
     assert create_response.status_code == 401
     assert get_response.status_code == 401
+    assert history_response.status_code == 401
     assert delete_response.status_code == 401
     assert force_delete_response.status_code == 401
 
@@ -302,3 +305,88 @@ def test_operator_can_force_close_terminal_session(api_client: TestClient) -> No
     assert response.status_code == 200
     assert response.json() == {"status": "closed"}
     assert service.force_closed is True
+
+
+def test_owner_can_read_terminal_session_history(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            from datetime import datetime, timezone
+
+            self.record = TerminalSessionRecord(
+                session_id="terminal-session-1",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-1",
+                status="attached",
+                created_at=datetime(2026, 3, 16, 9, 0, tzinfo=timezone.utc),
+            )
+
+        async def get_history_by_group(self, group_folder: str):
+            assert group_folder == "project-alpha"
+            return SimpleNamespace(
+                record=self.record,
+                output="line1\nline2\n",
+                output_bytes=12,
+                history_max_bytes=32768,
+                truncated=False,
+            )
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/current/history",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["output"] == "line1\nline2\n"
+    assert response.json()["output_bytes"] == 12
+    assert response.json()["history_max_bytes"] == 32768
+    assert response.json()["truncated"] is False
+    assert response.json()["session"]["session_id"] == "terminal-session-1"
+
+
+def test_terminal_history_route_returns_404_when_session_is_missing(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionNotFoundError
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def get_history_by_group(self, group_folder: str):
+            _ = group_folder
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/current/history",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "terminal session not found"
