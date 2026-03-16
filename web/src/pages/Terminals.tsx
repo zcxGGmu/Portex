@@ -21,6 +21,11 @@ const TERMINAL_HISTORY_STATUS_OPTIONS: Array<{ value: TerminalSessionStatus; lab
   { value: 'closed', label: 'Closed' },
   { value: 'exited', label: 'Exited' },
 ]
+const DEFAULT_TIMELINE_FILTERS = {
+  status: '' as TerminalSessionStatus | '',
+  ownerUserId: '',
+  sessionIdPrefix: '',
+}
 
 function formatDate(value: string | null): string {
   if (!value) {
@@ -79,11 +84,7 @@ export function Terminals() {
     status: TerminalSessionStatus | ''
     ownerUserId: string
     sessionIdPrefix: string
-  }>({
-    status: '',
-    ownerUserId: '',
-    sessionIdPrefix: '',
-  })
+  }>(DEFAULT_TIMELINE_FILTERS)
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
 
   const {
@@ -136,11 +137,13 @@ export function Terminals() {
     if (timelineGroupId === groupId) {
       setTimelineGroupId(null)
       setTimelineOffset(0)
+      setTimelineFilters(DEFAULT_TIMELINE_FILTERS)
       setDetailSessionId(null)
       return
     }
     setTimelineGroupId(groupId)
     setTimelineOffset(0)
+    setTimelineFilters(DEFAULT_TIMELINE_FILTERS)
     setDetailSessionId(null)
   }
 
