@@ -1058,7 +1058,7 @@
 - [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
 - [x] Update `docs/progress.md` with `M8.5.3` evidence and next-step guidance
 - [x] Add session review notes in `tasks/todo.md`
-- [ ] Commit milestone changes with detailed message
+- [x] Commit milestone changes with detailed message
 
 ## Review
 - Added `docs/plans/2026-03-16-m8-5-3-terminal-history-read-surface-design.md` and `docs/plans/2026-03-16-m8-5-3-terminal-history-read-surface.md` to lock this slice as “terminal history read surface only,” explicitly deferring cross-process persistence.
@@ -1075,4 +1075,4 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
-- Commit: pending in this session.
+- Commit: `010cc40` (`feat(terminal): complete M8.5.3 history read surface`).
