@@ -155,6 +155,10 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
     setSocketState('connecting')
 
     const targetGroupId = activeGroupId
+    setTranscriptsByGroup((current) => ({
+      ...current,
+      [targetGroupId]: '',
+    }))
     const socket = createTerminalWebSocket(session.session_id, token)
     socketRef.current = socket
     closeIntentRef.current = null

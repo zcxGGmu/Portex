@@ -314,3 +314,82 @@ async def test_terminal_session_service_force_close_ignores_session_owner() -> N
     assert current is not None
     assert current.status == "closed"
     assert created_bridges[0].closed is True
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_replays_recent_output_after_reattach() -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+    )
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _first_attach, queue = await service.attach_session(session.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("first\n")
+    await created_bridges[0].emit_output("second\n")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+
+    await service.detach_session(session.session_id, owner_user_id="owner-1")
+    _reattach, replay_queue = await service.attach_session(session.session_id, owner_user_id="owner-1")
+
+    replay_event_1 = await asyncio.wait_for(replay_queue.get(), timeout=0.1)
+    replay_event_2 = await asyncio.wait_for(replay_queue.get(), timeout=0.1)
+
+    assert replay_event_1.event_type == "terminal.output"
+    assert replay_event_1.data == "first\n"
+    assert replay_event_2.event_type == "terminal.output"
+    assert replay_event_2.data == "second\n"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_replay_history_is_bounded_by_max_bytes() -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=10,
+    )
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _first_attach, queue = await service.attach_session(session.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("12345")
+    await created_bridges[0].emit_output("67890")
+    await created_bridges[0].emit_output("abc")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+
+    await service.detach_session(session.session_id, owner_user_id="owner-1")
+    _reattach, replay_queue = await service.attach_session(session.session_id, owner_user_id="owner-1")
+
+    replay_event_1 = await asyncio.wait_for(replay_queue.get(), timeout=0.1)
+    replay_event_2 = await asyncio.wait_for(replay_queue.get(), timeout=0.1)
+
+    assert replay_event_1.data == "67890"
+    assert replay_event_2.data == "abc"

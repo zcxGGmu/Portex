@@ -94,12 +94,18 @@
 - `M8.2` 已完成（terminal UI / Web terminal panel，含 browser-compatible terminal WebSocket auth shim）。
 - `M8.3` 已完成并已落地到 `main`（terminal operator overview API + page + 最小 chat workspace 深链）。
 - `M8.4` 已完成并已落地到 `main`（terminal light controls：overview 页 close/force-close 动作 + force-close API）。
-- 当前起点：`main` 已具备 `M8.1` ~ `M8.4` 的 terminal 基础能力；下一步应进入 post-`M8.4` 的 fidelity/session-management 路线。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.1` 已完成并已落地到 `main`（terminal reconnect output replay with bounded in-memory history）。
+- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.1` 的 terminal 基础能力；下一步应继续 post-`M8.5.1` fidelity 子项（resize/TTY fidelity 或 session persistence）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.5.1` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-1-terminal-output-replay-design.md` 与 `docs/plans/2026-03-16-m8-5-1-terminal-output-replay.md`，将本子项范围固定为“bounded in-memory output history + reconnect replay”，明确不引入持久化 transcript。
+- `M8.5.1` implementation（on `main`）：扩展 `TerminalSessionService`，新增 `history_max_bytes` 配置、每 session 输出历史滚动缓冲、以及 `attach_session()` 时的 replay 队列回放能力。
+- `M8.5.1` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 reconnect replay 和 history-cap eviction 两条 focused coverage。
+- `M8.5.1` implementation（on `main`）：更新 `web/src/components/chat/TerminalPanel.tsx`，在建立 terminal websocket 前重置当前 workspace transcript，避免回放与本地旧文本重复叠加。
+- `M8.5.1` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`（`568 passed`）、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M8.4` implementation（on `main`）：新增 `DELETE /terminals/{group_id}/sessions/force`，并在 `TerminalSessionService` 新增 `force_close_session_by_group()`，支持 operator 在 overview 路径下强制关闭当前 workspace 会话。
 - `M8.4` implementation（on `main`）：扩展 `/terminals` 页面轻控制动作，新增每行 `Close`（owner own-session）与 `Force Close`（operator）操作，操作后自动刷新 overview 并展示 inline notice/error。
 - `M8.4` implementation（on `main`）：新增/扩展覆盖 `tests/services/test_terminal_sessions.py`、`tests/app/routes/test_terminal_routes.py`、`tests/app/routes/test_api_routes.py`，并保持 `tests/app/routes/test_terminal_monitor_routes.py` 兼容。
@@ -657,11 +663,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前已包含 `M8.4` 运行时与前端实现；关键点在 `services/terminal_sessions.py`、`app/routes/terminals.py`、`tests/app/routes/test_terminal_routes.py`、`tests/app/routes/test_terminal_monitor_routes.py`、`web/src/pages/Terminals.tsx`、`web/src/api/client.ts` 与 `web/src/hooks/useApi.ts`。
-3. 如继续 post-`M8.4` terminal 开发，优先切到 fidelity/session-management 里程碑（TTY fidelity、resize/history、session persistence）并与当前 light-control 边界保持解耦。
+2. `main` 当前已包含 `M8.5.1` 运行时与前端实现；关键点在 `services/terminal_sessions.py`（history/replay）、`tests/services/test_terminal_sessions.py`（replay/eviction coverage）、`web/src/components/chat/TerminalPanel.tsx`（reconnect transcript reset）以及既有 `app/routes/terminals.py` / `/terminals` 页面。
+3. 如继续 post-`M8.5.1` terminal 开发，建议按 fidelity 子项拆分：`A)` 真正的 terminal resize/TTY size propagation；`B)` richer transcript/session persistence（跨进程）与可选 history read API。
 4. 复现当前基线建议命令：
-   - `M8.4 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
-   - `terminal ws baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_websocket_routes.py -q`
+   - `M8.5.1 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+   - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -671,4 +677,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4` 已完成；当前自然入口是 post-`M8.4` 的 terminal fidelity/session-management 里程碑。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1` 已完成；当前自然入口是 post-`M8.5.1` fidelity/session-management 后续子项。

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 from uuid import uuid4
@@ -68,6 +69,8 @@ class _ManagedTerminalSession:
     bridge: TerminalBridge
     output_queue: asyncio.Queue[TerminalSessionEvent] | None = None
     reconnect_task: asyncio.Task[None] | None = None
+    output_history_chunks: deque[str] = field(default_factory=deque)
+    output_history_bytes: int = 0
 
 
 class TerminalSessionService:
@@ -78,10 +81,12 @@ class TerminalSessionService:
         *,
         bridge_factory: Callable[..., TerminalBridge],
         reconnect_timeout_seconds: float = 30.0,
+        history_max_bytes: int = 32_768,
         now_func: Callable[[], datetime] | None = None,
     ) -> None:
         self._bridge_factory = bridge_factory
         self._reconnect_timeout_seconds = reconnect_timeout_seconds
+        self._history_max_bytes = max(0, history_max_bytes)
         self._now = now_func or _utcnow
         self._sessions_by_group: dict[str, _ManagedTerminalSession] = {}
         self._sessions_by_id: dict[str, _ManagedTerminalSession] = {}
@@ -155,6 +160,8 @@ class TerminalSessionService:
             queue: asyncio.Queue[TerminalSessionEvent] = asyncio.Queue()
             now = self._now()
             managed.output_queue = queue
+            for chunk in managed.output_history_chunks:
+                queue.put_nowait(TerminalSessionEvent(event_type="terminal.output", data=chunk))
             managed.record = replace(
                 managed.record,
                 status="attached",
@@ -286,6 +293,8 @@ class TerminalSessionService:
                 return
 
             if bridge_event.type == "output":
+                if isinstance(bridge_event.data, str):
+                    self._append_output_history(managed, bridge_event.data)
                 queue = managed.output_queue
             elif bridge_event.type == "exit":
                 self._cancel_reconnect_task(managed)
@@ -298,15 +307,38 @@ class TerminalSessionService:
             elif bridge_event.type == "error":
                 queue = managed.output_queue
 
-        if queue is None:
+        if queue is None and bridge_event.type != "output":
             return
 
         if bridge_event.type == "output":
-            await queue.put(TerminalSessionEvent(event_type="terminal.output", data=bridge_event.data))
+            if queue is not None:
+                await queue.put(TerminalSessionEvent(event_type="terminal.output", data=bridge_event.data))
         elif bridge_event.type == "exit":
-            await queue.put(TerminalSessionEvent(event_type="terminal.exit", exit_code=bridge_event.exit_code))
+            if queue is not None:
+                await queue.put(TerminalSessionEvent(event_type="terminal.exit", exit_code=bridge_event.exit_code))
         elif bridge_event.type == "error":
-            await queue.put(TerminalSessionEvent(event_type="terminal.error", error=bridge_event.error))
+            if queue is not None:
+                await queue.put(TerminalSessionEvent(event_type="terminal.error", error=bridge_event.error))
+
+    def _append_output_history(self, managed: _ManagedTerminalSession, chunk: str) -> None:
+        if self._history_max_bytes <= 0 or chunk == "":
+            if self._history_max_bytes <= 0:
+                managed.output_history_chunks.clear()
+                managed.output_history_bytes = 0
+            return
+
+        chunk_bytes = len(chunk.encode("utf-8", errors="ignore"))
+        if chunk_bytes <= 0:
+            return
+
+        managed.output_history_chunks.append(chunk)
+        managed.output_history_bytes += chunk_bytes
+
+        while managed.output_history_bytes > self._history_max_bytes and managed.output_history_chunks:
+            removed = managed.output_history_chunks.popleft()
+            managed.output_history_bytes -= len(removed.encode("utf-8", errors="ignore"))
+        if managed.output_history_bytes < 0:
+            managed.output_history_bytes = 0
 
     async def _expire_detached_session(self, session_id: str, deadline: datetime) -> None:
         await asyncio.sleep(self._reconnect_timeout_seconds)

@@ -971,3 +971,35 @@
   - `.venv/bin/pytest -o addopts='' -q` (`566 passed`)
   - `.venv/bin/ruff check .`
   - `git diff --check`
+
+# Session Plan (2026-03-16) - M8.5.1 Terminal Output Replay On Reconnect
+
+## Goal
+- Start post-`M8.4` terminal fidelity/session-management work with a minimal high-value slice: keep recent terminal output in-memory per session and replay it on reconnect, so users can recover context after websocket reconnects without introducing persistent terminal storage.
+
+## Checklist
+- [x] Re-read terminal runtime slices and existing websocket/terminal panel behavior
+- [x] Write focused `M8.5.1` design doc
+- [x] Write focused `M8.5.1` implementation plan doc
+- [x] Add failing tests for output history replay and bounded history behavior
+- [x] Implement terminal session output history buffer + replay on attach
+- [x] Integrate frontend transcript behavior for reconnect replay (avoid duplicate transcript buildup)
+- [x] Run focused verification + frontend lint/build + full regression + hygiene checks
+- [x] Update `docs/progress.md` and complete this review section
+- [x] Commit milestone result with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-1-terminal-output-replay-design.md` and `docs/plans/2026-03-16-m8-5-1-terminal-output-replay.md` to lock this slice as “bounded in-memory output replay on reconnect”, explicitly deferring persistent transcript storage and wider TTY fidelity changes.
+- Expanded `tests/services/test_terminal_sessions.py` with red-first coverage for reconnect replay and history-cap eviction; initial run failed as expected due missing `history_max_bytes`/replay logic.
+- Implemented bounded output history in `services/terminal_sessions.py` by extending managed session state with rolling chunk buffer + byte accounting, recording output chunks in bridge-event handling, and replaying buffered output on `attach_session()`.
+- Updated `web/src/components/chat/TerminalPanel.tsx` so reconnect clears the current workspace transcript before socket attach, letting server replay repopulate content without duplicate local buildup.
+- Refreshed `docs/progress.md` to mark `M8.5.1` complete and move restart guidance to post-`M8.5.1` fidelity sub-slices.
+- Fresh verification commands executed in this session:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py -q` (red and green cycles)
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`568 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint && npm run build`
+  - `git diff --check`
