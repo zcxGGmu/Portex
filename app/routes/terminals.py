@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 
 from app.middleware.auth import get_current_user
 from app.openapi import openapi_error_responses
@@ -15,6 +15,7 @@ from domain.schemas import (
     DeleteTerminalSessionResponse,
     TerminalSessionHistoryResponse,
     TerminalSessionHistorySummaryResponse,
+    TerminalSessionHistoryTimelineResponse,
     TerminalSessionResponse,
     TerminalWorkspaceListResponse,
     TerminalWorkspaceSummaryResponse,
@@ -323,6 +324,47 @@ async def get_current_terminal_session_history(
         output_bytes=snapshot.output_bytes,
         history_max_bytes=snapshot.history_max_bytes,
         truncated=snapshot.truncated,
+    )
+
+
+@router.get(
+    "/terminals/{group_id}/sessions/history",
+    response_model=TerminalSessionHistoryTimelineResponse,
+    summary="Get terminal history timeline",
+    description="Return paginated terminal-history timeline metadata for one accessible workspace.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def get_terminal_history_timeline(
+    group_id: str,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> TerminalSessionHistoryTimelineResponse:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        page = await service.list_history_timeline_by_group(
+            workspace.folder,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+    return TerminalSessionHistoryTimelineResponse(
+        limit=page.limit,
+        offset=page.offset,
+        has_more=page.has_more,
+        items=[_to_terminal_history_summary_response(item) for item in page.items],
     )
 
 

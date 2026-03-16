@@ -5,8 +5,14 @@ import type { TerminalWorkspaceSummary } from '../api/client'
 import { ApiError, apiClient } from '../api/client'
 import { AppLayout } from '../components/layout/AppLayout'
 import { PrimaryButton } from '../components/ui/PrimaryButton'
-import { useCurrentUserQuery, useTerminalOverviewQuery } from '../hooks/useApi'
+import {
+  useCurrentUserQuery,
+  useTerminalHistoryTimelineQuery,
+  useTerminalOverviewQuery,
+} from '../hooks/useApi'
 import { useAuthStore } from '../stores/auth'
+
+const TIMELINE_PAGE_SIZE = 5
 
 function formatDate(value: string | null): string {
   if (!value) {
@@ -59,6 +65,21 @@ export function Terminals() {
   const [actionKey, setActionKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
+  const [timelineGroupId, setTimelineGroupId] = useState<string | null>(null)
+  const [timelineOffset, setTimelineOffset] = useState(0)
+
+  const {
+    data: timelineData,
+    isLoading: isTimelineLoading,
+    isFetching: isTimelineFetching,
+    isError: isTimelineError,
+    error: timelineError,
+    refetch: refetchTimeline,
+  } = useTerminalHistoryTimelineQuery(
+    timelineGroupId,
+    { limit: TIMELINE_PAGE_SIZE, offset: timelineOffset },
+    isOperator && timelineGroupId !== null,
+  )
 
   const items = data?.items ?? []
   const summary = summarize(items)
@@ -75,6 +96,18 @@ export function Terminals() {
     )
   }
 
+  function toggleTimeline(groupId: string) {
+    setActionError(null)
+    setActionNotice(null)
+    if (timelineGroupId === groupId) {
+      setTimelineGroupId(null)
+      setTimelineOffset(0)
+      return
+    }
+    setTimelineGroupId(groupId)
+    setTimelineOffset(0)
+  }
+
   async function handleClose(item: TerminalWorkspaceSummary) {
     if (!token || !item.session) {
       return
@@ -86,6 +119,9 @@ export function Terminals() {
       setActionNotice(null)
       await apiClient.closeCurrentTerminalSession(token, item.group_id)
       await refetch()
+      if (timelineGroupId === item.group_id) {
+        await refetchTimeline()
+      }
       setActionNotice(`Closed terminal session for ${item.group_id}.`)
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to close terminal session.')
@@ -105,6 +141,9 @@ export function Terminals() {
       setActionNotice(null)
       await apiClient.forceCloseCurrentTerminalSession(token, item.group_id)
       await refetch()
+      if (timelineGroupId === item.group_id) {
+        await refetchTimeline()
+      }
       setActionNotice(`Force-closed terminal session for ${item.group_id}.`)
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to force-close terminal session.')
@@ -264,6 +303,14 @@ export function Terminals() {
                                 {actionKey === `force:${item.group_id}` ? 'Closing...' : 'Force Close'}
                               </PrimaryButton>
                             ) : null}
+                            <PrimaryButton
+                              className="button--ghost"
+                              disabled={actionKey !== null}
+                              onClick={() => toggleTimeline(item.group_id)}
+                              type="button"
+                            >
+                              {timelineGroupId === item.group_id ? 'Hide Timeline' : 'View Timeline'}
+                            </PrimaryButton>
                           </div>
                         </td>
                       </tr>
@@ -273,6 +320,79 @@ export function Terminals() {
               </table>
             </div>
           </section>
+
+          {timelineGroupId ? (
+            <section className="panel">
+              <h2 style={{ marginTop: 0 }}>History Timeline: {timelineGroupId}</h2>
+              {isTimelineLoading ? <p className="muted">Loading timeline...</p> : null}
+              {isTimelineError ? (
+                <p className="error-text">
+                  {timelineError instanceof Error ? timelineError.message : 'Failed to load timeline.'}
+                </p>
+              ) : null}
+              {!isTimelineLoading && !isTimelineError && timelineData ? (
+                <>
+                  <div className="monitor-table-wrap">
+                    <table className="monitor-table">
+                      <thead>
+                        <tr>
+                          <th>Session</th>
+                          <th>Status</th>
+                          <th>Owner</th>
+                          <th>Created</th>
+                          <th>Output Bytes</th>
+                          <th>Truncated</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {timelineData.items.length === 0 ? (
+                          <tr>
+                            <td className="muted" colSpan={6}>
+                              Timeline is empty.
+                            </td>
+                          </tr>
+                        ) : (
+                          timelineData.items.map((entry) => (
+                            <tr key={entry.session.session_id}>
+                              <td>{entry.session.session_id}</td>
+                              <td>{entry.session.status}</td>
+                              <td>{entry.session.owner_user_id}</td>
+                              <td>{formatDate(entry.session.created_at)}</td>
+                              <td>{entry.output_bytes.toLocaleString()}</td>
+                              <td>{entry.truncated ? 'yes' : 'no'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="terminal-timeline-pagination">
+                    <span className="muted">
+                      Offset {timelineData.offset} · Page Size {timelineData.limit}
+                    </span>
+                    <div className="terminal-actions">
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={timelineOffset === 0 || isTimelineFetching}
+                        onClick={() => setTimelineOffset((value) => Math.max(0, value - TIMELINE_PAGE_SIZE))}
+                        type="button"
+                      >
+                        Previous
+                      </PrimaryButton>
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={!timelineData.has_more || isTimelineFetching}
+                        onClick={() => setTimelineOffset((value) => value + TIMELINE_PAGE_SIZE)}
+                        type="button"
+                      >
+                        Next
+                      </PrimaryButton>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       ) : null}
     </AppLayout>

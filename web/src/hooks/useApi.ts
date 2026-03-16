@@ -232,6 +232,27 @@ export function useTerminalOverviewQuery(enabled = true) {
   })
 }
 
+export function useTerminalHistoryTimelineQuery(
+  groupId: string | null,
+  options: { limit: number; offset: number },
+  enabled = true,
+) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['terminal-history-timeline', token, groupId, options.limit, options.offset],
+    enabled: Boolean(token && groupId) && enabled,
+    queryFn: async () => {
+      if (!token || !groupId) {
+        throw new Error('Missing token or group id')
+      }
+
+      return apiClient.getTerminalHistoryTimeline(token, groupId, options)
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useUsageStatsQuery(days: number, enabled = true) {
   const token = useAuthStore((state) => state.token)
 

@@ -2275,6 +2275,13 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "history" in get_terminal_history_operation["summary"].lower()
     assert "404" in get_terminal_history_operation["responses"]
 
+    get_terminal_history_timeline_operation = schema["paths"]["/terminals/{group_id}/sessions/history"]["get"]
+    assert "timeline" in get_terminal_history_timeline_operation["summary"].lower()
+    assert "404" in get_terminal_history_timeline_operation["responses"]
+    parameter_names = {item["name"] for item in get_terminal_history_timeline_operation["parameters"]}
+    assert "limit" in parameter_names
+    assert "offset" in parameter_names
+
     delete_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions/current"]["delete"]
     assert "close" in delete_terminal_session_operation["summary"].lower()
     assert "409" in delete_terminal_session_operation["responses"]
@@ -2464,6 +2471,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "AuditMessageListResponse" in schema["components"]["schemas"]
     assert "AuditMessageResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistorySummaryResponse" in schema["components"]["schemas"]
+    assert "TerminalSessionHistoryTimelineResponse" in schema["components"]["schemas"]
 
     terminal_workspace_schema = schema["components"]["schemas"]["TerminalWorkspaceSummaryResponse"]
     assert "history" in terminal_workspace_schema["properties"]
@@ -2471,6 +2479,12 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     terminal_history_summary_schema = schema["components"]["schemas"]["TerminalSessionHistorySummaryResponse"]
     assert "output_bytes" in terminal_history_summary_schema["properties"]
     assert "truncated" in terminal_history_summary_schema["properties"]
+
+    terminal_history_timeline_schema = schema["components"]["schemas"]["TerminalSessionHistoryTimelineResponse"]
+    assert "limit" in terminal_history_timeline_schema["properties"]
+    assert "offset" in terminal_history_timeline_schema["properties"]
+    assert "has_more" in terminal_history_timeline_schema["properties"]
+    assert "items" in terminal_history_timeline_schema["properties"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(

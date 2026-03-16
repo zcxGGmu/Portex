@@ -1176,3 +1176,36 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
+
+# Session Plan (2026-03-16) - M8.5.7 Terminal History Timeline/Pagination
+
+## Goal
+- Continue from `M8.5.6` by adding a multi-snapshot terminal history timeline with pagination for each workspace, while keeping existing `latest.json` and `/sessions/current/history` contracts backward-compatible.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and latest terminal slices
+- [x] Write focused `M8.5.7` design doc
+- [x] Write focused `M8.5.7` implementation plan doc
+- [x] Add failing tests for timeline pagination contract (service + route + openapi)
+- [x] Implement backend multi-snapshot persistence/timeline read model with `latest.json` compatibility
+- [x] Implement `GET /terminals/{group_id}/sessions/history` with `limit/offset` pagination
+- [x] Add minimal frontend timeline query + `/terminals` on-demand timeline view
+- [x] Run focused terminal/backend verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-7-terminal-history-timeline-pagination-design.md` and `docs/plans/2026-03-16-m8-5-7-terminal-history-timeline-pagination.md` to lock scope as “multi-snapshot timeline/pagination,” explicitly preserving `latest.json` and `/sessions/current/history` compatibility.
+- Extended `services/terminal_sessions.py` with snapshot archiving under `data/terminal-history/<workspace>/snapshots/`, timeline dedupe merge (`in-memory + latest + archived`), and paginated `list_history_timeline_by_group(limit, offset)` read model.
+- Extended `domain/schemas.py` and `app/routes/terminals.py` with `TerminalSessionHistoryTimelineResponse` and `GET /terminals/{group_id}/sessions/history` (query `limit/offset`) while reusing existing terminal role/workspace access/error mapping.
+- Extended `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, `web/src/pages/Terminals.tsx`, and `web/src/index.css` with on-demand timeline fetch, per-workspace `View Timeline` action, and simple `Previous/Next` pagination controls.
+- Added red-green timeline coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for pagination ordering, latest+archive dedupe, malformed archive tolerance, route auth/404 behavior, and OpenAPI path/schema exposure.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q` (red then green)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`588 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`

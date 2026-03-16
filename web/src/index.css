@@ -695,6 +695,15 @@ a {
   padding: 0.35rem 0.55rem;
 }
 
+.terminal-timeline-pagination {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .chat-stream {
   max-height: 52vh;
   overflow-y: auto;

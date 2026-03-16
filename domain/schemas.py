@@ -962,6 +962,24 @@ class TerminalSessionHistorySummaryResponse(BaseModel):
     )
 
 
+class TerminalSessionHistoryTimelineResponse(BaseModel):
+    limit: int = Field(
+        description="Maximum number of timeline entries requested for this page.",
+        examples=[20],
+    )
+    offset: int = Field(
+        description="Zero-based starting offset into the workspace terminal-history timeline.",
+        examples=[0],
+    )
+    has_more: bool = Field(
+        description="Whether additional timeline entries are available after this page.",
+        examples=[True],
+    )
+    items: list[TerminalSessionHistorySummaryResponse] = Field(
+        description="Paginated terminal-history timeline entries ordered by newest snapshot first.",
+    )
+
+
 class TerminalWorkspaceSummaryResponse(BaseModel):
     group_id: str = Field(
         description="Workspace identifier represented in the terminal overview.",
@@ -1699,6 +1717,7 @@ __all__ = [
     "TaskResponse",
     "TerminalSessionHistoryResponse",
     "TerminalSessionHistorySummaryResponse",
+    "TerminalSessionHistoryTimelineResponse",
     "TerminalSessionResponse",
     "TerminalWorkspaceListResponse",
     "TerminalWorkspaceSummaryResponse",

@@ -144,6 +144,13 @@ export interface TerminalSessionHistorySummary {
   truncated: boolean
 }
 
+export interface TerminalSessionHistoryTimelineResponse {
+  limit: number
+  offset: number
+  has_more: boolean
+  items: TerminalSessionHistorySummary[]
+}
+
 export interface TerminalWorkspaceSummary {
   group_id: string
   group_name: string
@@ -559,6 +566,24 @@ export const apiClient = {
   },
   getTerminalOverview(token: string): Promise<TerminalWorkspaceListResponse> {
     return request<TerminalWorkspaceListResponse>('/terminals', { token })
+  },
+  getTerminalHistoryTimeline(
+    token: string,
+    groupId: string,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<TerminalSessionHistoryTimelineResponse> {
+    const params = new URLSearchParams()
+    if (typeof options.limit === 'number') {
+      params.set('limit', String(options.limit))
+    }
+    if (typeof options.offset === 'number') {
+      params.set('offset', String(options.offset))
+    }
+    const suffix = params.toString() ? `?${params.toString()}` : ''
+    return request<TerminalSessionHistoryTimelineResponse>(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history${suffix}`,
+      { token },
+    )
   },
   getGroupMembers(token: string, groupId: string): Promise<GroupMemberListResponse> {
     return request<GroupMemberListResponse>(`/groups/${encodeURIComponent(groupId)}/members`, { token })

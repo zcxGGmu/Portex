@@ -20,7 +20,9 @@ TerminalBackendName = Literal["docker_container"]
 TerminalSessionStatus = Literal["created", "attached", "detached", "closed", "exited"]
 DEFAULT_TERMINAL_HISTORY_PERSIST_ROOT = Path(__file__).resolve().parents[1] / "data" / "terminal-history"
 _TERMINAL_HISTORY_FILENAME = "latest.json"
+_TERMINAL_HISTORY_SNAPSHOTS_DIRNAME = "snapshots"
 _ACTIVE_RECOVERABLE_STATUSES: set[TerminalSessionStatus] = {"created", "attached", "detached"}
+_TERMINAL_ARCHIVE_STATUSES: set[TerminalSessionStatus] = {"closed", "exited"}
 
 
 class TerminalBackendUnsupportedError(RuntimeError):
@@ -72,6 +74,7 @@ class TerminalSessionRecord:
 @dataclass(frozen=True, slots=True)
 class TerminalSessionHistorySnapshot:
     record: TerminalSessionRecord
+    snapshot_at: datetime
     output: str
     output_bytes: int
     history_max_bytes: int
@@ -84,6 +87,14 @@ class TerminalSessionHistorySummary:
     output_bytes: int
     history_max_bytes: int
     truncated: bool
+
+
+@dataclass(frozen=True, slots=True)
+class TerminalSessionHistoryTimelinePage:
+    limit: int
+    offset: int
+    has_more: bool
+    items: list[TerminalSessionHistorySummary]
 
 
 @dataclass(slots=True)
@@ -202,6 +213,48 @@ class TerminalSessionService:
         items = list(summaries_by_folder.values())
         items.sort(key=lambda item: (item.record.group_folder, item.record.session_id))
         return items
+
+    async def list_history_timeline_by_group(
+        self,
+        group_folder: str,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> TerminalSessionHistoryTimelinePage:
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+
+        async with self._lock:
+            managed = self._sessions_by_group.get(group_folder)
+            in_memory_snapshot = None if managed is None else self._build_history_snapshot(managed)
+
+        persisted_latest, persisted_archived = await asyncio.to_thread(
+            self._load_history_timeline_from_persistence,
+            group_folder,
+        )
+        snapshots = self._dedupe_timeline_snapshots(
+            in_memory=in_memory_snapshot,
+            latest=persisted_latest,
+            archived=persisted_archived,
+        )
+        if not snapshots:
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+        snapshots.sort(
+            key=lambda item: (item.snapshot_at, item.record.session_id),
+            reverse=True,
+        )
+        summaries = [self._to_history_summary(item) for item in snapshots]
+        page_items = summaries[offset : offset + limit]
+        has_more = (offset + limit) < len(summaries)
+        return TerminalSessionHistoryTimelinePage(
+            limit=limit,
+            offset=offset,
+            has_more=has_more,
+            items=page_items,
+        )
 
     async def attach_session(
         self,
@@ -502,6 +555,7 @@ class TerminalSessionService:
     def _build_history_snapshot(self, managed: _ManagedTerminalSession) -> TerminalSessionHistorySnapshot:
         return TerminalSessionHistorySnapshot(
             record=managed.record,
+            snapshot_at=self._now(),
             output="".join(managed.output_history_chunks),
             output_bytes=managed.output_history_bytes,
             history_max_bytes=self._history_max_bytes,
@@ -518,8 +572,18 @@ class TerminalSessionService:
             return None
 
     def _persist_history_snapshot(self, snapshot: TerminalSessionHistorySnapshot) -> None:
-        path = self._history_snapshot_path(snapshot.record.group_folder)
-        payload = {
+        payload = self._history_snapshot_payload(snapshot)
+        latest_path = self._history_snapshot_path(snapshot.record.group_folder)
+        self._write_snapshot_payload(latest_path, payload)
+        if snapshot.record.status in _TERMINAL_ARCHIVE_STATUSES:
+            archive_path = self._history_archive_snapshot_path(
+                snapshot.record.group_folder,
+                snapshot.record.session_id,
+            )
+            self._write_snapshot_payload(archive_path, payload)
+
+    def _history_snapshot_payload(self, snapshot: TerminalSessionHistorySnapshot) -> dict[str, object]:
+        return {
             "record": {
                 "session_id": snapshot.record.session_id,
                 "group_id": snapshot.record.group_id,
@@ -540,11 +604,15 @@ class TerminalSessionService:
                     else None
                 ),
             },
+            "snapshot_at": snapshot.snapshot_at.isoformat(),
             "output": snapshot.output,
             "output_bytes": snapshot.output_bytes,
             "history_max_bytes": snapshot.history_max_bytes,
             "truncated": snapshot.truncated,
         }
+
+    @staticmethod
+    def _write_snapshot_payload(path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         temp = path.with_suffix(path.suffix + ".tmp")
         temp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
@@ -552,6 +620,9 @@ class TerminalSessionService:
 
     def _load_persisted_history_snapshot(self, group_folder: str) -> TerminalSessionHistorySnapshot | None:
         path = self._history_snapshot_path(group_folder)
+        return self._load_persisted_history_snapshot_from_path(path)
+
+    def _load_persisted_history_snapshot_from_path(self, path: Path) -> TerminalSessionHistorySnapshot | None:
         if not path.exists():
             return None
         try:
@@ -598,8 +669,12 @@ class TerminalSessionService:
         truncated = payload.get("truncated")
         if not isinstance(truncated, bool):
             truncated = False
+        snapshot_at = self._parse_persisted_datetime(payload.get("snapshot_at"))
+        if snapshot_at is None:
+            snapshot_at = created_at
         return TerminalSessionHistorySnapshot(
             record=record,
+            snapshot_at=snapshot_at,
             output=output,
             output_bytes=output_bytes,
             history_max_bytes=history_max_bytes,
@@ -611,6 +686,81 @@ class TerminalSessionService:
         if not validate_path(candidate, [self._history_persist_root]):
             raise ValueError("invalid terminal history root")
         return candidate
+
+    def _history_archive_snapshots_root(self, group_folder: str) -> Path:
+        candidate = (
+            self._history_persist_root / group_folder / _TERMINAL_HISTORY_SNAPSHOTS_DIRNAME
+        ).resolve(strict=False)
+        if not validate_path(candidate, [self._history_persist_root]):
+            raise ValueError("invalid terminal history root")
+        return candidate
+
+    def _history_archive_snapshot_path(self, group_folder: str, session_id: str) -> Path:
+        normalized_session_id = session_id.strip()
+        if (
+            normalized_session_id == ""
+            or "/" in normalized_session_id
+            or "\\" in normalized_session_id
+        ):
+            raise ValueError("invalid terminal session id")
+        candidate = (
+            self._history_archive_snapshots_root(group_folder) / f"{normalized_session_id}.json"
+        ).resolve(strict=False)
+        if not validate_path(candidate, [self._history_persist_root]):
+            raise ValueError("invalid terminal history root")
+        return candidate
+
+    def _list_persisted_history_archived_snapshots(self, group_folder: str) -> list[TerminalSessionHistorySnapshot]:
+        snapshots_root = self._history_archive_snapshots_root(group_folder)
+        if not snapshots_root.exists():
+            return []
+        try:
+            snapshot_paths = sorted(
+                (
+                    path
+                    for path in snapshots_root.iterdir()
+                    if path.is_file() and path.suffix == ".json"
+                ),
+                key=lambda item: item.name,
+            )
+        except Exception:
+            return []
+        snapshots: list[TerminalSessionHistorySnapshot] = []
+        for snapshot_path in snapshot_paths:
+            snapshot = self._load_persisted_history_snapshot_from_path(snapshot_path)
+            if snapshot is None:
+                continue
+            if snapshot.record.group_folder != group_folder:
+                continue
+            snapshots.append(snapshot)
+        return snapshots
+
+    def _load_history_timeline_from_persistence(
+        self,
+        group_folder: str,
+    ) -> tuple[TerminalSessionHistorySnapshot | None, list[TerminalSessionHistorySnapshot]]:
+        latest = self._load_persisted_history_snapshot(group_folder)
+        archived = self._list_persisted_history_archived_snapshots(group_folder)
+        return latest, archived
+
+    @staticmethod
+    def _dedupe_timeline_snapshots(
+        *,
+        in_memory: TerminalSessionHistorySnapshot | None,
+        latest: TerminalSessionHistorySnapshot | None,
+        archived: list[TerminalSessionHistorySnapshot],
+    ) -> list[TerminalSessionHistorySnapshot]:
+        snapshots_by_session: dict[str, TerminalSessionHistorySnapshot] = {}
+        for snapshot in [in_memory, latest, *archived]:
+            if snapshot is None:
+                continue
+            existing = snapshots_by_session.get(snapshot.record.session_id)
+            if existing is None:
+                snapshots_by_session[snapshot.record.session_id] = snapshot
+                continue
+            if snapshot.snapshot_at > existing.snapshot_at:
+                snapshots_by_session[snapshot.record.session_id] = snapshot
+        return list(snapshots_by_session.values())
 
     def _list_persisted_history_snapshots(self) -> list[TerminalSessionHistorySnapshot]:
         if not self._history_persist_root.exists():
@@ -687,6 +837,7 @@ __all__ = [
     "TerminalSessionEvent",
     "TerminalSessionHistorySnapshot",
     "TerminalSessionHistorySummary",
+    "TerminalSessionHistoryTimelinePage",
     "TerminalSessionNotFoundError",
     "TerminalSessionOwnershipError",
     "TerminalSessionRecord",

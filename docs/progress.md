@@ -100,11 +100,19 @@
 - `M8.5.4` 已完成并已落地到 `main`（terminal history persistence fallback across process restarts）。
 - `M8.5.5` 已完成并已落地到 `main`（active terminal session persistence/recovery across process restarts）。
 - `M8.5.6` 已完成并已落地到 `main`（persistence-aware terminal history inventory on `/terminals` overview）。
-- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.6` 的 terminal fidelity/session-management/inventory 基础能力；下一步建议进入 post-`M8.5.6` 的 multi-snapshot history timeline/pagination 子项。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.7` 已完成并已落地到 `main`（multi-snapshot terminal history timeline/pagination on `/terminals/{group_id}/sessions/history` + `/terminals` on-demand timeline view）。
+- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.7` 的 terminal fidelity/session-management/history-timeline 基础能力；下一步建议进入 post-`M8.5.7` 的 timeline filtering/search/detail 扩展子项。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.7` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-7-terminal-history-timeline-pagination-design.md` 与 `docs/plans/2026-03-16-m8-5-7-terminal-history-timeline-pagination.md`，将范围固定为“workspace multi-snapshot timeline/pagination”，明确保持 `latest.json` 与 `/sessions/current/history` 兼容。
+- `M8.5.7` implementation（on `main`）：扩展 `TerminalSessionService`，新增 archived snapshots（`data/terminal-history/<workspace>/snapshots/<session_id>.json`）写入与 `list_history_timeline_by_group(limit/offset)` 分页读面，按 snapshot 时间逆序返回并去重 `latest + archived + in-memory`。
+- `M8.5.7` implementation（on `main`）：扩展 terminal schema + route，新增 `TerminalSessionHistoryTimelineResponse` 与 `GET /terminals/{group_id}/sessions/history?limit=&offset=`，复用既有 terminal role gate/workspace access gate/error mapping。
+- `M8.5.7` implementation（on `main`）：扩展前端 terminal API/hooks 与 `/terminals` 页面，新增每行 `View Timeline` 按需加载、分页 `Previous/Next` 控件与 timeline 表格，不改变 overview 轮询主路径。
+- `M8.5.7` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`、`tests/app/routes/test_terminal_routes.py` 与 `tests/app/routes/test_api_routes.py`，新增 red-green 覆盖：timeline pagination、latest+archived dedupe、malformed archive 容错、route 404 映射、OpenAPI path/schema 合约。
+- `M8.5.7` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`588 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 
 - `M8.5.6` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-6-terminal-history-inventory-design.md` 与 `docs/plans/2026-03-16-m8-5-6-terminal-history-inventory.md`，将范围固定为“overview 持久化历史清单补齐”，明确不新增独立 inventory route 与 timeline/pagination。
 - `M8.5.6` implementation（on `main`）：扩展 `TerminalSessionService`，新增 `list_history_summaries()`，将 in-memory 当前会话历史摘要与 persisted snapshot 摘要合并为 workspace 级 inventory 读面（仅 metadata，不返回 output 文本）。
@@ -687,7 +695,7 @@
 - `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.6.1`、`M7.6.3`、`M7.6.4` 与 `M7.6.5` 的决策链现已完成：QQ、generic slash-command parity、richer IM artifacts parity 明确排除，terminal panel 仍维持 deferred 而非 rejected。当前没有新的 `M7` parity backlog 入口，后续扩展应以新的明确里程碑重新进入。
 - `M8.1` 当前已完成 terminal backend/session prerequisite slice：terminal 协议已与聊天 WS 解耦，container-only session lifecycle 已具备，但 host terminal、persistent session registry、terminal audit persistence、以及任何前端 terminal UI 仍未开始。
 - `M8.5.5` 当前已完成 active terminal session persistence/recovery：运行时默认 service 启用 startup recovery，恢复态会话可延续 `current/create` 的 owner 冲突语义并在 owner attach 时 lazy 启动 bridge；attach 失败会降级为 `closed` 以允许 fresh create。
-- `M8.5.6` 当前已完成 persistence-aware history inventory：`/terminals` overview 已可展示 workspace 级 history 摘要（active + persisted fallback）；但仍是 latest-snapshot 模型，不含 timeline/pagination。
+- `M8.5.7` 当前已完成 multi-snapshot history timeline/pagination：`/terminals/{group_id}/sessions/history` 现可按 `limit/offset` 读取 workspace timeline，来源合并 in-memory + `latest.json` + archived snapshots，并保持现有 `latest.json` fallback 合约不回归。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -698,10 +706,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前已包含 `M8.5.6` inventory read 面；关键点在 `services/terminal_sessions.py`（`list_history_summaries()` 合并 in-memory + persisted snapshot metadata）、`app/routes/terminals.py`（`/terminals` additive `history` 字段映射）、`domain/schemas.py`（`TerminalSessionHistorySummaryResponse`）、`web/src/pages/Terminals.tsx`（history 列展示）。
-3. 如继续 post-`M8.5.6` terminal 开发，建议进入 multi-snapshot history timeline/pagination 子项（当前仍是 per-workspace `latest.json` 单快照模型）。
+2. `main` 当前已包含 `M8.5.7` timeline read 面；关键点在 `services/terminal_sessions.py`（archived snapshot persistence + `list_history_timeline_by_group()`）、`app/routes/terminals.py`（`GET /terminals/{group_id}/sessions/history`）、`domain/schemas.py`（`TerminalSessionHistoryTimelineResponse`）、`web/src/pages/Terminals.tsx`（on-demand timeline pagination UI）。
+3. 如继续 post-`M8.5.7` terminal 开发，建议进入 timeline filtering/search/detail 扩展子项（保持 `latest.json` 与 `/sessions/current/history` 兼容，不扩展权限边界）。
 4. 复现当前基线建议命令：
-   - `M8.5.6 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.7 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -713,4 +721,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2`、`M8.5.3`、`M8.5.4`、`M8.5.5`、`M8.5.6` 已完成；当前自然入口是 post-`M8.5.6` 的 multi-snapshot history timeline/pagination 子项。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2`、`M8.5.3`、`M8.5.4`、`M8.5.5`、`M8.5.6`、`M8.5.7` 已完成；当前自然入口是 post-`M8.5.7` 的 timeline filtering/search/detail 子项。
