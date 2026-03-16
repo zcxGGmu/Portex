@@ -206,6 +206,21 @@ class TerminalSessionService:
             self._require_owner(managed, owner_user_id)
         return await self.close_session(managed.record.session_id, owner_user_id=owner_user_id)
 
+    async def force_close_session_by_group(self, group_folder: str) -> TerminalSessionRecord:
+        async with self._lock:
+            managed = self._sessions_by_group.get(group_folder)
+            if managed is None:
+                raise TerminalSessionNotFoundError("terminal session not found")
+            self._cancel_reconnect_task(managed)
+            managed.output_queue = None
+            managed.record = replace(
+                managed.record,
+                status="closed",
+                reconnect_deadline=None,
+            )
+        await managed.bridge.close()
+        return managed.record
+
     async def close_session(
         self,
         session_id: str,

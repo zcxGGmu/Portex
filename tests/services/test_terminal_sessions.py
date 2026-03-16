@@ -285,3 +285,32 @@ async def test_terminal_session_service_list_sessions_reflects_lifecycle_transit
 
     await service.close_session(session.session_id, owner_user_id="owner-1")
     assert service.list_sessions()[0].status == "closed"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_force_close_ignores_session_owner() -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(bridge_factory=bridge_factory)
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await service.attach_session(session.session_id, owner_user_id="owner-1")
+
+    force_closed = await service.force_close_session_by_group("project-alpha")
+    current = service.get_current_session("project-alpha")
+
+    assert force_closed.status == "closed"
+    assert current is not None
+    assert current.status == "closed"
+    assert created_bridges[0].closed is True

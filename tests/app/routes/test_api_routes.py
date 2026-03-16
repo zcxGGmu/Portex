@@ -2275,6 +2275,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "close" in delete_terminal_session_operation["summary"].lower()
     assert "409" in delete_terminal_session_operation["responses"]
 
+    force_delete_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions/force"]["delete"]
+    assert "force" in force_delete_terminal_session_operation["summary"].lower()
+    assert "404" in force_delete_terminal_session_operation["responses"]
+
     list_terminal_overview_operation = schema["paths"]["/terminals"]["get"]
     assert "overview" in list_terminal_overview_operation["summary"].lower()
     assert "403" in list_terminal_overview_operation["responses"]

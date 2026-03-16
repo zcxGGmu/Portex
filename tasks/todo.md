@@ -937,3 +937,37 @@
   - `.venv/bin/pytest -o addopts='' -q` (`564 passed`)
   - `.venv/bin/ruff check .`
   - `git diff --check`
+
+# Session Plan (2026-03-16) - M8.4 Terminal Light Controls
+
+## Goal
+- Continue post-`M8.3` by adding minimal terminal operator control actions on top of the new overview surface: allow operators to close their own active sessions and force-close active sessions through a dedicated API, without expanding into TTY fidelity/session persistence scope.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and `M8.3` docs
+- [x] Write focused `M8.4` design doc
+- [x] Write focused `M8.4` implementation plan doc
+- [x] Add failing tests for force-close service and route contract
+- [x] Implement backend force-close session capability and route
+- [x] Add failing frontend build stage for terminals control actions
+- [x] Implement `/terminals` close/force-close actions and API client updates
+- [x] Run focused verification + frontend lint/build + full regression + hygiene checks
+- [x] Update `docs/progress.md` and complete this review section
+- [x] Commit milestone result with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-4-terminal-light-controls-design.md` and `docs/plans/2026-03-16-m8-4-terminal-light-controls.md` to lock M8.4 scope as “light control actions only”, explicitly deferring fidelity/session-persistence work.
+- Extended backend terminal lifecycle with `TerminalSessionService.force_close_session_by_group()` and exposed `DELETE /terminals/{group_id}/sessions/force` in `app/routes/terminals.py`, preserving existing role/access gates and response contracts.
+- Expanded backend coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py`; retained compatibility with existing terminal overview tests.
+- Upgraded `web/src/pages/Terminals.tsx` from read-only to light-control UI: row-level `Close` (own active session) and `Force Close` (operator action), with action loading states and inline notice/error; wired via new `apiClient.forceCloseCurrentTerminalSession()` in `web/src/api/client.ts`.
+- Recorded frontend red-green evidence for this slice: first introduced `forceCloseCurrentTerminalSession` call in page (missing client method) and confirmed `cd web && npm run build` failed; then implemented client + UI wiring and restored build green.
+- Refreshed `docs/progress.md` to mark `M8.4` complete on `main` and move restart guidance to post-`M8.4` fidelity/session-management continuation.
+- Fresh verification commands executed in this session:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `cd web && npm run build` (red stage expected fail before client method)
+  - `cd web && npm run lint`
+  - `cd web && npm run build` (green stage)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`566 passed`)
+  - `.venv/bin/ruff check .`
+  - `git diff --check`

@@ -67,10 +67,12 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     create_response = api_client.post("/terminals/project-alpha/sessions", json={})
     get_response = api_client.get("/terminals/project-alpha/sessions/current")
     delete_response = api_client.delete("/terminals/project-alpha/sessions/current")
+    force_delete_response = api_client.delete("/terminals/project-alpha/sessions/force")
 
     assert create_response.status_code == 401
     assert get_response.status_code == 401
     assert delete_response.status_code == 401
+    assert force_delete_response.status_code == 401
 
 
 def test_member_cannot_create_terminal_session(api_client: TestClient) -> None:
@@ -99,10 +101,15 @@ def test_member_cannot_create_terminal_session(api_client: TestClient) -> None:
             headers=member_headers,
             json={},
         )
+        force_response = api_client.delete(
+            "/terminals/project-alpha/sessions/force",
+            headers=member_headers,
+        )
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 403
+    assert force_response.status_code == 403
 
 
 def test_owner_can_create_read_and_delete_terminal_session(api_client: TestClient) -> None:
@@ -261,3 +268,37 @@ def test_create_terminal_session_maps_conflict_and_backend_errors(api_client: Te
 
     assert conflict_response.status_code == 409
     assert disabled_response.status_code == 422
+
+
+def test_operator_can_force_close_terminal_session(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            self.force_closed = False
+
+        async def force_close_session_by_group(self, group_folder: str):
+            assert group_folder == "project-alpha"
+            self.force_closed = True
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.delete(
+            "/terminals/project-alpha/sessions/force",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "closed"}
+    assert service.force_closed is True

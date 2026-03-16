@@ -593,6 +593,15 @@ export const apiClient = {
       },
     )
   },
+  forceCloseCurrentTerminalSession(token: string, groupId: string): Promise<DeleteTerminalSessionResponse> {
+    return request<DeleteTerminalSessionResponse>(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/force`,
+      {
+        method: 'DELETE',
+        token,
+      },
+    )
+  },
   bindGroupImEndpoint(token: string, groupId: string, imJid: string): Promise<GroupImBindingSummary> {
     return request<GroupImBindingSummary>(
       `/groups/${encodeURIComponent(groupId)}/bindings/im/${encodeURIComponent(imJid)}`,

@@ -685,6 +685,16 @@ a {
   border-color: var(--primary);
 }
 
+.terminal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.terminal-actions .button {
+  padding: 0.35rem 0.55rem;
+}
+
 .chat-stream {
   max-height: 52vh;
   overflow-y: auto;

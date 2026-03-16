@@ -93,12 +93,17 @@
 - `M8.1` 已完成（terminal session backend，backend-only）。
 - `M8.2` 已完成（terminal UI / Web terminal panel，含 browser-compatible terminal WebSocket auth shim）。
 - `M8.3` 已完成并已落地到 `main`（terminal operator overview API + page + 最小 chat workspace 深链）。
-- 当前起点：`main` 已具备 `M8.1` ~ `M8.3` 的 terminal 基础能力；下一步应进入 post-`M8.3` 终端能力扩展（轻控制动作或会话/TTY fidelity 路线）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.4` 已完成并已落地到 `main`（terminal light controls：overview 页 close/force-close 动作 + force-close API）。
+- 当前起点：`main` 已具备 `M8.1` ~ `M8.4` 的 terminal 基础能力；下一步应进入 post-`M8.4` 的 fidelity/session-management 路线。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.4` implementation（on `main`）：新增 `DELETE /terminals/{group_id}/sessions/force`，并在 `TerminalSessionService` 新增 `force_close_session_by_group()`，支持 operator 在 overview 路径下强制关闭当前 workspace 会话。
+- `M8.4` implementation（on `main`）：扩展 `/terminals` 页面轻控制动作，新增每行 `Close`（owner own-session）与 `Force Close`（operator）操作，操作后自动刷新 overview 并展示 inline notice/error。
+- `M8.4` implementation（on `main`）：新增/扩展覆盖 `tests/services/test_terminal_sessions.py`、`tests/app/routes/test_terminal_routes.py`、`tests/app/routes/test_api_routes.py`，并保持 `tests/app/routes/test_terminal_monitor_routes.py` 兼容。
+- `M8.4` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`（`566 passed`）、`.venv/bin/ruff check .` 与 `git diff --check`。
 - `M8.3` implementation（on `main`）：新增 `TerminalSessionService.list_sessions()`、`GET /terminals`、`TerminalWorkspaceSummaryResponse/TerminalWorkspaceListResponse`、`/terminals` 前端页面、operator 导航入口、以及最小 `/chat?workspace=...` deep-link 选中行为。
 - `M8.3` implementation（on `main`）：新增 `tests/app/routes/test_terminal_monitor_routes.py`，扩展 `tests/services/test_terminal_sessions.py` 与 `tests/app/routes/test_api_routes.py` 覆盖 terminal overview route / schema / read model。
 - `M8.3` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest -o addopts='' -q`（`564 passed`）、`.venv/bin/ruff check .` 与 `git diff --check`。
@@ -652,11 +657,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前已包含 `M8.3` 运行时与前端实现；关键点在 `services/terminal_sessions.py`、`app/routes/terminals.py`、`tests/app/routes/test_terminal_monitor_routes.py`、`web/src/pages/Terminals.tsx`、`web/src/components/chat/ChatPanel.tsx`、`web/src/api/client.ts` 与 `web/src/hooks/useApi.ts`。
-3. 如继续 post-`M8.3` terminal 开发，先明确路线：`A)` 在 `/terminals` 增加轻控制动作（close/reconnect/force-close）并保持最小协议，或 `B)` 进入 fidelity/session-management（TTY/resize/history/persistence）专项里程碑。
+2. `main` 当前已包含 `M8.4` 运行时与前端实现；关键点在 `services/terminal_sessions.py`、`app/routes/terminals.py`、`tests/app/routes/test_terminal_routes.py`、`tests/app/routes/test_terminal_monitor_routes.py`、`web/src/pages/Terminals.tsx`、`web/src/api/client.ts` 与 `web/src/hooks/useApi.ts`。
+3. 如继续 post-`M8.4` terminal 开发，优先切到 fidelity/session-management 里程碑（TTY fidelity、resize/history、session persistence）并与当前 light-control 边界保持解耦。
 4. 复现当前基线建议命令：
-   - `M8.3 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
-   - `terminal ws baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py -q`
+   - `M8.4 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
+   - `terminal ws baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_websocket_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
    - 仓库卫生：`.venv/bin/ruff check .` 与 `git diff --check`
@@ -666,4 +671,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3` 已完成；当前自然入口是 post-`M8.3` terminal 扩展里程碑。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4` 已完成；当前自然入口是 post-`M8.4` 的 terminal fidelity/session-management 里程碑。

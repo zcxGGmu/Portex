@@ -309,6 +309,37 @@ async def delete_current_terminal_session(
     return DeleteTerminalSessionResponse(status="closed")
 
 
+@router.delete(
+    "/terminals/{group_id}/sessions/force",
+    response_model=DeleteTerminalSessionResponse,
+    summary="Force close terminal session",
+    description="Force-close the current terminal session for one accessible workspace regardless of current session owner.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+        status.HTTP_409_CONFLICT,
+    ),
+)
+async def force_delete_current_terminal_session(
+    group_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> DeleteTerminalSessionResponse:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        await service.force_close_session_by_group(workspace.folder)
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+    return DeleteTerminalSessionResponse(status="closed")
+
+
 @router.websocket("/ws/terminals/{session_id}")
 async def terminal_websocket_endpoint(websocket: WebSocket, session_id: str) -> None:
     current_user = _authenticate_websocket(websocket)
