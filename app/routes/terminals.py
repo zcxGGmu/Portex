@@ -57,9 +57,10 @@ def _to_terminal_session_response(item: TerminalSessionRecord) -> TerminalSessio
 
 
 def _to_terminal_history_summary_response(item: TerminalSessionHistorySummary) -> TerminalSessionHistorySummaryResponse:
+    snapshot_at = getattr(item, "snapshot_at", item.record.created_at)
     return TerminalSessionHistorySummaryResponse(
         session=_to_terminal_session_response(item.record),
-        snapshot_at=item.snapshot_at,
+        snapshot_at=snapshot_at,
         output_bytes=item.output_bytes,
         history_max_bytes=item.history_max_bytes,
         truncated=item.truncated,
