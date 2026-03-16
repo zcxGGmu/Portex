@@ -84,6 +84,7 @@ class TerminalSessionHistorySnapshot:
 @dataclass(frozen=True, slots=True)
 class TerminalSessionHistorySummary:
     record: TerminalSessionRecord
+    snapshot_at: datetime
     output_bytes: int
     history_max_bytes: int
     truncated: bool
@@ -220,33 +221,25 @@ class TerminalSessionService:
         *,
         limit: int = 20,
         offset: int = 0,
+        status: TerminalSessionStatus | None = None,
+        owner_user_id: str | None = None,
+        session_id_prefix: str | None = None,
     ) -> TerminalSessionHistoryTimelinePage:
         if limit <= 0:
             raise ValueError("limit must be positive")
         if offset < 0:
             raise ValueError("offset must be non-negative")
-
-        async with self._lock:
-            managed = self._sessions_by_group.get(group_folder)
-            in_memory_snapshot = None if managed is None else self._build_history_snapshot(managed)
-
-        persisted_latest, persisted_archived = await asyncio.to_thread(
-            self._load_history_timeline_from_persistence,
-            group_folder,
+        snapshots = await self._list_merged_history_snapshots_by_group(group_folder)
+        filtered = self._filter_history_snapshots(
+            snapshots,
+            status=status,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
         )
-        snapshots = self._dedupe_timeline_snapshots(
-            in_memory=in_memory_snapshot,
-            latest=persisted_latest,
-            archived=persisted_archived,
-        )
-        if not snapshots:
+        if not filtered:
             raise TerminalSessionNotFoundError("terminal session not found")
 
-        snapshots.sort(
-            key=lambda item: (item.snapshot_at, item.record.session_id),
-            reverse=True,
-        )
-        summaries = [self._to_history_summary(item) for item in snapshots]
+        summaries = [self._to_history_summary(item) for item in filtered]
         page_items = summaries[offset : offset + limit]
         has_more = (offset + limit) < len(summaries)
         return TerminalSessionHistoryTimelinePage(
@@ -255,6 +248,21 @@ class TerminalSessionService:
             has_more=has_more,
             items=page_items,
         )
+
+    async def get_history_snapshot_by_group(
+        self,
+        group_folder: str,
+        session_id: str,
+    ) -> TerminalSessionHistorySnapshot:
+        normalized_session_id = session_id.strip()
+        if normalized_session_id == "":
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+        snapshots = await self._list_merged_history_snapshots_by_group(group_folder)
+        for snapshot in snapshots:
+            if snapshot.record.session_id == normalized_session_id:
+                return snapshot
+        raise TerminalSessionNotFoundError("terminal session not found")
 
     async def attach_session(
         self,
@@ -762,6 +770,63 @@ class TerminalSessionService:
                 snapshots_by_session[snapshot.record.session_id] = snapshot
         return list(snapshots_by_session.values())
 
+    async def _list_merged_history_snapshots_by_group(
+        self,
+        group_folder: str,
+    ) -> list[TerminalSessionHistorySnapshot]:
+        async with self._lock:
+            managed = self._sessions_by_group.get(group_folder)
+            in_memory_snapshot = None if managed is None else self._build_history_snapshot(managed)
+
+        persisted_latest, persisted_archived = await asyncio.to_thread(
+            self._load_history_timeline_from_persistence,
+            group_folder,
+        )
+        snapshots = self._dedupe_timeline_snapshots(
+            in_memory=in_memory_snapshot,
+            latest=persisted_latest,
+            archived=persisted_archived,
+        )
+        if not snapshots:
+            raise TerminalSessionNotFoundError("terminal session not found")
+        snapshots.sort(
+            key=lambda item: (item.snapshot_at, item.record.session_id),
+            reverse=True,
+        )
+        return snapshots
+
+    @staticmethod
+    def _filter_history_snapshots(
+        snapshots: list[TerminalSessionHistorySnapshot],
+        *,
+        status: TerminalSessionStatus | None,
+        owner_user_id: str | None,
+        session_id_prefix: str | None,
+    ) -> list[TerminalSessionHistorySnapshot]:
+        normalized_owner_user_id = None if owner_user_id is None else owner_user_id.strip()
+        if normalized_owner_user_id == "":
+            normalized_owner_user_id = None
+        normalized_session_id_prefix = None if session_id_prefix is None else session_id_prefix.strip()
+        if normalized_session_id_prefix == "":
+            normalized_session_id_prefix = None
+
+        filtered: list[TerminalSessionHistorySnapshot] = []
+        for snapshot in snapshots:
+            if status is not None and snapshot.record.status != status:
+                continue
+            if (
+                normalized_owner_user_id is not None
+                and snapshot.record.owner_user_id != normalized_owner_user_id
+            ):
+                continue
+            if (
+                normalized_session_id_prefix is not None
+                and not snapshot.record.session_id.startswith(normalized_session_id_prefix)
+            ):
+                continue
+            filtered.append(snapshot)
+        return filtered
+
     def _list_persisted_history_snapshots(self) -> list[TerminalSessionHistorySnapshot]:
         if not self._history_persist_root.exists():
             return []
@@ -784,6 +849,7 @@ class TerminalSessionService:
     def _to_history_summary(snapshot: TerminalSessionHistorySnapshot) -> TerminalSessionHistorySummary:
         return TerminalSessionHistorySummary(
             record=snapshot.record,
+            snapshot_at=snapshot.snapshot_at,
             output_bytes=snapshot.output_bytes,
             history_max_bytes=snapshot.history_max_bytes,
             truncated=snapshot.truncated,

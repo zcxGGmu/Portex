@@ -870,3 +870,224 @@ async def test_terminal_session_service_timeline_raises_for_missing_workspace() 
 
     with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
         await service.list_history_timeline_by_group("missing-workspace", limit=20, offset=0)
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_filters_history_timeline_by_status(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    closed = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _closed_attached, closed_queue = await service.attach_session(closed.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("closed-output\n")
+    await asyncio.wait_for(closed_queue.get(), timeout=0.1)
+    await service.close_session(closed.session_id, owner_user_id="owner-1")
+
+    attached = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _attached_record, attached_queue = await service.attach_session(attached.session_id, owner_user_id="owner-1")
+    await created_bridges[1].emit_output("attached-output\n")
+    await asyncio.wait_for(attached_queue.get(), timeout=0.1)
+
+    page = await service.list_history_timeline_by_group(
+        "project-alpha",
+        limit=20,
+        offset=0,
+        status="closed",
+    )
+
+    assert [item.record.session_id for item in page.items] == [closed.session_id]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_filters_history_timeline_by_owner_and_prefix_with_pagination(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    first = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await service.close_session(first.session_id, owner_user_id="owner-1")
+
+    second = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    await service.close_session(second.session_id, owner_user_id="owner-2")
+
+    third = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    await service.close_session(third.session_id, owner_user_id="owner-2")
+
+    first_page = await service.list_history_timeline_by_group(
+        "project-alpha",
+        limit=1,
+        offset=0,
+        owner_user_id="owner-2",
+        session_id_prefix=third.session_id[:8],
+    )
+    second_page = await service.list_history_timeline_by_group(
+        "project-alpha",
+        limit=1,
+        offset=1,
+        owner_user_id="owner-2",
+    )
+
+    assert [item.record.session_id for item in first_page.items] == [third.session_id]
+    assert first_page.has_more is False
+    assert [item.record.session_id for item in second_page.items] == [second.session_id]
+    assert second_page.has_more is False
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_get_history_snapshot_reads_archived_session(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await service.close_session(session.session_id, owner_user_id="owner-1")
+
+    snapshot = await service.get_history_snapshot_by_group("project-alpha", session.session_id)
+
+    assert snapshot.record.session_id == session.session_id
+    assert snapshot.record.status == "closed"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_get_history_snapshot_reads_latest_persisted_session(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    persist_root = tmp_path / "terminal-history"
+    first_service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    session = await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _attached, queue = await first_service.attach_session(session.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("persisted-latest\n")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+
+    restarted = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    snapshot = await restarted.get_history_snapshot_by_group("project-alpha", session.session_id)
+
+    assert snapshot.record.session_id == session.session_id
+    assert snapshot.record.status == "attached"
+    assert snapshot.output == "persisted-latest\n"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_get_history_snapshot_reads_in_memory_session(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _attached, queue = await service.attach_session(session.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("in-memory-output\n")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+
+    snapshot = await service.get_history_snapshot_by_group("project-alpha", session.session_id)
+
+    assert snapshot.record.session_id == session.session_id
+    assert snapshot.record.status == "attached"
+    assert snapshot.output == "in-memory-output\n"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_get_history_snapshot_raises_for_missing_session(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionNotFoundError, TerminalSessionService
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
+        await service.get_history_snapshot_by_group("project-alpha", "missing-session")
