@@ -41,6 +41,17 @@ class FakeBridge:
         await self._event_handler({"type": "exit", "exit_code": exit_code})
 
 
+class FlakyStartBridge(FakeBridge):
+    def __init__(self, *, fail_on_start: bool) -> None:
+        super().__init__()
+        self._fail_on_start = fail_on_start
+
+    async def start(self, on_event) -> None:
+        if self._fail_on_start:
+            raise RuntimeError("bridge start failed")
+        await super().start(on_event)
+
+
 @pytest.mark.asyncio
 async def test_terminal_session_service_rejects_openai_runtime_backend() -> None:
     from services.terminal_sessions import (
@@ -487,3 +498,184 @@ async def test_terminal_session_service_history_can_be_loaded_from_persisted_sna
     assert snapshot.output == "line-1\nline-2\n"
     assert snapshot.output_bytes == len("line-1\nline-2\n".encode("utf-8"))
     assert snapshot.history_max_bytes == 16
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_recovers_active_session_without_output_after_restart(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    persist_root = tmp_path / "terminal-history"
+    first_service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    session = await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+
+    restarted_service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+        recover_active_sessions=True,
+    )
+    recovered = restarted_service.get_current_session("project-alpha")
+
+    assert recovered is not None
+    assert recovered.session_id == session.session_id
+    assert recovered.status == "detached"
+    assert recovered.reconnect_deadline is None
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_owner_can_attach_recovered_session_after_restart(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    first_bridges: list[FakeBridge] = []
+
+    def first_bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        first_bridges.append(bridge)
+        return bridge
+
+    persist_root = tmp_path / "terminal-history"
+    first_service = TerminalSessionService(
+        bridge_factory=first_bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    session = await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _attached, queue = await first_service.attach_session(session.session_id, owner_user_id="owner-1")
+    await first_bridges[0].emit_output("line-1\n")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+
+    restarted_bridges: list[FakeBridge] = []
+
+    def restarted_bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        restarted_bridges.append(bridge)
+        return bridge
+
+    restarted_service = TerminalSessionService(
+        bridge_factory=restarted_bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+        recover_active_sessions=True,
+    )
+    recovered = restarted_service.get_current_session("project-alpha")
+    assert recovered is not None
+    assert recovered.status == "detached"
+
+    attached, replay_queue = await restarted_service.attach_session(
+        session.session_id,
+        owner_user_id="owner-1",
+    )
+    replay_event = await asyncio.wait_for(replay_queue.get(), timeout=0.1)
+    await restarted_service.send_input(session.session_id, owner_user_id="owner-1", data="pwd\n")
+
+    assert attached.status == "attached"
+    assert replay_event.event_type == "terminal.output"
+    assert replay_event.data == "line-1\n"
+    assert len(restarted_bridges) == 1
+    assert restarted_bridges[0].started is True
+    assert restarted_bridges[0].inputs == ["pwd\n"]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_recovered_active_session_conflicts_for_other_owner(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import (
+        TerminalSessionConflictError,
+        TerminalSessionService,
+    )
+
+    persist_root = tmp_path / "terminal-history"
+    first_service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+
+    restarted_service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+        recover_active_sessions=True,
+    )
+    with pytest.raises(TerminalSessionConflictError, match="active terminal session"):
+        await restarted_service.create_session(
+            group_id="project-alpha",
+            group_folder="project-alpha",
+            owner_user_id="owner-2",
+            requested_mode="container",
+        )
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_recovered_attach_failure_closes_session_and_allows_fresh_create(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    persist_root = tmp_path / "terminal-history"
+    first_service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    session = await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+
+    start_attempt = 0
+
+    def restarted_bridge_factory(**_: object) -> FakeBridge:
+        nonlocal start_attempt
+        start_attempt += 1
+        return FlakyStartBridge(fail_on_start=start_attempt == 1)
+
+    restarted_service = TerminalSessionService(
+        bridge_factory=restarted_bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+        recover_active_sessions=True,
+    )
+    with pytest.raises(RuntimeError, match="bridge start failed"):
+        await restarted_service.attach_session(
+            session.session_id,
+            owner_user_id="owner-1",
+        )
+    failed = restarted_service.get_current_session("project-alpha")
+    assert failed is not None
+    assert failed.status == "closed"
+
+    fresh = await restarted_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    assert fresh.session_id != session.session_id

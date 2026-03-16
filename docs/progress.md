@@ -98,12 +98,20 @@
 - `M8.5.2` 已完成并已落地到 `main`（real terminal resize/TTY propagation + dynamic frontend resize emission）。
 - `M8.5.3` 已完成并已落地到 `main`（terminal history read API on bounded in-memory session history）。
 - `M8.5.4` 已完成并已落地到 `main`（terminal history persistence fallback across process restarts）。
-- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.4` 的 terminal fidelity/session-read 基础能力；下一步应继续 post-`M8.5.4` session-management 子项（active session persistence/recovery）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.5` 已完成并已落地到 `main`（active terminal session persistence/recovery across process restarts）。
+- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.5` 的 terminal fidelity/session-management 基础能力；下一步建议进入 post-`M8.5.5` 的 persistence-aware operator history inventory（多会话）子项。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.5.5` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-5-terminal-active-session-recovery-design.md` 与 `docs/plans/2026-03-16-m8-5-5-terminal-active-session-recovery.md`，将范围固定为“active session persistence/recovery”，明确不扩展多会话 inventory。
+- `M8.5.5` implementation（on `main`）：扩展 `TerminalSessionService`，新增可选 startup active recovery（`recover_active_sessions=True`）与从 persisted snapshot 恢复活动会话的内存重建，恢复后统一归一化为 `detached` 状态并保留原 `session_id`/owner/workspace 元数据。
+- `M8.5.5` implementation（on `main`）：扩展 `attach_session()` 恢复路径，支持 recovered session 的 lazy bridge 启动；当恢复 attach 启动失败时会回退为 `closed` 并持久化，确保后续可 fresh create 新会话。
+- `M8.5.5` implementation（on `main`）：补齐 active lifecycle snapshot 持久化时机（`created`/`attached`/`detached`），使无输出场景也可跨重启恢复活动会话语义。
+- `M8.5.5` implementation（on `main`）：扩展 `services/execution_runtime.py`，让 app 默认 terminal service 启用 active recovery；保留 `TerminalSessionService` 默认关闭恢复以维持测试隔离。
+- `M8.5.5` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py` 与 `tests/app/routes/test_terminal_routes.py`，新增 recovery 红绿覆盖：无输出恢复、owner attach recovered、跨 owner 冲突延续、attach 失败回退关闭以及 route `current/create` 对 recovered state 的契约验证。
+- `M8.5.5` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`581 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 - `M8.5.4` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-4-terminal-history-persistence-fallback-design.md` 与 `docs/plans/2026-03-16-m8-5-4-terminal-history-persistence-fallback.md`，将范围固定为“history snapshot persistence + read fallback”，明确不引入 active session recovery。
 - `M8.5.4` implementation（on `main`）：扩展 `TerminalSessionService`，新增 history snapshot 磁盘持久化（`data/terminal-history/<workspace>/latest.json`）与 `get_history_by_group()` 的磁盘回退读取，支持进程重启后继续读取最近历史快照。
 - `M8.5.4` implementation（on `main`）：在输出与终态（`closed`/`exited`）路径上增加 snapshot 持久化刷新，保持 `TerminalSessionHistoryResponse` 与现有 route contract 不变。
@@ -671,6 +679,7 @@
 - `M7.3.5` 当前明确延后：task-agent persistence、IM-to-slot binding、slot CRUD API、frontend tab UI、以及 authenticated WebSocket slot routing/auth 仍未开始。
 - `M7` 当前仍是 tasks/backlog 层路线，而不是 `docs/TODO.md` 的正式主计划；`M7.6.1`、`M7.6.3`、`M7.6.4` 与 `M7.6.5` 的决策链现已完成：QQ、generic slash-command parity、richer IM artifacts parity 明确排除，terminal panel 仍维持 deferred 而非 rejected。当前没有新的 `M7` parity backlog 入口，后续扩展应以新的明确里程碑重新进入。
 - `M8.1` 当前已完成 terminal backend/session prerequisite slice：terminal 协议已与聊天 WS 解耦，container-only session lifecycle 已具备，但 host terminal、persistent session registry、terminal audit persistence、以及任何前端 terminal UI 仍未开始。
+- `M8.5.5` 当前已完成 active terminal session persistence/recovery：运行时默认 service 启用 startup recovery，恢复态会话可延续 `current/create` 的 owner 冲突语义并在 owner attach 时 lazy 启动 bridge；attach 失败会降级为 `closed` 以允许 fresh create。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -681,10 +690,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前已包含 `M8.5.4` 运行时与读面实现；关键点在 `services/terminal_sessions.py`（in-memory + persisted history snapshot fallback）、`app/routes/terminals.py`（history route）、`domain/schemas.py`（history DTO）、`tests/services/test_terminal_sessions.py`（restart-like fallback coverage），以及 `services/terminal_bridge.py` / `web/src/components/chat/TerminalPanel.tsx`（resize fidelity）。
-3. 如继续 post-`M8.5.4` terminal 开发，建议按 session-management 子项拆分：`A)` active terminal session persistence/recovery；`B)` persistence-aware operator history inventory（多会话）。
+2. `main` 当前已包含 `M8.5.5` 运行时与恢复语义实现；关键点在 `services/terminal_sessions.py`（history snapshot persistence + active session startup recovery + lazy recovered attach bridge）、`services/execution_runtime.py`（runtime 默认启用 `recover_active_sessions=True`）、`app/routes/terminals.py`（`current/create/history` 既有契约复用）与 `tests/services/test_terminal_sessions.py` / `tests/app/routes/test_terminal_routes.py`（recovery coverage）。
+3. 如继续 post-`M8.5.5` terminal 开发，建议进入 `B)` persistence-aware operator history inventory（多会话）子项，避免回退到已完成的 `A)` active recovery 范围。
 4. 复现当前基线建议命令：
-   - `M8.5.4 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.5 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -696,4 +705,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2`、`M8.5.3`、`M8.5.4` 已完成；当前自然入口是 post-`M8.5.4` active session persistence/recovery 子项。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2`、`M8.5.3`、`M8.5.4`、`M8.5.5` 已完成；当前自然入口是 post-`M8.5.5` 的 persistence-aware operator history inventory（多会话）子项。

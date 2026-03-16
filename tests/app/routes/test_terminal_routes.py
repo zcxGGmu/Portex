@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -62,6 +63,23 @@ class FakeGroupRegistry:
     async def user_can_access_group(self, *, user_id: str, user_role: str | None = None, group):
         _ = user_role
         return group.created_by == user_id or user_id in getattr(group, "member_ids", set())
+
+
+class _RouteFakeBridge:
+    def __init__(self) -> None:
+        self._event_handler = None
+
+    async def start(self, on_event) -> None:
+        self._event_handler = on_event
+
+    async def send_input(self, data: str) -> None:
+        _ = data
+
+    async def resize(self, *, cols: int, rows: int) -> None:
+        _ = (cols, rows)
+
+    async def close(self) -> None:
+        return None
 
 
 def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
@@ -390,3 +408,108 @@ def test_terminal_history_route_returns_404_when_session_is_missing(api_client: 
 
     assert response.status_code == 404
     assert response.json()["detail"] == "terminal session not found"
+
+
+def test_get_current_terminal_session_reads_recovered_active_session(
+    api_client: TestClient,
+    tmp_path: Path,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionService
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    persist_root = tmp_path / "terminal-history"
+
+    async def _seed_active_session() -> str:
+        first_service = TerminalSessionService(
+            bridge_factory=lambda **_: _RouteFakeBridge(),
+            reconnect_timeout_seconds=10.0,
+            history_persist_root=persist_root,
+        )
+        session = await first_service.create_session(
+            group_id="project-alpha",
+            group_folder="project-alpha",
+            owner_user_id=owner_id,
+            requested_mode="container",
+        )
+        return session.session_id
+
+    expected_session_id = asyncio.run(_seed_active_session())
+
+    recovered_service = TerminalSessionService(
+        bridge_factory=lambda **_: _RouteFakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+        recover_active_sessions=True,
+    )
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: recovered_service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/current",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == expected_session_id
+    assert response.json()["status"] == "detached"
+
+
+def test_create_terminal_session_returns_409_for_recovered_other_owner_active_session(
+    api_client: TestClient,
+    tmp_path: Path,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionService
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    other_headers, other_id = _login_headers(api_client, username="other-owner", role="owner")
+    _ = owner_headers
+    persist_root = tmp_path / "terminal-history"
+
+    async def _seed_active_session() -> None:
+        first_service = TerminalSessionService(
+            bridge_factory=lambda **_: _RouteFakeBridge(),
+            reconnect_timeout_seconds=10.0,
+            history_persist_root=persist_root,
+        )
+        await first_service.create_session(
+            group_id="project-alpha",
+            group_folder="project-alpha",
+            owner_user_id=owner_id,
+            requested_mode="container",
+        )
+
+    asyncio.run(_seed_active_session())
+
+    recovered_service = TerminalSessionService(
+        bridge_factory=lambda **_: _RouteFakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+        recover_active_sessions=True,
+    )
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+    registry.groups[0].member_ids = {other_id}
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: recovered_service
+
+    try:
+        response = api_client.post(
+            "/terminals/project-alpha/sessions",
+            headers=other_headers,
+            json={},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409

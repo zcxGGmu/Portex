@@ -20,6 +20,7 @@ TerminalBackendName = Literal["docker_container"]
 TerminalSessionStatus = Literal["created", "attached", "detached", "closed", "exited"]
 DEFAULT_TERMINAL_HISTORY_PERSIST_ROOT = Path(__file__).resolve().parents[1] / "data" / "terminal-history"
 _TERMINAL_HISTORY_FILENAME = "latest.json"
+_ACTIVE_RECOVERABLE_STATUSES: set[TerminalSessionStatus] = {"created", "attached", "detached"}
 
 
 class TerminalBackendUnsupportedError(RuntimeError):
@@ -80,7 +81,7 @@ class TerminalSessionHistorySnapshot:
 @dataclass(slots=True)
 class _ManagedTerminalSession:
     record: TerminalSessionRecord
-    bridge: TerminalBridge
+    bridge: TerminalBridge | None
     output_queue: asyncio.Queue[TerminalSessionEvent] | None = None
     reconnect_task: asyncio.Task[None] | None = None
     output_history_chunks: deque[str] = field(default_factory=deque)
@@ -98,6 +99,7 @@ class TerminalSessionService:
         reconnect_timeout_seconds: float = 30.0,
         history_max_bytes: int = 32_768,
         history_persist_root: Path | str | None = None,
+        recover_active_sessions: bool = False,
         now_func: Callable[[], datetime] | None = None,
     ) -> None:
         self._bridge_factory = bridge_factory
@@ -111,6 +113,8 @@ class TerminalSessionService:
         self._sessions_by_group: dict[str, _ManagedTerminalSession] = {}
         self._sessions_by_id: dict[str, _ManagedTerminalSession] = {}
         self._lock = asyncio.Lock()
+        if recover_active_sessions:
+            self._recover_active_sessions_from_persisted_snapshots()
 
     async def create_session(
         self,
@@ -154,6 +158,11 @@ class TerminalSessionService:
             self._sessions_by_id[session_id] = managed
 
         await bridge.start(lambda event: self._handle_bridge_event(session_id, event))
+        async with self._lock:
+            managed = self._sessions_by_id.get(session_id)
+            persist_snapshot = None if managed is None else self._build_history_snapshot(managed)
+        if persist_snapshot is not None:
+            await self._persist_history_snapshot_best_effort(persist_snapshot)
         return self.get_current_session(group_folder) or record
 
     def get_current_session(self, group_folder: str) -> TerminalSessionRecord | None:
@@ -173,6 +182,8 @@ class TerminalSessionService:
         *,
         owner_user_id: str,
     ) -> tuple[TerminalSessionRecord, asyncio.Queue[TerminalSessionEvent]]:
+        bridge_to_start: TerminalBridge | None = None
+        persist_snapshot: TerminalSessionHistorySnapshot | None = None
         async with self._lock:
             managed = self._require_session(session_id)
             self._require_owner(managed, owner_user_id)
@@ -188,7 +199,45 @@ class TerminalSessionService:
                 last_attached_at=now,
                 reconnect_deadline=None,
             )
-            return managed.record, queue
+            if managed.bridge is None:
+                managed.bridge = self._bridge_factory(
+                    group_id=managed.record.group_id,
+                    group_folder=managed.record.group_folder,
+                    owner_user_id=managed.record.owner_user_id,
+                    session_id=managed.record.session_id,
+                )
+                container_name = getattr(managed.bridge, "container_name", None)
+                managed.record = replace(
+                    managed.record,
+                    container_name=container_name if isinstance(container_name, str) else managed.record.container_name,
+                )
+                bridge_to_start = managed.bridge
+            persist_snapshot = self._build_history_snapshot(managed)
+            record = managed.record
+
+        if bridge_to_start is not None:
+            try:
+                await bridge_to_start.start(lambda event: self._handle_bridge_event(session_id, event))
+            except Exception:
+                failed_snapshot: TerminalSessionHistorySnapshot | None = None
+                async with self._lock:
+                    managed = self._sessions_by_id.get(session_id)
+                    if managed is not None:
+                        managed.bridge = None
+                        managed.output_queue = None
+                        managed.record = replace(
+                            managed.record,
+                            status="closed",
+                            reconnect_deadline=None,
+                        )
+                        failed_snapshot = self._build_history_snapshot(managed)
+                if failed_snapshot is not None:
+                    await self._persist_history_snapshot_best_effort(failed_snapshot)
+                raise
+
+        if persist_snapshot is not None:
+            await self._persist_history_snapshot_best_effort(persist_snapshot)
+        return record, queue
 
     async def detach_session(
         self,
@@ -196,6 +245,7 @@ class TerminalSessionService:
         *,
         owner_user_id: str,
     ) -> TerminalSessionRecord:
+        persist_snapshot: TerminalSessionHistorySnapshot | None = None
         async with self._lock:
             managed = self._require_session(session_id)
             self._require_owner(managed, owner_user_id)
@@ -208,17 +258,23 @@ class TerminalSessionService:
             )
             self._cancel_reconnect_task(managed)
             managed.reconnect_task = asyncio.create_task(self._expire_detached_session(session_id, deadline))
-            return managed.record
+            persist_snapshot = self._build_history_snapshot(managed)
+            record = managed.record
+        if persist_snapshot is not None:
+            await self._persist_history_snapshot_best_effort(persist_snapshot)
+        return record
 
     async def send_input(self, session_id: str, *, owner_user_id: str, data: str) -> None:
         managed = self._require_session(session_id)
         self._require_owner(managed, owner_user_id)
-        await managed.bridge.send_input(data)
+        bridge = self._require_live_bridge(managed)
+        await bridge.send_input(data)
 
     async def resize(self, session_id: str, *, owner_user_id: str, cols: int, rows: int) -> None:
         managed = self._require_session(session_id)
         self._require_owner(managed, owner_user_id)
-        await managed.bridge.resize(cols=cols, rows=rows)
+        bridge = self._require_live_bridge(managed)
+        await bridge.resize(cols=cols, rows=rows)
 
     async def get_history_by_group(self, group_folder: str) -> TerminalSessionHistorySnapshot:
         async with self._lock:
@@ -260,7 +316,9 @@ class TerminalSessionService:
                 reconnect_deadline=None,
             )
             persist_snapshot = self._build_history_snapshot(managed)
-        await managed.bridge.close()
+            bridge = managed.bridge
+        if bridge is not None:
+            await bridge.close()
         await self._persist_history_snapshot_best_effort(persist_snapshot)
         return managed.record
 
@@ -281,7 +339,9 @@ class TerminalSessionService:
                 reconnect_deadline=None,
             )
             persist_snapshot = self._build_history_snapshot(managed)
-        await managed.bridge.close()
+            bridge = managed.bridge
+        if bridge is not None:
+            await bridge.close()
         await self._persist_history_snapshot_best_effort(persist_snapshot)
         return managed.record
 
@@ -301,6 +361,12 @@ class TerminalSessionService:
     def _require_owner(self, managed: _ManagedTerminalSession, owner_user_id: str) -> None:
         if managed.record.owner_user_id != owner_user_id:
             raise TerminalSessionOwnershipError("terminal session is owned by another user")
+
+    @staticmethod
+    def _require_live_bridge(managed: _ManagedTerminalSession) -> TerminalBridge:
+        if managed.bridge is None:
+            raise TerminalSessionNotFoundError("terminal session bridge unavailable")
+        return managed.bridge
 
     def _cancel_reconnect_task(self, managed: _ManagedTerminalSession) -> None:
         task = managed.reconnect_task
@@ -401,7 +467,9 @@ class TerminalSessionService:
                 reconnect_deadline=None,
             )
             persist_snapshot = self._build_history_snapshot(managed)
-        await managed.bridge.close()
+            bridge = managed.bridge
+        if bridge is not None:
+            await bridge.close()
         await self._persist_history_snapshot_best_effort(persist_snapshot)
 
     def _build_history_snapshot(self, managed: _ManagedTerminalSession) -> TerminalSessionHistorySnapshot:
@@ -516,6 +584,43 @@ class TerminalSessionService:
         if not validate_path(candidate, [self._history_persist_root]):
             raise ValueError("invalid terminal history root")
         return candidate
+
+    def _recover_active_sessions_from_persisted_snapshots(self) -> None:
+        if not self._history_persist_root.exists():
+            return
+        try:
+            workspace_dirs = sorted(
+                (path for path in self._history_persist_root.iterdir() if path.is_dir()),
+                key=lambda item: item.name,
+            )
+        except Exception:
+            return
+
+        for workspace_dir in workspace_dirs:
+            snapshot = self._load_persisted_history_snapshot(workspace_dir.name)
+            if snapshot is None:
+                continue
+            if snapshot.record.status not in _ACTIVE_RECOVERABLE_STATUSES:
+                continue
+
+            recovered_record = replace(
+                snapshot.record,
+                status="detached",
+                reconnect_deadline=None,
+            )
+            if recovered_record.group_folder in self._sessions_by_group:
+                continue
+            if recovered_record.session_id in self._sessions_by_id:
+                continue
+
+            managed = _ManagedTerminalSession(
+                record=recovered_record,
+                bridge=None,
+            )
+            managed.output_history_truncated = snapshot.truncated
+            self._append_output_history(managed, snapshot.output)
+            self._sessions_by_group[managed.record.group_folder] = managed
+            self._sessions_by_id[managed.record.session_id] = managed
 
     @staticmethod
     def _parse_persisted_datetime(value: object) -> datetime | None:

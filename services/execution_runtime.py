@@ -57,7 +57,8 @@ def get_terminal_session_service() -> TerminalSessionService:
             group_folder=kwargs["group_folder"],
             owner_user_id=kwargs["owner_user_id"],
             session_id=kwargs["session_id"],
-        )
+        ),
+        recover_active_sessions=True,
     )
 
 

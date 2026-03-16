@@ -1112,3 +1112,35 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Commit: `0563192` (`feat(terminal): complete M8.5.4 history persistence fallback`).
+
+# Session Plan (2026-03-16) - M8.5.5 Terminal Active Session Persistence/Recovery
+
+## Goal
+- Continue from `M8.5.4` by adding active terminal session persistence/recovery across process restart, while keeping existing HTTP/WebSocket contracts unchanged.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and latest terminal slices
+- [x] Write focused `M8.5.5` design doc
+- [x] Write focused `M8.5.5` implementation plan doc
+- [x] Add failing tests for active-session restart recovery semantics (service + route)
+- [x] Implement active session recovery in `TerminalSessionService` (startup rehydrate + lazy attach bridge + fallback close)
+- [x] Persist snapshot on active lifecycle transitions (`created`/`attached`/`detached`)
+- [x] Run focused terminal/backend verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md` and complete this review section
+- [x] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-5-terminal-active-session-recovery-design.md` and `docs/plans/2026-03-16-m8-5-5-terminal-active-session-recovery.md` to lock `M8.5.5` scope as “active session persistence/recovery only,” explicitly deferring persistence-aware multi-session inventory.
+- Extended `services/terminal_sessions.py` with optional startup recovery (`recover_active_sessions`) that rehydrates persisted active snapshots as detached in-memory sessions, and with recovered-session lazy bridge attach + attach-failure close fallback.
+- Added active lifecycle snapshot persistence for `created`/`attached`/`detached`, keeping restart semantics consistent even without fresh terminal output.
+- Updated `services/execution_runtime.py` so runtime default terminal service enables active recovery, while `TerminalSessionService` default remains recovery-off to keep test isolation deterministic.
+- Expanded `tests/services/test_terminal_sessions.py` and `tests/app/routes/test_terminal_routes.py` with red-green coverage for active-session restart recovery, owner attach of recovered sessions, cross-owner conflict continuity, and attach-failure fallback behavior.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py -q` (red then green)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`581 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
