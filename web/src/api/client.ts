@@ -137,11 +137,19 @@ export interface TerminalSessionResponse {
   reconnect_deadline: string | null
 }
 
+export interface TerminalSessionHistorySummary {
+  session: TerminalSessionResponse
+  output_bytes: number
+  history_max_bytes: number
+  truncated: boolean
+}
+
 export interface TerminalWorkspaceSummary {
   group_id: string
   group_name: string
   chat_accessible: boolean
   session: TerminalSessionResponse | null
+  history: TerminalSessionHistorySummary | null
 }
 
 export interface TerminalWorkspaceListResponse {

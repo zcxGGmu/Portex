@@ -197,13 +197,16 @@ export function Terminals() {
                     <th>Created</th>
                     <th>Last Attached</th>
                     <th>Reconnect Deadline</th>
+                    <th>History Session</th>
+                    <th>History Bytes</th>
+                    <th>History Truncated</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td className="muted" colSpan={10}>
+                      <td className="muted" colSpan={13}>
                         Terminal overview is empty.
                       </td>
                     </tr>
@@ -223,6 +226,9 @@ export function Terminals() {
                         <td>{formatDate(item.session?.created_at ?? null)}</td>
                         <td>{formatDate(item.session?.last_attached_at ?? null)}</td>
                         <td>{formatDate(item.session?.reconnect_deadline ?? null)}</td>
+                        <td>{item.history ? item.history.session.status : '-'}</td>
+                        <td>{item.history ? item.history.output_bytes.toLocaleString() : '-'}</td>
+                        <td>{item.history ? (item.history.truncated ? 'yes' : 'no') : '-'}</td>
                         <td>
                           <div className="terminal-actions">
                             {item.chat_accessible ? (

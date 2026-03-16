@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 from typing import Iterator
 
 from fastapi.testclient import TestClient
@@ -101,6 +102,31 @@ def _session(
     )
 
 
+def _history_summary(
+    *,
+    session_id: str,
+    group_id: str,
+    group_folder: str,
+    owner_user_id: str,
+    status: str,
+    output_bytes: int,
+    history_max_bytes: int = 32768,
+    truncated: bool = False,
+):
+    return SimpleNamespace(
+        record=_session(
+            session_id=session_id,
+            group_id=group_id,
+            group_folder=group_folder,
+            owner_user_id=owner_user_id,
+            status=status,
+        ),
+        output_bytes=output_bytes,
+        history_max_bytes=history_max_bytes,
+        truncated=truncated,
+    )
+
+
 def test_terminal_overview_route_requires_authentication(api_client: TestClient) -> None:
     response = api_client.get("/terminals")
 
@@ -160,6 +186,35 @@ def test_terminal_overview_route_returns_workspace_summaries_sorted_by_session_s
                 ),
             ]
 
+        def list_history_summaries(self):
+            return [
+                _history_summary(
+                    session_id="history-active",
+                    group_id="project-active",
+                    group_folder="project-active",
+                    owner_user_id="owner-1",
+                    status="attached",
+                    output_bytes=128,
+                ),
+                _history_summary(
+                    session_id="history-closed",
+                    group_id="project-closed",
+                    group_folder="project-closed",
+                    owner_user_id="owner-2",
+                    status="closed",
+                    output_bytes=42,
+                    truncated=True,
+                ),
+                _history_summary(
+                    session_id="history-empty",
+                    group_id="project-empty",
+                    group_folder="project-empty",
+                    owner_user_id="owner-4",
+                    status="closed",
+                    output_bytes=0,
+                ),
+            ]
+
     app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
     app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
 
@@ -178,8 +233,12 @@ def test_terminal_overview_route_returns_workspace_summaries_sorted_by_session_s
     ]
     assert payload["items"][0]["chat_accessible"] is True
     assert payload["items"][0]["session"]["status"] == "attached"
+    assert payload["items"][0]["history"]["session"]["session_id"] == "history-active"
+    assert payload["items"][0]["history"]["output_bytes"] == 128
     assert payload["items"][1]["chat_accessible"] is False
     assert payload["items"][1]["session"]["status"] == "detached"
+    assert payload["items"][1]["history"] is None
     assert payload["items"][2]["session"]["status"] == "closed"
+    assert payload["items"][2]["history"]["truncated"] is True
     assert payload["items"][3]["session"] is None
-
+    assert payload["items"][3]["history"]["session"]["session_id"] == "history-empty"

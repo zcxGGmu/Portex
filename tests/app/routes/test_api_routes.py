@@ -2463,6 +2463,14 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "UsageChannelBreakdownResponse" in schema["components"]["schemas"]
     assert "AuditMessageListResponse" in schema["components"]["schemas"]
     assert "AuditMessageResponse" in schema["components"]["schemas"]
+    assert "TerminalSessionHistorySummaryResponse" in schema["components"]["schemas"]
+
+    terminal_workspace_schema = schema["components"]["schemas"]["TerminalWorkspaceSummaryResponse"]
+    assert "history" in terminal_workspace_schema["properties"]
+
+    terminal_history_summary_schema = schema["components"]["schemas"]["TerminalSessionHistorySummaryResponse"]
+    assert "output_bytes" in terminal_history_summary_schema["properties"]
+    assert "truncated" in terminal_history_summary_schema["properties"]
 
 
 def test_openapi_schema_describes_invite_expiration_without_promising_utc(

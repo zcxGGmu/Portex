@@ -78,6 +78,14 @@ class TerminalSessionHistorySnapshot:
     truncated: bool
 
 
+@dataclass(frozen=True, slots=True)
+class TerminalSessionHistorySummary:
+    record: TerminalSessionRecord
+    output_bytes: int
+    history_max_bytes: int
+    truncated: bool
+
+
 @dataclass(slots=True)
 class _ManagedTerminalSession:
     record: TerminalSessionRecord
@@ -175,6 +183,25 @@ class TerminalSessionService:
         records = [managed.record for managed in self._sessions_by_group.values()]
         records.sort(key=lambda item: (item.group_folder, item.session_id))
         return records
+
+    def list_history_summaries(self) -> list[TerminalSessionHistorySummary]:
+        """Return merged in-memory and persisted history summaries by workspace folder."""
+
+        summaries_by_folder: dict[str, TerminalSessionHistorySummary] = {}
+
+        for managed in self._sessions_by_group.values():
+            snapshot = self._build_history_snapshot(managed)
+            summaries_by_folder[snapshot.record.group_folder] = self._to_history_summary(snapshot)
+
+        for snapshot in self._list_persisted_history_snapshots():
+            group_folder = snapshot.record.group_folder
+            if group_folder in summaries_by_folder:
+                continue
+            summaries_by_folder[group_folder] = self._to_history_summary(snapshot)
+
+        items = list(summaries_by_folder.values())
+        items.sort(key=lambda item: (item.record.group_folder, item.record.session_id))
+        return items
 
     async def attach_session(
         self,
@@ -585,19 +612,35 @@ class TerminalSessionService:
             raise ValueError("invalid terminal history root")
         return candidate
 
-    def _recover_active_sessions_from_persisted_snapshots(self) -> None:
+    def _list_persisted_history_snapshots(self) -> list[TerminalSessionHistorySnapshot]:
         if not self._history_persist_root.exists():
-            return
+            return []
         try:
             workspace_dirs = sorted(
                 (path for path in self._history_persist_root.iterdir() if path.is_dir()),
                 key=lambda item: item.name,
             )
         except Exception:
-            return
+            return []
 
+        snapshots: list[TerminalSessionHistorySnapshot] = []
         for workspace_dir in workspace_dirs:
             snapshot = self._load_persisted_history_snapshot(workspace_dir.name)
+            if snapshot is not None:
+                snapshots.append(snapshot)
+        return snapshots
+
+    @staticmethod
+    def _to_history_summary(snapshot: TerminalSessionHistorySnapshot) -> TerminalSessionHistorySummary:
+        return TerminalSessionHistorySummary(
+            record=snapshot.record,
+            output_bytes=snapshot.output_bytes,
+            history_max_bytes=snapshot.history_max_bytes,
+            truncated=snapshot.truncated,
+        )
+
+    def _recover_active_sessions_from_persisted_snapshots(self) -> None:
+        for snapshot in self._list_persisted_history_snapshots():
             if snapshot is None:
                 continue
             if snapshot.record.status not in _ACTIVE_RECOVERABLE_STATUSES:
@@ -643,6 +686,7 @@ __all__ = [
     "TerminalSessionConflictError",
     "TerminalSessionEvent",
     "TerminalSessionHistorySnapshot",
+    "TerminalSessionHistorySummary",
     "TerminalSessionNotFoundError",
     "TerminalSessionOwnershipError",
     "TerminalSessionRecord",

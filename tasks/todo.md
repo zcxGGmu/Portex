@@ -1144,3 +1144,35 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
+
+# Session Plan (2026-03-16) - M8.5.6 Persistence-Aware Terminal History Inventory
+
+## Goal
+- Continue from `M8.5.5` by exposing persisted terminal history inventory in the existing `/terminals` operator overview, without adding a new standalone inventory route.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and latest terminal slices
+- [x] Write focused `M8.5.6` design doc
+- [x] Write focused `M8.5.6` implementation plan doc
+- [x] Add failing tests for history inventory contract (service + monitor route + openapi)
+- [x] Implement backend inventory read model (`TerminalSessionService` + schemas + `/terminals` mapping)
+- [x] Update frontend `/terminals` page to render history inventory metadata
+- [x] Run focused terminal/backend verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md` and complete this review section
+- [x] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-6-terminal-history-inventory-design.md` and `docs/plans/2026-03-16-m8-5-6-terminal-history-inventory.md` to lock scope as “overview additive history inventory,” explicitly deferring dedicated inventory route and timeline/pagination.
+- Extended `services/terminal_sessions.py` with `TerminalSessionHistorySummary` and `list_history_summaries()`, merging in-memory and persisted (`latest.json`) history metadata per workspace without returning transcript text.
+- Extended `domain/schemas.py` and `app/routes/terminals.py` with additive overview `history` contract (`TerminalSessionHistorySummaryResponse`) and route mapping for `/terminals`.
+- Updated `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the operator page renders history metadata columns (`history session`, `history bytes`, `history truncated`) while preserving existing actions.
+- Added red-green coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_monitor_routes.py`, and `tests/app/routes/test_api_routes.py` for merged inventory behavior, route payload mapping, and OpenAPI schema exposure.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q` (red then green)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`582 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`

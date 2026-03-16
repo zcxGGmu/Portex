@@ -944,6 +944,24 @@ class TerminalSessionHistoryResponse(BaseModel):
     )
 
 
+class TerminalSessionHistorySummaryResponse(BaseModel):
+    session: TerminalSessionResponse = Field(
+        description="Terminal session snapshot associated with this history summary.",
+    )
+    output_bytes: int = Field(
+        description="Buffered terminal output size in UTF-8 bytes for this workspace snapshot.",
+        examples=[2048],
+    )
+    history_max_bytes: int = Field(
+        description="Configured maximum retained history bytes for this workspace snapshot.",
+        examples=[32768],
+    )
+    truncated: bool = Field(
+        description="Whether older history was truncated under the configured cap for this workspace snapshot.",
+        examples=[False],
+    )
+
+
 class TerminalWorkspaceSummaryResponse(BaseModel):
     group_id: str = Field(
         description="Workspace identifier represented in the terminal overview.",
@@ -960,6 +978,10 @@ class TerminalWorkspaceSummaryResponse(BaseModel):
     session: TerminalSessionResponse | None = Field(
         default=None,
         description="Current terminal session snapshot for this workspace when one exists.",
+    )
+    history: TerminalSessionHistorySummaryResponse | None = Field(
+        default=None,
+        description="Latest terminal history summary for this workspace when a snapshot exists.",
     )
 
 
@@ -1676,6 +1698,7 @@ __all__ = [
     "TaskRunLogResponse",
     "TaskResponse",
     "TerminalSessionHistoryResponse",
+    "TerminalSessionHistorySummaryResponse",
     "TerminalSessionResponse",
     "TerminalWorkspaceListResponse",
     "TerminalWorkspaceSummaryResponse",

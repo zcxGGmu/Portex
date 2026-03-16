@@ -14,6 +14,7 @@ from domain.schemas import (
     CreateTerminalSessionRequest,
     DeleteTerminalSessionResponse,
     TerminalSessionHistoryResponse,
+    TerminalSessionHistorySummaryResponse,
     TerminalSessionResponse,
     TerminalWorkspaceListResponse,
     TerminalWorkspaceSummaryResponse,
@@ -27,6 +28,7 @@ from services.terminal_sessions import (
     TerminalBackendUnsupportedError,
     TerminalSessionConflictError,
     TerminalSessionEvent,
+    TerminalSessionHistorySummary,
     TerminalSessionNotFoundError,
     TerminalSessionOwnershipError,
     TerminalSessionRecord,
@@ -48,6 +50,15 @@ def _to_terminal_session_response(item: TerminalSessionRecord) -> TerminalSessio
         created_at=item.created_at,
         last_attached_at=item.last_attached_at,
         reconnect_deadline=item.reconnect_deadline,
+    )
+
+
+def _to_terminal_history_summary_response(item: TerminalSessionHistorySummary) -> TerminalSessionHistorySummaryResponse:
+    return TerminalSessionHistorySummaryResponse(
+        session=_to_terminal_session_response(item.record),
+        output_bytes=item.output_bytes,
+        history_max_bytes=item.history_max_bytes,
+        truncated=item.truncated,
     )
 
 
@@ -179,6 +190,7 @@ async def list_terminal_overview(
         if _is_web_workspace(workspace)
     ]
     sessions_by_folder = {item.group_folder: item for item in service.list_sessions()}
+    histories_by_folder = {item.record.group_folder: item for item in service.list_history_summaries()}
 
     items: list[TerminalWorkspaceSummaryResponse] = []
     for workspace in workspaces:
@@ -187,6 +199,7 @@ async def list_terminal_overview(
             continue
         group_name = str(getattr(workspace, "name", group_id))
         session = sessions_by_folder.get(group_id)
+        history = histories_by_folder.get(group_id)
         chat_accessible = await group_registry.user_can_access_group(
             user_id=current_user.id,
             user_role=current_user.role,
@@ -198,6 +211,7 @@ async def list_terminal_overview(
                 group_name=group_name,
                 chat_accessible=chat_accessible,
                 session=_to_terminal_session_response(session) if session is not None else None,
+                history=_to_terminal_history_summary_response(history) if history is not None else None,
             )
         )
 
