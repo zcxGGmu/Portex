@@ -1021,7 +1021,7 @@
 - [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
 - [x] Update `docs/progress.md` with `M8.5.2` evidence and next-step guidance
 - [x] Add session review notes in `tasks/todo.md`
-- [ ] Commit milestone changes with detailed message
+- [x] Commit milestone changes with detailed message
 
 ## Review
 - Added `docs/plans/2026-03-16-m8-5-2-terminal-resize-fidelity-design.md` and `docs/plans/2026-03-16-m8-5-2-terminal-resize-fidelity.md` to lock `M8.5.2` scope before implementation.
@@ -1037,4 +1037,4 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
-- Commit: pending in this session.
+- Commit: `87322e1` (`feat(terminal): complete M8.5.2 resize fidelity`).
