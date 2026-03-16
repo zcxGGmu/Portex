@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { apiClient, type TerminalSessionResponse } from '../../api/client'
 import { createTerminalWebSocket, parseWebSocketMessage } from '../../api/ws'
@@ -14,6 +14,15 @@ interface TerminalPanelProps {
 
 type TerminalSocketState = 'idle' | 'connecting' | 'open' | 'closed' | 'error'
 type SocketCloseIntent = 'dispose' | 'session-close' | null
+
+const MIN_TERMINAL_COLS = 40
+const MAX_TERMINAL_COLS = 240
+const MIN_TERMINAL_ROWS = 12
+const MAX_TERMINAL_ROWS = 80
+const TERMINAL_CELL_WIDTH_PX = 9
+const TERMINAL_CELL_HEIGHT_PX = 18
+const RESIZE_THROTTLE_MS = 120
+const READY_RESIZE_DELAY_MS = 80
 
 function formatDate(value: string | null): string {
   if (!value) {
@@ -57,6 +66,22 @@ function getStatusBadgeClass(statusLabel: string): string {
   return 'status-badge status-badge--idle'
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function estimateTerminalSize(container: HTMLElement | null): { cols: number; rows: number } {
+  if (!container) {
+    return { cols: 120, rows: 32 }
+  }
+
+  const width = Math.max(0, container.clientWidth - 16)
+  const height = Math.max(0, container.clientHeight - 16)
+  const cols = clamp(Math.floor(width / TERMINAL_CELL_WIDTH_PX), MIN_TERMINAL_COLS, MAX_TERMINAL_COLS)
+  const rows = clamp(Math.floor(height / TERMINAL_CELL_HEIGHT_PX), MIN_TERMINAL_ROWS, MAX_TERMINAL_ROWS)
+  return { cols, rows }
+}
+
 export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelProps) {
   const token = useAuthStore((state) => state.token)
   const currentUser = useAuthStore((state) => state.currentUser)
@@ -72,6 +97,9 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
 
   const socketRef = useRef<WebSocket | null>(null)
   const closeIntentRef = useRef<SocketCloseIntent>(null)
+  const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const resizeTimerRef = useRef<number | null>(null)
+  const lastResizeRef = useRef<{ sessionId: string; cols: number; rows: number } | null>(null)
 
   const [socketState, setSocketState] = useState<TerminalSocketState>('idle')
   const [connectedSessionId, setConnectedSessionId] = useState<string | null>(null)
@@ -129,12 +157,33 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
     }))
   }
 
+  const sendTerminalResize = useCallback((socket: WebSocket, sessionId: string) => {
+    if (socket.readyState !== WebSocket.OPEN) {
+      return
+    }
+
+    const { cols, rows } = estimateTerminalSize(transcriptRef.current)
+    const previous = lastResizeRef.current
+    if (
+      previous &&
+      previous.sessionId === sessionId &&
+      previous.cols === cols &&
+      previous.rows === rows
+    ) {
+      return
+    }
+
+    socket.send(JSON.stringify({ type: 'terminal.resize', cols, rows }))
+    lastResizeRef.current = { sessionId, cols, rows }
+  }, [])
+
   function disconnectSocket(nextState: TerminalSocketState) {
     const socket = socketRef.current
     socketRef.current = null
     closeIntentRef.current = 'dispose'
     setConnectedSessionId(null)
     setSocketState(nextState)
+    lastResizeRef.current = null
 
     if (
       socket &&
@@ -153,6 +202,7 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
     setPanelError(null)
     setPanelNotice(`Connecting terminal for ${activeGroupId}...`)
     setSocketState('connecting')
+    lastResizeRef.current = null
 
     const targetGroupId = activeGroupId
     setTranscriptsByGroup((current) => ({
@@ -178,7 +228,13 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
         setSocketState('open')
         setConnectedSessionId(session.session_id)
         setPanelNotice(`Terminal connected to ${targetGroupId}.`)
-        socket.send(JSON.stringify({ type: 'terminal.resize', cols: 120, rows: 32 }))
+        sendTerminalResize(socket, session.session_id)
+        window.setTimeout(() => {
+          if (socketRef.current !== socket) {
+            return
+          }
+          sendTerminalResize(socket, session.session_id)
+        }, READY_RESIZE_DELAY_MS)
         return
       }
 
@@ -229,6 +285,7 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
       setConnectedSessionId(null)
       setSocketState('closed')
       setIsClosing(false)
+      lastResizeRef.current = null
 
       if (closeIntent === 'session-close') {
         setPanelNotice('Terminal session closed.')
@@ -254,6 +311,35 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
     setIsStarting(false)
     setIsClosing(false)
   }, [activeGroupId])
+
+  useEffect(() => {
+    if (!connectedSessionId) {
+      return
+    }
+
+    const handleWindowResize = () => {
+      if (resizeTimerRef.current !== null) {
+        window.clearTimeout(resizeTimerRef.current)
+      }
+      resizeTimerRef.current = window.setTimeout(() => {
+        resizeTimerRef.current = null
+        const socket = socketRef.current
+        if (!socket) {
+          return
+        }
+        sendTerminalResize(socket, connectedSessionId)
+      }, RESIZE_THROTTLE_MS)
+    }
+
+    window.addEventListener('resize', handleWindowResize)
+    return () => {
+      window.removeEventListener('resize', handleWindowResize)
+      if (resizeTimerRef.current !== null) {
+        window.clearTimeout(resizeTimerRef.current)
+        resizeTimerRef.current = null
+      }
+    }
+  }, [connectedSessionId, sendTerminalResize])
 
   async function handleStartTerminal() {
     if (!token || !activeGroupId || !canStartTerminal) {
@@ -450,7 +536,7 @@ export function TerminalPanel({ activeGroupId, activeGroupName }: TerminalPanelP
         </PrimaryButton>
       </div>
 
-      <div className="terminal-transcript" role="log">
+      <div className="terminal-transcript" ref={transcriptRef} role="log">
         {activeTranscript.trim().length > 0 ? (
           <pre>{activeTranscript}</pre>
         ) : (

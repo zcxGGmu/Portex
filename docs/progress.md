@@ -95,12 +95,18 @@
 - `M8.3` 已完成并已落地到 `main`（terminal operator overview API + page + 最小 chat workspace 深链）。
 - `M8.4` 已完成并已落地到 `main`（terminal light controls：overview 页 close/force-close 动作 + force-close API）。
 - `M8.5.1` 已完成并已落地到 `main`（terminal reconnect output replay with bounded in-memory history）。
-- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.1` 的 terminal 基础能力；下一步应继续 post-`M8.5.1` fidelity 子项（resize/TTY fidelity 或 session persistence）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.2` 已完成并已落地到 `main`（real terminal resize/TTY propagation + dynamic frontend resize emission）。
+- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.2` 的 terminal fidelity 基础能力；下一步应继续 post-`M8.5.2` session-management 子项（跨进程 persistence/history read surface）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.5.2` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-2-terminal-resize-fidelity-design.md` 与 `docs/plans/2026-03-16-m8-5-2-terminal-resize-fidelity.md`，将范围固定为“real resize/TTY propagation + frontend dynamic resize emission”，明确不引入 session persistence。
+- `M8.5.2` implementation（on `main`）：重构 `DockerExecTerminalBridge` 为 PTY 驱动终端桥接：`docker exec -it` + PTY master/slave fd 生命周期管理 + PTY 输出转发，并在 `resize()` 中通过 `TIOCSWINSZ` 应用终端尺寸变更，不再是 no-op。
+- `M8.5.2` implementation（on `main`）：新增 `tests/services/test_terminal_bridge.py`，覆盖 TTY 启动参数与 resize ioctl 传播；并保持既有 `tests/services/test_terminal_sessions.py` / `tests/app/routes/test_terminal_websocket_routes.py` resize forwarding 合约绿灯。
+- `M8.5.2` implementation（on `main`）：更新 `web/src/components/chat/TerminalPanel.tsx`，将固定 `120x32` resize 改为 panel-size 估算 + ready 阶段补发 + window resize 节流重发与重复值去重。
+- `M8.5.2` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_bridge.py tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`570 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 - `M8.5.1` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-1-terminal-output-replay-design.md` 与 `docs/plans/2026-03-16-m8-5-1-terminal-output-replay.md`，将本子项范围固定为“bounded in-memory output history + reconnect replay”，明确不引入持久化 transcript。
 - `M8.5.1` implementation（on `main`）：扩展 `TerminalSessionService`，新增 `history_max_bytes` 配置、每 session 输出历史滚动缓冲、以及 `attach_session()` 时的 replay 队列回放能力。
 - `M8.5.1` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 reconnect replay 和 history-cap eviction 两条 focused coverage。
@@ -663,10 +669,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前已包含 `M8.5.1` 运行时与前端实现；关键点在 `services/terminal_sessions.py`（history/replay）、`tests/services/test_terminal_sessions.py`（replay/eviction coverage）、`web/src/components/chat/TerminalPanel.tsx`（reconnect transcript reset）以及既有 `app/routes/terminals.py` / `/terminals` 页面。
-3. 如继续 post-`M8.5.1` terminal 开发，建议按 fidelity 子项拆分：`A)` 真正的 terminal resize/TTY size propagation；`B)` richer transcript/session persistence（跨进程）与可选 history read API。
+2. `main` 当前已包含 `M8.5.2` 运行时与前端实现；关键点在 `services/terminal_bridge.py`（PTY + `TIOCSWINSZ` resize）、`tests/services/test_terminal_bridge.py`（TTY/resize coverage）、`services/terminal_sessions.py`（resize forwarding + history/replay）以及 `web/src/components/chat/TerminalPanel.tsx`（dynamic resize emission）。
+3. 如继续 post-`M8.5.2` terminal 开发，建议按 session-management 子项拆分：`A)` 跨进程 terminal session persistence；`B)` richer transcript/history read API（可选 operator/read surface）。
 4. 复现当前基线建议命令：
-   - `M8.5.1 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.2 focused`：`.venv/bin/pytest tests/services/test_terminal_bridge.py tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
    - 前端：`cd web && npm run lint && npm run build`
@@ -677,4 +683,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1` 已完成；当前自然入口是 post-`M8.5.1` fidelity/session-management 后续子项。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2` 已完成；当前自然入口是 post-`M8.5.2` session-management 后续子项。

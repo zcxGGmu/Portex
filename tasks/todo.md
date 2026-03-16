@@ -1003,3 +1003,38 @@
   - `.venv/bin/ruff check .`
   - `cd web && npm run lint && npm run build`
   - `git diff --check`
+
+# Session Plan (2026-03-16) - M8.5.2 Terminal Resize Fidelity
+
+## Goal
+- Continue post-`M8.5.1` fidelity work by replacing terminal resize no-op behavior with real PTY size propagation and dynamic frontend resize emission, while keeping current terminal ownership/session boundaries unchanged.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and `M8.5.1`/terminal runtime slices
+- [x] Write focused `M8.5.2` design doc
+- [x] Write focused `M8.5.2` implementation plan doc
+- [x] Add failing bridge-focused tests for TTY startup and resize propagation
+- [x] Implement PTY-backed `DockerExecTerminalBridge` resize behavior
+- [x] Keep terminal service/websocket resize forwarding coverage green
+- [x] Improve `TerminalPanel` to emit panel-based dynamic resize events
+- [x] Run focused terminal verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md` with `M8.5.2` evidence and next-step guidance
+- [x] Add session review notes in `tasks/todo.md`
+- [ ] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-2-terminal-resize-fidelity-design.md` and `docs/plans/2026-03-16-m8-5-2-terminal-resize-fidelity.md` to lock `M8.5.2` scope before implementation.
+- Added `tests/services/test_terminal_bridge.py` with red-green coverage for interactive TTY startup flags and PTY resize ioctl propagation.
+- Refactored `services/terminal_bridge.py` from pipe/no-op resize to PTY-backed bridge (`docker exec -it` + PTY output forwarding + `TIOCSWINSZ` resize).
+- Updated `web/src/components/chat/TerminalPanel.tsx` to emit dynamic resize dimensions (ready + delayed ready + window resize throttling with dedupe), replacing fixed `120x32`.
+- Updated `docs/progress.md` to move restart baseline to post-`M8.5.2`.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_bridge.py -q` (red first, then green)
+  - `.venv/bin/pytest tests/services/test_terminal_bridge.py tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`570 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Commit: pending in this session.
