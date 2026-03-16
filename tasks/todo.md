@@ -1209,3 +1209,40 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
+
+# Session Plan (2026-03-16) - M8.5.8 Terminal History Filters/Detail
+
+## Goal
+- Continue from `M8.5.7` by adding server-side timeline filters plus per-session history detail, while keeping existing `latest.json` and `/sessions/current/history` contracts backward-compatible.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and latest terminal slices
+- [x] Write focused `M8.5.8` design doc
+- [x] Write focused `M8.5.8` implementation plan doc
+- [x] Add failing service tests for timeline filters and detail lookup
+- [x] Implement backend timeline filters/detail read model
+- [x] Add failing route/OpenAPI tests for filter/detail surface
+- [x] Implement timeline filter query params and history detail route/schema
+- [x] Drive frontend RED by referencing new filter/detail contract
+- [x] Implement typed client/hooks and `/terminals` filter/detail UI
+- [x] Run focused terminal/backend verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-8-terminal-history-filters-detail-design.md` and `docs/plans/2026-03-16-m8-5-8-terminal-history-filters-detail.md` to lock scope as “timeline filters + session detail,” explicitly preserving `latest.json` and `/sessions/current/history` compatibility while deferring full-text search.
+- Extended `services/terminal_sessions.py` with additive `status` / `owner_user_id` / `session_id_prefix` server-side filters on `list_history_timeline_by_group(...)`, shared merged snapshot lookup, and `get_history_snapshot_by_group(...)` so timeline and detail reuse the same dedupe behavior across `in-memory + latest + archived`.
+- Extended `domain/schemas.py` and `app/routes/terminals.py` with additive `snapshot_at` summary data, `TerminalSessionHistoryDetailResponse`, `GET /terminals/{group_id}/sessions/history/{session_id}`, and timeline filter query params. Added a compatibility fallback so legacy overview fake summaries without `snapshot_at` still serialize safely.
+- Extended `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, and `web/src/pages/Terminals.tsx` with timeline filter options, history detail query support, `snapshot_at` rendering, and an in-page detail panel on `/terminals`.
+- Added red-green coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for service-level filtering/detail lookup, route filter passthrough, detail `404` mapping, and OpenAPI filter/detail contracts.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py -q` (red then green)
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q` (red then green)
+  - `cd web && npm run build` (red then green after API/hook/page implementation)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`596 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
