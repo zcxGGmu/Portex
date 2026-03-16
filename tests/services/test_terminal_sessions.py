@@ -440,3 +440,50 @@ async def test_terminal_session_service_history_lookup_raises_for_missing_worksp
 
     with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
         await service.get_history_by_group("missing-workspace")
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_history_can_be_loaded_from_persisted_snapshot_after_restart(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    first_service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=16,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    session = await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _attached, queue = await first_service.attach_session(session.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("line-1\n")
+    await created_bridges[0].emit_output("line-2\n")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await first_service.close_session(session.session_id, owner_user_id="owner-1")
+
+    restarted_service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=16,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    snapshot = await restarted_service.get_history_by_group("project-alpha")
+
+    assert snapshot.record.session_id == session.session_id
+    assert snapshot.record.status == "closed"
+    assert snapshot.output == "line-1\nline-2\n"
+    assert snapshot.output_bytes == len("line-1\nline-2\n".encode("utf-8"))
+    assert snapshot.history_max_bytes == 16

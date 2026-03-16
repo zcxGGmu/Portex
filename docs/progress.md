@@ -97,12 +97,18 @@
 - `M8.5.1` 已完成并已落地到 `main`（terminal reconnect output replay with bounded in-memory history）。
 - `M8.5.2` 已完成并已落地到 `main`（real terminal resize/TTY propagation + dynamic frontend resize emission）。
 - `M8.5.3` 已完成并已落地到 `main`（terminal history read API on bounded in-memory session history）。
-- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.3` 的 terminal fidelity/session-read 基础能力；下一步应继续 post-`M8.5.3` session-management 子项（跨进程 persistence）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.4` 已完成并已落地到 `main`（terminal history persistence fallback across process restarts）。
+- 当前起点：`main` 已具备 `M8.1` ~ `M8.5.4` 的 terminal fidelity/session-read 基础能力；下一步应继续 post-`M8.5.4` session-management 子项（active session persistence/recovery）。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.5.4` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-4-terminal-history-persistence-fallback-design.md` 与 `docs/plans/2026-03-16-m8-5-4-terminal-history-persistence-fallback.md`，将范围固定为“history snapshot persistence + read fallback”，明确不引入 active session recovery。
+- `M8.5.4` implementation（on `main`）：扩展 `TerminalSessionService`，新增 history snapshot 磁盘持久化（`data/terminal-history/<workspace>/latest.json`）与 `get_history_by_group()` 的磁盘回退读取，支持进程重启后继续读取最近历史快照。
+- `M8.5.4` implementation（on `main`）：在输出与终态（`closed`/`exited`）路径上增加 snapshot 持久化刷新，保持 `TerminalSessionHistoryResponse` 与现有 route contract 不变。
+- `M8.5.4` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 restart-like fallback 覆盖（fresh service instance 读取 persisted snapshot）；并保持 `tests/app/routes/test_terminal_routes.py` / `tests/app/routes/test_api_routes.py` 合约绿灯。
+- `M8.5.4` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`575 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 - `M8.5.3` implementation（on `main`）：新增 `docs/plans/2026-03-16-m8-5-3-terminal-history-read-surface-design.md` 与 `docs/plans/2026-03-16-m8-5-3-terminal-history-read-surface.md`，将范围固定为“bounded in-memory history read API”，明确不引入跨进程 persistence。
 - `M8.5.3` implementation（on `main`）：扩展 `TerminalSessionService`，新增 `get_history_by_group()` 与 `TerminalSessionHistorySnapshot`，以锁保护读取当前 session 的 output/history bytes/cap/truncated 快照。
 - `M8.5.3` implementation（on `main`）：新增 `TerminalSessionHistoryResponse` 与路由 `GET /terminals/{group_id}/sessions/current/history`，复用现有 terminal role 与 workspace access gate，并沿用统一 terminal error mapping。
@@ -675,10 +681,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前已包含 `M8.5.3` 运行时与读面实现；关键点在 `services/terminal_sessions.py`（history snapshot + replay）、`app/routes/terminals.py`（history route）、`domain/schemas.py`（history DTO）、`tests/services/test_terminal_sessions.py` 与 `tests/app/routes/test_terminal_routes.py`（history contract），以及 `services/terminal_bridge.py` / `web/src/components/chat/TerminalPanel.tsx`（resize fidelity）。
-3. 如继续 post-`M8.5.3` terminal 开发，建议按 session-management 子项拆分：`A)` 跨进程 terminal session persistence；`B)` persistence-aware history read（重启后可读）。
+2. `main` 当前已包含 `M8.5.4` 运行时与读面实现；关键点在 `services/terminal_sessions.py`（in-memory + persisted history snapshot fallback）、`app/routes/terminals.py`（history route）、`domain/schemas.py`（history DTO）、`tests/services/test_terminal_sessions.py`（restart-like fallback coverage），以及 `services/terminal_bridge.py` / `web/src/components/chat/TerminalPanel.tsx`（resize fidelity）。
+3. 如继续 post-`M8.5.4` terminal 开发，建议按 session-management 子项拆分：`A)` active terminal session persistence/recovery；`B)` persistence-aware operator history inventory（多会话）。
 4. 复现当前基线建议命令：
-   - `M8.5.3 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.4 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -690,4 +696,4 @@
 
 ## 5. 一句话版
 
-> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2`、`M8.5.3` 已完成；当前自然入口是 post-`M8.5.3` terminal session persistence 后续子项。
+> `M6`、`M7.1`、`M7.2`、`M7.3.1` ~ `M7.3.6`、`M7.4.1`、`M7.4.2`、`M7.4.3`、`M7.4.4`、`M7.4.5`、`M7.4.6`、`M7.4.7`、`M7.5.1`、`M7.5.2`、`M7.5.3`、`M7.5.4`、`M7.5.5`、`M7.5.6`、`M7.5.7`、`M7.6.1`、`M7.6.3`、`M7.6.4`、`M7.6.5`、`M8.1`、`M8.2`、`M8.3`、`M8.4`、`M8.5.1`、`M8.5.2`、`M8.5.3`、`M8.5.4` 已完成；当前自然入口是 post-`M8.5.4` active session persistence/recovery 子项。

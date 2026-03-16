@@ -1076,3 +1076,39 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Commit: `010cc40` (`feat(terminal): complete M8.5.3 history read surface`).
+
+# Session Plan (2026-03-16) - M8.5.4 Terminal History Persistence Fallback
+
+## Goal
+- Continue post-`M8.5.3` session-management work by persisting latest terminal history snapshots and enabling `current/history` reads to fall back after process restart.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and latest terminal slices
+- [x] Write focused `M8.5.4` design doc
+- [x] Write focused `M8.5.4` implementation plan doc
+- [x] Add failing tests for history persistence fallback across fresh service instances
+- [x] Implement safe terminal history snapshot persistence helpers in `TerminalSessionService`
+- [x] Persist snapshot on output updates and terminal-state transitions
+- [x] Add disk fallback logic to `get_history_by_group()`
+- [x] Run focused terminal/backend verification suite
+- [x] Run full backend regression, Ruff, frontend lint/build, and diff hygiene checks
+- [x] Update `docs/progress.md` with `M8.5.4` evidence and next-step guidance
+- [x] Add session review notes in `tasks/todo.md`
+- [ ] Commit milestone changes with detailed message
+
+## Review
+- Added `docs/plans/2026-03-16-m8-5-4-terminal-history-persistence-fallback-design.md` and `docs/plans/2026-03-16-m8-5-4-terminal-history-persistence-fallback.md` to lock `M8.5.4` scope as “history persistence fallback only,” explicitly deferring active session recovery.
+- Extended `services/terminal_sessions.py` with safe file-backed snapshot persistence under `data/terminal-history/<workspace>/latest.json`, including atomic write + path validation guardrails.
+- Updated `TerminalSessionService.get_history_by_group()` to fall back to persisted snapshot when no in-memory session exists, preserving existing route/DTO contract.
+- Wired snapshot refresh on output changes and terminal-state transitions (`closed`/`exited`) so persisted history reflects latest bounded buffer and status.
+- Expanded `tests/services/test_terminal_sessions.py` with red-green restart-like fallback coverage (fresh service instance loads persisted snapshot).
+- Updated `docs/progress.md` to mark `M8.5.4` complete and move next-step guidance to active session persistence/recovery.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py -q` (red then green)
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`575 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Commit: pending in this session.
