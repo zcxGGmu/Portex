@@ -1,18 +1,26 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { TerminalWorkspaceSummary } from '../api/client'
+import type { TerminalSessionStatus, TerminalWorkspaceSummary } from '../api/client'
 import { ApiError, apiClient } from '../api/client'
 import { AppLayout } from '../components/layout/AppLayout'
 import { PrimaryButton } from '../components/ui/PrimaryButton'
 import {
   useCurrentUserQuery,
+  useTerminalHistoryDetailQuery,
   useTerminalHistoryTimelineQuery,
   useTerminalOverviewQuery,
 } from '../hooks/useApi'
 import { useAuthStore } from '../stores/auth'
 
 const TIMELINE_PAGE_SIZE = 5
+const TERMINAL_HISTORY_STATUS_OPTIONS: Array<{ value: TerminalSessionStatus; label: string }> = [
+  { value: 'created', label: 'Created' },
+  { value: 'attached', label: 'Attached' },
+  { value: 'detached', label: 'Detached' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'exited', label: 'Exited' },
+]
 
 function formatDate(value: string | null): string {
   if (!value) {
@@ -67,6 +75,16 @@ export function Terminals() {
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const [timelineGroupId, setTimelineGroupId] = useState<string | null>(null)
   const [timelineOffset, setTimelineOffset] = useState(0)
+  const [timelineFilters, setTimelineFilters] = useState<{
+    status: TerminalSessionStatus | ''
+    ownerUserId: string
+    sessionIdPrefix: string
+  }>({
+    status: '',
+    ownerUserId: '',
+    sessionIdPrefix: '',
+  })
+  const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
 
   const {
     data: timelineData,
@@ -77,8 +95,24 @@ export function Terminals() {
     refetch: refetchTimeline,
   } = useTerminalHistoryTimelineQuery(
     timelineGroupId,
-    { limit: TIMELINE_PAGE_SIZE, offset: timelineOffset },
+    {
+      limit: TIMELINE_PAGE_SIZE,
+      offset: timelineOffset,
+      status: timelineFilters.status || undefined,
+      ownerUserId: timelineFilters.ownerUserId || undefined,
+      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+    },
     isOperator && timelineGroupId !== null,
+  )
+  const {
+    data: detailData,
+    isLoading: isDetailLoading,
+    isError: isDetailError,
+    error: detailError,
+  } = useTerminalHistoryDetailQuery(
+    timelineGroupId,
+    detailSessionId,
+    isOperator && timelineGroupId !== null && detailSessionId !== null,
   )
 
   const items = data?.items ?? []
@@ -102,10 +136,27 @@ export function Terminals() {
     if (timelineGroupId === groupId) {
       setTimelineGroupId(null)
       setTimelineOffset(0)
+      setDetailSessionId(null)
       return
     }
     setTimelineGroupId(groupId)
     setTimelineOffset(0)
+    setDetailSessionId(null)
+  }
+
+  function updateTimelineFilters(
+    patch: Partial<{
+      status: TerminalSessionStatus | ''
+      ownerUserId: string
+      sessionIdPrefix: string
+    }>,
+  ) {
+    setTimelineFilters((current) => ({
+      ...current,
+      ...patch,
+    }))
+    setTimelineOffset(0)
+    setDetailSessionId(null)
   }
 
   async function handleClose(item: TerminalWorkspaceSummary) {
@@ -324,6 +375,47 @@ export function Terminals() {
           {timelineGroupId ? (
             <section className="panel">
               <h2 style={{ marginTop: 0 }}>History Timeline: {timelineGroupId}</h2>
+              <div className="settings-grid" style={{ marginBottom: '1rem' }}>
+                <label>
+                  <span className="muted">Status</span>
+                  <select
+                    onChange={(event) =>
+                      updateTimelineFilters({
+                        status: (event.target.value as TerminalSessionStatus | '') || '',
+                      })
+                    }
+                    style={{ width: '100%', marginTop: '0.35rem' }}
+                    value={timelineFilters.status}
+                  >
+                    <option value="">All statuses</option>
+                    {TERMINAL_HISTORY_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="muted">Owner User ID</span>
+                  <input
+                    onChange={(event) => updateTimelineFilters({ ownerUserId: event.target.value })}
+                    placeholder="owner-1"
+                    style={{ width: '100%', marginTop: '0.35rem' }}
+                    type="text"
+                    value={timelineFilters.ownerUserId}
+                  />
+                </label>
+                <label>
+                  <span className="muted">Session ID Prefix</span>
+                  <input
+                    onChange={(event) => updateTimelineFilters({ sessionIdPrefix: event.target.value })}
+                    placeholder="terminal-session"
+                    style={{ width: '100%', marginTop: '0.35rem' }}
+                    type="text"
+                    value={timelineFilters.sessionIdPrefix}
+                  />
+                </label>
+              </div>
               {isTimelineLoading ? <p className="muted">Loading timeline...</p> : null}
               {isTimelineError ? (
                 <p className="error-text">
@@ -339,15 +431,17 @@ export function Terminals() {
                           <th>Session</th>
                           <th>Status</th>
                           <th>Owner</th>
+                          <th>Snapshot At</th>
                           <th>Created</th>
                           <th>Output Bytes</th>
                           <th>Truncated</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {timelineData.items.length === 0 ? (
                           <tr>
-                            <td className="muted" colSpan={6}>
+                            <td className="muted" colSpan={7}>
                               Timeline is empty.
                             </td>
                           </tr>
@@ -357,9 +451,19 @@ export function Terminals() {
                               <td>{entry.session.session_id}</td>
                               <td>{entry.session.status}</td>
                               <td>{entry.session.owner_user_id}</td>
+                              <td>{formatDate(entry.snapshot_at)}</td>
                               <td>{formatDate(entry.session.created_at)}</td>
                               <td>{entry.output_bytes.toLocaleString()}</td>
                               <td>{entry.truncated ? 'yes' : 'no'}</td>
+                              <td>
+                                <PrimaryButton
+                                  className="button--ghost"
+                                  onClick={() => setDetailSessionId(entry.session.session_id)}
+                                  type="button"
+                                >
+                                  {detailSessionId === entry.session.session_id ? 'Viewing' : 'View Details'}
+                                </PrimaryButton>
+                              </td>
                             </tr>
                           ))
                         )}
@@ -389,6 +493,51 @@ export function Terminals() {
                       </PrimaryButton>
                     </div>
                   </div>
+                </>
+              ) : null}
+            </section>
+          ) : null}
+
+          {timelineGroupId && detailSessionId ? (
+            <section className="panel">
+              <h2 style={{ marginTop: 0 }}>History Detail: {detailSessionId}</h2>
+              {isDetailLoading ? <p className="muted">Loading terminal history detail...</p> : null}
+              {isDetailError ? (
+                <p className="error-text">
+                  {detailError instanceof Error ? detailError.message : 'Failed to load terminal history detail.'}
+                </p>
+              ) : null}
+              {detailData ? (
+                <>
+                  <div className="settings-grid" style={{ marginBottom: '1rem' }}>
+                    <div className="stat-card">
+                      <strong>Status</strong>
+                      <p>{detailData.session.status}</p>
+                    </div>
+                    <div className="stat-card">
+                      <strong>Owner</strong>
+                      <p>{detailData.session.owner_user_id}</p>
+                    </div>
+                    <div className="stat-card">
+                      <strong>Snapshot At</strong>
+                      <p>{formatDate(detailData.snapshot_at)}</p>
+                    </div>
+                    <div className="stat-card">
+                      <strong>Output Bytes</strong>
+                      <p>{detailData.output_bytes.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <pre
+                    style={{
+                      margin: 0,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      maxHeight: '24rem',
+                      overflow: 'auto',
+                    }}
+                  >
+                    {detailData.output || '(no output)'}
+                  </pre>
                 </>
               ) : null}
             </section>

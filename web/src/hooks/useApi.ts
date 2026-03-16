@@ -234,13 +234,28 @@ export function useTerminalOverviewQuery(enabled = true) {
 
 export function useTerminalHistoryTimelineQuery(
   groupId: string | null,
-  options: { limit: number; offset: number },
+  options: {
+    limit: number
+    offset: number
+    status?: 'created' | 'attached' | 'detached' | 'closed' | 'exited'
+    ownerUserId?: string
+    sessionIdPrefix?: string
+  },
   enabled = true,
 ) {
   const token = useAuthStore((state) => state.token)
 
   return useQuery({
-    queryKey: ['terminal-history-timeline', token, groupId, options.limit, options.offset],
+    queryKey: [
+      'terminal-history-timeline',
+      token,
+      groupId,
+      options.limit,
+      options.offset,
+      options.status ?? null,
+      options.ownerUserId ?? null,
+      options.sessionIdPrefix ?? null,
+    ],
     enabled: Boolean(token && groupId) && enabled,
     queryFn: async () => {
       if (!token || !groupId) {
@@ -248,6 +263,27 @@ export function useTerminalHistoryTimelineQuery(
       }
 
       return apiClient.getTerminalHistoryTimeline(token, groupId, options)
+    },
+    staleTime: 5_000,
+  })
+}
+
+export function useTerminalHistoryDetailQuery(
+  groupId: string | null,
+  sessionId: string | null,
+  enabled = true,
+) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['terminal-history-detail', token, groupId, sessionId],
+    enabled: Boolean(token && groupId && sessionId) && enabled,
+    queryFn: async () => {
+      if (!token || !groupId || !sessionId) {
+        throw new Error('Missing token, group id, or session id')
+      }
+
+      return apiClient.getTerminalHistoryDetail(token, groupId, sessionId)
     },
     staleTime: 5_000,
   })

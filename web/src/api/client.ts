@@ -139,6 +139,16 @@ export interface TerminalSessionResponse {
 
 export interface TerminalSessionHistorySummary {
   session: TerminalSessionResponse
+  snapshot_at: string
+  output_bytes: number
+  history_max_bytes: number
+  truncated: boolean
+}
+
+export interface TerminalSessionHistoryDetailResponse {
+  session: TerminalSessionResponse
+  snapshot_at: string
+  output: string
   output_bytes: number
   history_max_bytes: number
   truncated: boolean
@@ -570,7 +580,13 @@ export const apiClient = {
   getTerminalHistoryTimeline(
     token: string,
     groupId: string,
-    options: { limit?: number; offset?: number } = {},
+    options: {
+      limit?: number
+      offset?: number
+      status?: TerminalSessionStatus
+      ownerUserId?: string
+      sessionIdPrefix?: string
+    } = {},
   ): Promise<TerminalSessionHistoryTimelineResponse> {
     const params = new URLSearchParams()
     if (typeof options.limit === 'number') {
@@ -579,9 +595,28 @@ export const apiClient = {
     if (typeof options.offset === 'number') {
       params.set('offset', String(options.offset))
     }
+    if (options.status) {
+      params.set('status', options.status)
+    }
+    if (options.ownerUserId) {
+      params.set('owner_user_id', options.ownerUserId)
+    }
+    if (options.sessionIdPrefix) {
+      params.set('session_id_prefix', options.sessionIdPrefix)
+    }
     const suffix = params.toString() ? `?${params.toString()}` : ''
     return request<TerminalSessionHistoryTimelineResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history${suffix}`,
+      { token },
+    )
+  },
+  getTerminalHistoryDetail(
+    token: string,
+    groupId: string,
+    sessionId: string,
+  ): Promise<TerminalSessionHistoryDetailResponse> {
+    return request<TerminalSessionHistoryDetailResponse>(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/${encodeURIComponent(sessionId)}`,
       { token },
     )
   },
