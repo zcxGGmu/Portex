@@ -948,6 +948,10 @@ class TerminalSessionHistorySummaryResponse(BaseModel):
     session: TerminalSessionResponse = Field(
         description="Terminal session snapshot associated with this history summary.",
     )
+    snapshot_at: datetime = Field(
+        description="Timestamp when this terminal-history snapshot was captured.",
+        examples=["2026-03-16T10:30:00Z"],
+    )
     output_bytes: int = Field(
         description="Buffered terminal output size in UTF-8 bytes for this workspace snapshot.",
         examples=[2048],
@@ -977,6 +981,32 @@ class TerminalSessionHistoryTimelineResponse(BaseModel):
     )
     items: list[TerminalSessionHistorySummaryResponse] = Field(
         description="Paginated terminal-history timeline entries ordered by newest snapshot first.",
+    )
+
+
+class TerminalSessionHistoryDetailResponse(BaseModel):
+    session: TerminalSessionResponse = Field(
+        description="Terminal session snapshot associated with this history detail entry.",
+    )
+    snapshot_at: datetime = Field(
+        description="Timestamp when this terminal-history snapshot was captured.",
+        examples=["2026-03-16T11:05:00Z"],
+    )
+    output: str = Field(
+        description="Buffered terminal output text stored for this history snapshot.",
+        examples=["$ pwd\n/workspace/group\n"],
+    )
+    output_bytes: int = Field(
+        description="Buffered terminal output size in UTF-8 bytes for this history snapshot.",
+        examples=[2048],
+    )
+    history_max_bytes: int = Field(
+        description="Configured maximum retained history bytes for this history snapshot.",
+        examples=[32768],
+    )
+    truncated: bool = Field(
+        description="Whether older history was truncated under the configured cap for this history snapshot.",
+        examples=[False],
     )
 
 
@@ -1715,6 +1745,7 @@ __all__ = [
     "TaskRunLogListResponse",
     "TaskRunLogResponse",
     "TaskResponse",
+    "TerminalSessionHistoryDetailResponse",
     "TerminalSessionHistoryResponse",
     "TerminalSessionHistorySummaryResponse",
     "TerminalSessionHistoryTimelineResponse",

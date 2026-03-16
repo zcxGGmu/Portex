@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 
@@ -13,6 +14,7 @@ from app.routes.groups import get_group_registry_service
 from domain.schemas import (
     CreateTerminalSessionRequest,
     DeleteTerminalSessionResponse,
+    TerminalSessionHistoryDetailResponse,
     TerminalSessionHistoryResponse,
     TerminalSessionHistorySummaryResponse,
     TerminalSessionHistoryTimelineResponse,
@@ -57,6 +59,18 @@ def _to_terminal_session_response(item: TerminalSessionRecord) -> TerminalSessio
 def _to_terminal_history_summary_response(item: TerminalSessionHistorySummary) -> TerminalSessionHistorySummaryResponse:
     return TerminalSessionHistorySummaryResponse(
         session=_to_terminal_session_response(item.record),
+        snapshot_at=item.snapshot_at,
+        output_bytes=item.output_bytes,
+        history_max_bytes=item.history_max_bytes,
+        truncated=item.truncated,
+    )
+
+
+def _to_terminal_history_detail_response(item) -> TerminalSessionHistoryDetailResponse:
+    return TerminalSessionHistoryDetailResponse(
+        session=_to_terminal_session_response(item.record),
+        snapshot_at=item.snapshot_at,
+        output=item.output,
         output_bytes=item.output_bytes,
         history_max_bytes=item.history_max_bytes,
         truncated=item.truncated,
@@ -342,6 +356,12 @@ async def get_terminal_history_timeline(
     group_id: str,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    status_filter: Literal["created", "attached", "detached", "closed", "exited"] | None = Query(
+        default=None,
+        alias="status",
+    ),
+    owner_user_id: str | None = Query(default=None),
+    session_id_prefix: str | None = Query(default=None),
     current_user: UserResponse = Depends(get_current_user),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
     service: TerminalSessionService = Depends(get_terminal_session_service),
@@ -357,6 +377,9 @@ async def get_terminal_history_timeline(
             workspace.folder,
             limit=limit,
             offset=offset,
+            status=status_filter,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
         )
     except Exception as exc:
         raise _map_terminal_error(exc) from exc
@@ -366,6 +389,37 @@ async def get_terminal_history_timeline(
         has_more=page.has_more,
         items=[_to_terminal_history_summary_response(item) for item in page.items],
     )
+
+
+@router.get(
+    "/terminals/{group_id}/sessions/history/{session_id}",
+    response_model=TerminalSessionHistoryDetailResponse,
+    summary="Get terminal history detail",
+    description="Return one terminal-history snapshot detail for an accessible workspace session.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def get_terminal_history_detail(
+    group_id: str,
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> TerminalSessionHistoryDetailResponse:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        snapshot = await service.get_history_snapshot_by_group(workspace.folder, session_id)
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+    return _to_terminal_history_detail_response(snapshot)
 
 
 @router.delete(
