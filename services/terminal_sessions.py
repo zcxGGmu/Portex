@@ -135,6 +135,13 @@ class TerminalSessionService:
         session = self._sessions_by_group.get(group_folder)
         return None if session is None else session.record
 
+    def list_sessions(self) -> list[TerminalSessionRecord]:
+        """Return current in-memory session snapshots ordered by workspace folder."""
+
+        records = [managed.record for managed in self._sessions_by_group.values()]
+        records.sort(key=lambda item: (item.group_folder, item.session_id))
+        return records
+
     async def attach_session(
         self,
         session_id: str,

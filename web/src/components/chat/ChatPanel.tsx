@@ -1,6 +1,6 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { apiClient } from '../../api/client'
 import { createWebSocket, subscribeWebSocketMessages } from '../../api/ws'
@@ -88,6 +88,7 @@ function setStoredWorkspaceId(workspaceId: string): void {
 }
 
 export function ChatPanel() {
+  const [searchParams] = useSearchParams()
   const token = useAuthStore((state) => state.token)
   const currentUser = useAuthStore((state) => state.currentUser)
   const isOwner = currentUser?.role === 'owner'
@@ -108,6 +109,8 @@ export function ChatPanel() {
   const [bindingActionTarget, setBindingActionTarget] = useState<string | null>(null)
   const [wsState, setWsState] = useState<'connecting' | 'open' | 'closed' | 'error'>('connecting')
   const wsRef = useRef<WebSocket | null>(null)
+  const queryWorkspaceAppliedRef = useRef(false)
+  const queryWorkspaceId = searchParams.get('workspace')?.trim() ?? ''
 
   const filteredGroups = useMemo(() => {
     const query = workspaceFilter.trim().toLowerCase()
@@ -127,6 +130,29 @@ export function ChatPanel() {
     return groups[0]?.group_id ?? null
   }, [groups, selectedGroupIdInput])
   const activeGroup = groups.find((group) => group.group_id === activeGroupId) ?? null
+
+  useEffect(() => {
+    if (queryWorkspaceAppliedRef.current) {
+      return
+    }
+
+    if (!queryWorkspaceId) {
+      queryWorkspaceAppliedRef.current = true
+      return
+    }
+
+    if (groupsLoading) {
+      return
+    }
+
+    queryWorkspaceAppliedRef.current = true
+    if (!groups.some((group) => group.group_id === queryWorkspaceId)) {
+      return
+    }
+
+    setSelectedGroupIdInput(queryWorkspaceId)
+    setStoredWorkspaceId(queryWorkspaceId)
+  }, [groups, groupsLoading, queryWorkspaceId])
 
   const {
     data: slotsData,

@@ -14,6 +14,8 @@ from domain.schemas import (
     CreateTerminalSessionRequest,
     DeleteTerminalSessionResponse,
     TerminalSessionResponse,
+    TerminalWorkspaceListResponse,
+    TerminalWorkspaceSummaryResponse,
     UserResponse,
 )
 from services.auth import auth_service
@@ -31,6 +33,7 @@ from services.terminal_sessions import (
 )
 
 router = APIRouter(tags=["terminals"])
+_ACTIVE_TERMINAL_STATUSES = {"created", "attached", "detached"}
 
 
 def _to_terminal_session_response(item: TerminalSessionRecord) -> TerminalSessionResponse:
@@ -45,6 +48,21 @@ def _to_terminal_session_response(item: TerminalSessionRecord) -> TerminalSessio
         last_attached_at=item.last_attached_at,
         reconnect_deadline=item.reconnect_deadline,
     )
+
+
+def _is_web_workspace(group: object) -> bool:
+    jid = getattr(group, "jid", None)
+    return isinstance(jid, str) and jid.startswith("web:")
+
+
+def _terminal_workspace_sort_key(item: TerminalWorkspaceSummaryResponse) -> tuple[int, str, str]:
+    if item.session is None:
+        bucket = 2
+    elif item.session.status in _ACTIVE_TERMINAL_STATUSES:
+        bucket = 0
+    else:
+        bucket = 1
+    return (bucket, item.group_name.lower(), item.group_id)
 
 
 def _require_terminal_role(current_user: UserResponse) -> None:
@@ -135,6 +153,55 @@ async def _forward_terminal_events(
         await websocket.send_text(json.dumps(payload))
         if event.event_type == "terminal.exit":
             return
+
+
+@router.get(
+    "/terminals",
+    response_model=TerminalWorkspaceListResponse,
+    summary="List terminal overview",
+    description="Return read-only terminal-session overview across canonical web workspaces.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    ),
+)
+async def list_terminal_overview(
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> TerminalWorkspaceListResponse:
+    _require_terminal_role(current_user)
+
+    workspaces = [
+        workspace
+        for workspace in await group_registry.list_registered_groups()
+        if _is_web_workspace(workspace)
+    ]
+    sessions_by_folder = {item.group_folder: item for item in service.list_sessions()}
+
+    items: list[TerminalWorkspaceSummaryResponse] = []
+    for workspace in workspaces:
+        group_id = str(getattr(workspace, "folder", ""))
+        if group_id == "":
+            continue
+        group_name = str(getattr(workspace, "name", group_id))
+        session = sessions_by_folder.get(group_id)
+        chat_accessible = await group_registry.user_can_access_group(
+            user_id=current_user.id,
+            user_role=current_user.role,
+            group=workspace,
+        )
+        items.append(
+            TerminalWorkspaceSummaryResponse(
+                group_id=group_id,
+                group_name=group_name,
+                chat_accessible=chat_accessible,
+                session=_to_terminal_session_response(session) if session is not None else None,
+            )
+        )
+
+    items.sort(key=_terminal_workspace_sort_key)
+    return TerminalWorkspaceListResponse(items=items)
 
 
 @router.post(

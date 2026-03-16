@@ -12,6 +12,7 @@ import { Register } from './pages/Register'
 import { Setup } from './pages/Setup'
 import { Settings } from './pages/Settings'
 import { Skills } from './pages/Skills'
+import { Terminals } from './pages/Terminals'
 import { Usage } from './pages/Usage'
 import { useAuthStore } from './stores/auth'
 
@@ -112,6 +113,14 @@ function App() {
           </ProtectedRoute>
         }
         path="/monitor"
+      />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Terminals />
+          </ProtectedRoute>
+        }
+        path="/terminals"
       />
       <Route
         element={

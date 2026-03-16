@@ -35,6 +35,7 @@ export function AppLayout({ title, children }: AppLayoutProps) {
       ...(currentUser?.role === 'owner' || currentUser?.role === 'admin'
         ? [
             { to: '/monitor', label: 'Monitor' },
+            { to: '/terminals', label: 'Terminals' },
             { to: '/usage', label: 'Usage' },
             { to: '/audit', label: 'Audit' },
           ]

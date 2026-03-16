@@ -137,6 +137,17 @@ export interface TerminalSessionResponse {
   reconnect_deadline: string | null
 }
 
+export interface TerminalWorkspaceSummary {
+  group_id: string
+  group_name: string
+  chat_accessible: boolean
+  session: TerminalSessionResponse | null
+}
+
+export interface TerminalWorkspaceListResponse {
+  items: TerminalWorkspaceSummary[]
+}
+
 export interface DeleteTerminalSessionResponse {
   status: 'closed'
 }
@@ -537,6 +548,9 @@ export const apiClient = {
   },
   getGroups(token: string): Promise<{ groups: GroupSummary[] }> {
     return request<{ groups: GroupSummary[] }>('/groups', { token })
+  },
+  getTerminalOverview(token: string): Promise<TerminalWorkspaceListResponse> {
+    return request<TerminalWorkspaceListResponse>('/terminals', { token })
   },
   getGroupMembers(token: string, groupId: string): Promise<GroupMemberListResponse> {
     return request<GroupMemberListResponse>(`/groups/${encodeURIComponent(groupId)}/members`, { token })

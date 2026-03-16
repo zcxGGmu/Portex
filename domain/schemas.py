@@ -922,6 +922,29 @@ class TerminalSessionResponse(BaseModel):
         return _normalize_utc_datetime(value)
 
 
+class TerminalWorkspaceSummaryResponse(BaseModel):
+    group_id: str = Field(
+        description="Workspace identifier represented in the terminal overview.",
+        examples=["project-alpha"],
+    )
+    group_name: str = Field(
+        description="Workspace display name represented in the terminal overview.",
+        examples=["Project Alpha"],
+    )
+    chat_accessible: bool = Field(
+        description="Whether the current operator can open this workspace in chat.",
+        examples=[True],
+    )
+    session: TerminalSessionResponse | None = Field(
+        default=None,
+        description="Current terminal session snapshot for this workspace when one exists.",
+    )
+
+
+class TerminalWorkspaceListResponse(BaseModel):
+    items: list[TerminalWorkspaceSummaryResponse]
+
+
 class DeleteTerminalSessionResponse(BaseModel):
     status: Literal["closed"] = Field(
         description="Result of the terminal-session close operation.",
@@ -1631,6 +1654,8 @@ __all__ = [
     "TaskRunLogResponse",
     "TaskResponse",
     "TerminalSessionResponse",
+    "TerminalWorkspaceListResponse",
+    "TerminalWorkspaceSummaryResponse",
     "TokenResponse",
     "UnifiedMessage",
     "UpdateUserRequest",

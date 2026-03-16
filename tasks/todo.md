@@ -903,3 +903,37 @@
 - Extended `services/message_dispatch.py` with an optional registration hook and rewired the default dependency path in `app/routes/im.py` so HTTP and IM dispatch lazily persist the current `chat_jid -> group_folder` target into `registered_groups` before execution continues.
 - Expanded `tests/services/test_message_dispatch.py`, `tests/app/routes/test_message_routes.py`, and `tests/app/routes/test_api_routes.py` to lock registration order, default HTTP dispatch wiring, and the route-level registry-backed list contract.
 - Fresh verification ran: `.venv/bin/pytest tests/services/test_group_registry.py tests/app/routes/test_api_routes.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py -q`; `.venv/bin/pytest tests/services/test_group_registry.py tests/services/test_message_dispatch.py tests/app/routes/test_message_routes.py tests/app/routes/test_api_routes.py tests/app/routes/test_im_routes.py tests/integration/test_message_flow.py tests/integration/test_api.py tests/integration/test_websocket.py -q`; `.venv/bin/pytest -o addopts='' -q`; `.venv/bin/ruff check .`; `git diff --check`.
+
+# Session Plan (2026-03-16) - M8.3 Terminal Operator UX Implementation On Main
+
+## Goal
+- Continue from the current handoff state by implementing `M8.3` directly on `main`: add a read-only terminal overview API, a standalone `/terminals` operator page, and minimal `/chat?workspace=...` deep-link support, while preserving existing terminal control boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, and `M8.3` design/plan docs
+- [x] Add failing tests for terminal session listing read helper
+- [x] Implement `TerminalSessionService.list_sessions()` and make focused service tests pass
+- [x] Add failing route/OpenAPI tests for `GET /terminals`
+- [x] Implement `GET /terminals` aggregation route and schemas
+- [x] Add frontend red stage for `/terminals` route and navigation
+- [x] Implement frontend terminals overview page + API hook/client
+- [x] Add minimal `ChatPanel` workspace deep-link behavior
+- [x] Run focused verification + repo regression + lint/build + diff hygiene
+- [x] Update `docs/progress.md` and complete this review section
+- [x] Commit milestone result with a detailed message
+
+## Review
+- Backend `M8.3` read surface is now on `main`: `TerminalSessionService.list_sessions()` + `GET /terminals` terminal overview route + `TerminalWorkspaceSummaryResponse`/`TerminalWorkspaceListResponse` schemas.
+- Added dedicated route coverage in `tests/app/routes/test_terminal_monitor_routes.py`, expanded service coverage in `tests/services/test_terminal_sessions.py`, and extended OpenAPI contract coverage in `tests/app/routes/test_api_routes.py`.
+- Frontend `M8.3` surface is now on `main`: `/terminals` page, operator-only navigation entry, `getTerminalOverview` client + `useTerminalOverviewQuery`, and minimal `/chat?workspace=...` initial workspace deep-link behavior in `ChatPanel`.
+- `docs/progress.md` has been refreshed to move `M8.3` to completed-on-`main` state and reset restart guidance to post-`M8.3` continuation options.
+- Fresh verification commands executed in this session:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_api_routes.py -q`
+  - `cd web && npm ci`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest -o addopts='' -q` (`564 passed`)
+  - `.venv/bin/ruff check .`
+  - `git diff --check`

@@ -214,6 +214,24 @@ export function useMonitorQuery(enabled = true) {
   })
 }
 
+export function useTerminalOverviewQuery(enabled = true) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: ['terminal-overview', token],
+    enabled: Boolean(token) && enabled,
+    queryFn: async () => {
+      if (!token) {
+        throw new Error('Missing token')
+      }
+
+      return apiClient.getTerminalOverview(token)
+    },
+    staleTime: 5_000,
+    refetchInterval: 5_000,
+  })
+}
+
 export function useUsageStatsQuery(days: number, enabled = true) {
   const token = useAuthStore((state) => state.token)
 
