@@ -3,7 +3,8 @@
 最后更新: 2026-03-17 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新提交: `a628cc9` (`feat(web): add M8.5.14 time-range filter controls`)
+最新功能提交: `a628cc9` (`feat(web): add M8.5.14 time-range filter controls`)
+最近一次 handoff 同步: `5ad4c17` (`docs(handoff): sync M8.5.14 time-range filter context`)
 
 ---
 

@@ -1384,3 +1384,21 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Feature commits: `7515207` (`feat(terminal): add M8.5.14 backend time-range filters`) and `a628cc9` (`feat(web): add M8.5.14 time-range filter controls`).
+
+# Session Plan (2026-03-17) - M8.5.14 Handoff Refresh
+
+## Goal
+- Sync the current restart-oriented state after the final `M8.5.14` landing so the next Codex restart can resume from the latest baseline without re-deriving commit context.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, and recent commits
+- [x] Refresh `docs/progress.md` latest baseline anchors
+- [x] Refresh `AGENTS.md` latest handoff/reference notes
+- [x] Run doc hygiene verification
+- [x] Commit the handoff refresh
+
+## Review
+- `docs/progress.md` now distinguishes the latest functional milestone commit from the latest handoff-sync commit, which is more stable for restart context after docs-only commits land.
+- `AGENTS.md` now points at the latest restart-oriented handoff sync explicitly while keeping the latest functional terminal milestone chain intact.
+- Verification for this docs-only sync will be `git diff --check`.
+- Commit completed in this session: `docs(handoff): refresh latest progress anchors`.
