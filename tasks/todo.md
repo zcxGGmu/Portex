@@ -1363,13 +1363,24 @@
 - [x] Write focused `M8.5.14` design doc
 - [x] Write focused `M8.5.14` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing backend tests for timeline/search time-range filtering (service + route + OpenAPI)
-- [ ] Implement additive backend time-range filter contracts
-- [ ] Drive frontend RED for time-range filter query state
-- [ ] Implement frontend time-range controls on `/terminals`
-- [ ] Run focused terminal regression suite
-- [ ] Run full backend/frontend verification plus diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing backend tests for timeline/search time-range filtering (service + route + OpenAPI)
+- [x] Implement additive backend time-range filter contracts
+- [x] Drive frontend RED for time-range filter query state
+- [x] Implement frontend time-range controls on `/terminals`
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
+- Extended `services/terminal_sessions.py` and `app/routes/terminals.py` so timeline/search both accept inclusive `snapshot_from` / `snapshot_to` filters and reject invalid ranges with `400` via `ValueError`.
+- Added backend coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for inclusive lower/upper bounds, bounded windows, invalid ranges, route pass-through, and OpenAPI parameter exposure.
+- Extended `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, and `web/src/pages/Terminals.tsx` so `/terminals` exposes minute-granularity `datetime-local` inputs, converts local values to UTC request params, and keeps timeline/search on one shared filter state.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commits: `7515207` (`feat(terminal): add M8.5.14 backend time-range filters`) and `a628cc9` (`feat(web): add M8.5.14 time-range filter controls`).
