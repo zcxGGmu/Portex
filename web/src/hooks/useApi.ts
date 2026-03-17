@@ -289,6 +289,43 @@ export function useTerminalHistoryDetailQuery(
   })
 }
 
+export function useTerminalHistorySearchQuery(
+  groupId: string | null,
+  options: {
+    query: string
+    limit: number
+    offset: number
+  },
+  enabled = true,
+) {
+  const token = useAuthStore((state) => state.token)
+  const normalizedQuery = options.query.trim()
+
+  return useQuery({
+    queryKey: [
+      'terminal-history-search',
+      token,
+      groupId,
+      normalizedQuery,
+      options.limit,
+      options.offset,
+    ],
+    enabled: Boolean(token && groupId && normalizedQuery) && enabled,
+    queryFn: async () => {
+      if (!token || !groupId || !normalizedQuery) {
+        throw new Error('Missing token, group id, or search query')
+      }
+
+      return apiClient.getTerminalHistorySearch(token, groupId, {
+        query: normalizedQuery,
+        limit: options.limit,
+        offset: options.offset,
+      })
+    },
+    staleTime: 5_000,
+  })
+}
+
 export function useUsageStatsQuery(days: number, enabled = true) {
   const token = useAuthStore((state) => state.token)
 

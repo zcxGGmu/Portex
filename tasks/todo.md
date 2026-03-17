@@ -1246,3 +1246,38 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
+
+# Session Plan (2026-03-17) - M8.5.11 Terminal Search Pagination/Cross-Session Match Navigation
+
+## Goal
+- Continue from the current `M8.5.8` main baseline by adding output search with paginated results and cross-session match navigation in terminal history detail, while preserving existing RBAC and history compatibility boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and `tasks/lessons.md`
+- [x] Write focused `M8.5.11` design doc
+- [x] Write focused `M8.5.11` implementation plan doc
+- [x] Add failing backend tests for search service/route/openapi contracts
+- [x] Implement backend search service model + schema + route
+- [x] Drive frontend RED for search pagination/cross-session navigation
+- [x] Implement frontend search panel and cross-session match navigation behavior
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
+- [x] Update `docs/progress.md` and complete review notes
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-17-m8-5-11-terminal-search-pagination-cross-session-navigation-design.md` and `docs/plans/2026-03-17-m8-5-11-terminal-search-pagination-cross-session-navigation.md` to lock scope as “search-result pagination + cross-session match navigation,” while preserving `latest.json` and `/sessions/current/history` compatibility.
+- Extended `services/terminal_sessions.py` with additive search read models (`TerminalSessionHistorySearchMatch`, `TerminalSessionHistorySearchPage`) plus `search_history_by_group(...)`, case-insensitive matching, snippet extraction, and deterministic result ordering/pagination.
+- Extended `domain/schemas.py` and `app/routes/terminals.py` with additive search DTOs and `GET /terminals/{group_id}/sessions/history/search`, reusing existing terminal role/workspace access gates and error mapping.
+- Extended terminal coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` with RED/GREEN assertions for search behavior, route contracts, and OpenAPI exposure.
+- Extended frontend terminal search/navigation surface in `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, and `web/src/pages/Terminals.tsx`: workspace output search panel, paginated search results, detail keyword highlighting, and previous/next traversal that can jump across matched sessions/pages.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q` (red then green)
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`602 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`

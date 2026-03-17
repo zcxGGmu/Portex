@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { TerminalSessionStatus, TerminalWorkspaceSummary } from '../api/client'
@@ -8,12 +8,14 @@ import { PrimaryButton } from '../components/ui/PrimaryButton'
 import {
   useCurrentUserQuery,
   useTerminalHistoryDetailQuery,
+  useTerminalHistorySearchQuery,
   useTerminalHistoryTimelineQuery,
   useTerminalOverviewQuery,
 } from '../hooks/useApi'
 import { useAuthStore } from '../stores/auth'
 
 const TIMELINE_PAGE_SIZE = 5
+const SEARCH_PAGE_SIZE = 5
 const TERMINAL_HISTORY_STATUS_OPTIONS: Array<{ value: TerminalSessionStatus; label: string }> = [
   { value: 'created', label: 'Created' },
   { value: 'attached', label: 'Attached' },
@@ -25,6 +27,16 @@ const DEFAULT_TIMELINE_FILTERS = {
   status: '' as TerminalSessionStatus | '',
   ownerUserId: '',
   sessionIdPrefix: '',
+}
+
+type MatchRange = {
+  start: number
+  end: number
+}
+
+type OutputSegment = {
+  text: string
+  matchIndex: number | null
 }
 
 function formatDate(value: string | null): string {
@@ -66,6 +78,58 @@ function summarize(items: TerminalWorkspaceSummary[]) {
   return { activeCount, detachedCount, closedCount, emptyCount }
 }
 
+function findCaseInsensitiveMatches(text: string, query: string): MatchRange[] {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery || !text) {
+    return []
+  }
+
+  const normalizedText = text.toLowerCase()
+  const ranges: MatchRange[] = []
+  let cursor = 0
+  while (cursor < normalizedText.length) {
+    const index = normalizedText.indexOf(normalizedQuery, cursor)
+    if (index < 0) {
+      break
+    }
+    ranges.push({ start: index, end: index + normalizedQuery.length })
+    cursor = index + Math.max(1, normalizedQuery.length)
+  }
+  return ranges
+}
+
+function buildOutputSegments(output: string, ranges: MatchRange[]): OutputSegment[] {
+  if (ranges.length === 0) {
+    return [{ text: output, matchIndex: null }]
+  }
+
+  const segments: OutputSegment[] = []
+  let cursor = 0
+  for (let index = 0; index < ranges.length; index += 1) {
+    const range = ranges[index]
+    if (cursor < range.start) {
+      segments.push({
+        text: output.slice(cursor, range.start),
+        matchIndex: null,
+      })
+    }
+    segments.push({
+      text: output.slice(range.start, range.end),
+      matchIndex: index,
+    })
+    cursor = range.end
+  }
+
+  if (cursor < output.length) {
+    segments.push({
+      text: output.slice(cursor),
+      matchIndex: null,
+    })
+  }
+
+  return segments
+}
+
 export function Terminals() {
   const token = useAuthStore((state) => state.token)
   const storedUser = useAuthStore((state) => state.currentUser)
@@ -85,7 +149,14 @@ export function Terminals() {
     ownerUserId: string
     sessionIdPrefix: string
   }>(DEFAULT_TIMELINE_FILTERS)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchOffset, setSearchOffset] = useState(0)
+  const [pendingSearchPageMove, setPendingSearchPageMove] = useState<'next' | 'previous' | null>(null)
+  const [pendingMatchAnchor, setPendingMatchAnchor] = useState<'first' | 'last' | null>(null)
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
+  const [activeDetailMatchIndex, setActiveDetailMatchIndex] = useState(0)
+  const activeMatchRef = useRef<HTMLElement | null>(null)
 
   const {
     data: timelineData,
@@ -105,6 +176,24 @@ export function Terminals() {
     },
     isOperator && timelineGroupId !== null,
   )
+
+  const normalizedSearchQuery = searchQuery.trim()
+  const {
+    data: searchData,
+    isLoading: isSearchLoading,
+    isFetching: isSearchFetching,
+    isError: isSearchError,
+    error: searchError,
+  } = useTerminalHistorySearchQuery(
+    timelineGroupId,
+    {
+      query: normalizedSearchQuery,
+      limit: SEARCH_PAGE_SIZE,
+      offset: searchOffset,
+    },
+    isOperator && timelineGroupId !== null && normalizedSearchQuery !== '',
+  )
+
   const {
     data: detailData,
     isLoading: isDetailLoading,
@@ -119,6 +208,93 @@ export function Terminals() {
   const items = data?.items ?? []
   const summary = summarize(items)
   const currentUserId = currentUser?.id ?? null
+  const searchItems = useMemo(() => searchData?.items ?? [], [searchData])
+  const activeSearchResultIndex = useMemo(
+    () => searchItems.findIndex((item) => item.session.session_id === detailSessionId),
+    [searchItems, detailSessionId],
+  )
+
+  const detailMatchRanges = useMemo(() => {
+    if (!detailData || normalizedSearchQuery === '') {
+      return []
+    }
+    return findCaseInsensitiveMatches(detailData.output, normalizedSearchQuery)
+  }, [detailData, normalizedSearchQuery])
+
+  const detailOutputSegments = useMemo(() => {
+    if (!detailData) {
+      return []
+    }
+    return buildOutputSegments(detailData.output, detailMatchRanges)
+  }, [detailData, detailMatchRanges])
+
+  const canMoveToPreviousSession =
+    activeSearchResultIndex > 0 || (activeSearchResultIndex === 0 && searchOffset > 0)
+  const canMoveToNextSession =
+    (activeSearchResultIndex >= 0 && activeSearchResultIndex < searchItems.length - 1) ||
+    (activeSearchResultIndex >= 0 &&
+      activeSearchResultIndex === searchItems.length - 1 &&
+      Boolean(searchData?.has_more))
+  const canMovePreviousMatch =
+    detailMatchRanges.length > 0 &&
+    (activeDetailMatchIndex > 0 || (canMoveToPreviousSession && !isSearchFetching))
+  const canMoveNextMatch =
+    detailMatchRanges.length > 0 &&
+    (activeDetailMatchIndex < detailMatchRanges.length - 1 || (canMoveToNextSession && !isSearchFetching))
+
+  useEffect(() => {
+    if (!pendingSearchPageMove || !searchData) {
+      return
+    }
+    if (searchData.items.length === 0) {
+      setPendingSearchPageMove(null)
+      return
+    }
+
+    const targetIndex = pendingSearchPageMove === 'next' ? 0 : searchData.items.length - 1
+    const session = searchData.items[targetIndex]?.session
+    if (session) {
+      setDetailSessionId(session.session_id)
+      setPendingMatchAnchor(pendingSearchPageMove === 'next' ? 'first' : 'last')
+    }
+    setPendingSearchPageMove(null)
+  }, [pendingSearchPageMove, searchData])
+
+  useEffect(() => {
+    if (detailMatchRanges.length === 0) {
+      setActiveDetailMatchIndex(0)
+      setPendingMatchAnchor(null)
+      return
+    }
+
+    if (pendingMatchAnchor === 'first') {
+      setActiveDetailMatchIndex(0)
+      setPendingMatchAnchor(null)
+      return
+    }
+    if (pendingMatchAnchor === 'last') {
+      setActiveDetailMatchIndex(detailMatchRanges.length - 1)
+      setPendingMatchAnchor(null)
+      return
+    }
+
+    setActiveDetailMatchIndex((current) => {
+      if (current < 0) {
+        return 0
+      }
+      if (current >= detailMatchRanges.length) {
+        return detailMatchRanges.length - 1
+      }
+      return current
+    })
+  }, [detailMatchRanges, pendingMatchAnchor])
+
+  useEffect(() => {
+    if (!activeMatchRef.current || detailMatchRanges.length === 0) {
+      return
+    }
+    activeMatchRef.current.scrollIntoView({ block: 'center' })
+  }, [detailSessionId, activeDetailMatchIndex, detailMatchRanges.length])
 
   function isActiveSession(item: TerminalWorkspaceSummary): boolean {
     if (!item.session) {
@@ -131,6 +307,14 @@ export function Terminals() {
     )
   }
 
+  function resetSearchState() {
+    setSearchInput('')
+    setSearchQuery('')
+    setSearchOffset(0)
+    setPendingSearchPageMove(null)
+    setPendingMatchAnchor(null)
+  }
+
   function toggleTimeline(groupId: string) {
     setActionError(null)
     setActionNotice(null)
@@ -138,12 +322,14 @@ export function Terminals() {
       setTimelineGroupId(null)
       setTimelineOffset(0)
       setTimelineFilters(DEFAULT_TIMELINE_FILTERS)
+      resetSearchState()
       setDetailSessionId(null)
       return
     }
     setTimelineGroupId(groupId)
     setTimelineOffset(0)
     setTimelineFilters(DEFAULT_TIMELINE_FILTERS)
+    resetSearchState()
     setDetailSessionId(null)
   }
 
@@ -160,6 +346,79 @@ export function Terminals() {
     }))
     setTimelineOffset(0)
     setDetailSessionId(null)
+    setPendingMatchAnchor(null)
+  }
+
+  function openDetailFromSearch(index: number, anchor: 'first' | 'last') {
+    const session = searchItems[index]?.session
+    if (!session) {
+      return
+    }
+    setDetailSessionId(session.session_id)
+    setPendingMatchAnchor(anchor)
+  }
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalized = searchInput.trim()
+    setSearchQuery(normalized)
+    setSearchOffset(0)
+    setPendingSearchPageMove(null)
+    setPendingMatchAnchor('first')
+    setDetailSessionId(null)
+  }
+
+  function clearSearch() {
+    setSearchInput('')
+    setSearchQuery('')
+    setSearchOffset(0)
+    setPendingSearchPageMove(null)
+    setPendingMatchAnchor(null)
+  }
+
+  function goToPreviousMatch() {
+    if (detailMatchRanges.length === 0) {
+      return
+    }
+    if (activeDetailMatchIndex > 0) {
+      setActiveDetailMatchIndex((value) => Math.max(0, value - 1))
+      return
+    }
+
+    if (activeSearchResultIndex > 0) {
+      openDetailFromSearch(activeSearchResultIndex - 1, 'last')
+      return
+    }
+
+    if (activeSearchResultIndex === 0 && searchOffset > 0 && !isSearchFetching) {
+      setPendingSearchPageMove('previous')
+      setSearchOffset((value) => Math.max(0, value - SEARCH_PAGE_SIZE))
+    }
+  }
+
+  function goToNextMatch() {
+    if (detailMatchRanges.length === 0) {
+      return
+    }
+    if (activeDetailMatchIndex < detailMatchRanges.length - 1) {
+      setActiveDetailMatchIndex((value) => Math.min(detailMatchRanges.length - 1, value + 1))
+      return
+    }
+
+    if (activeSearchResultIndex >= 0 && activeSearchResultIndex < searchItems.length - 1) {
+      openDetailFromSearch(activeSearchResultIndex + 1, 'first')
+      return
+    }
+
+    if (
+      activeSearchResultIndex >= 0 &&
+      activeSearchResultIndex === searchItems.length - 1 &&
+      searchData?.has_more &&
+      !isSearchFetching
+    ) {
+      setPendingSearchPageMove('next')
+      setSearchOffset((value) => value + SEARCH_PAGE_SIZE)
+    }
   }
 
   async function handleClose(item: TerminalWorkspaceSummary) {
@@ -419,6 +678,131 @@ export function Terminals() {
                   />
                 </label>
               </div>
+
+              <div
+                style={{
+                  border: '1px solid #d0d7de',
+                  borderRadius: '0.5rem',
+                  padding: '0.85rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <h3 style={{ margin: '0 0 0.75rem 0' }}>Search Output</h3>
+                <form
+                  onSubmit={handleSearchSubmit}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <input
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder="error"
+                    style={{ flex: '1 1 16rem' }}
+                    type="text"
+                    value={searchInput}
+                  />
+                  <PrimaryButton type="submit">Search</PrimaryButton>
+                  <PrimaryButton className="button--ghost" onClick={clearSearch} type="button">
+                    Clear
+                  </PrimaryButton>
+                </form>
+
+                {normalizedSearchQuery ? (
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    Query: <code>{normalizedSearchQuery}</code>
+                  </p>
+                ) : (
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    Submit a query to search output snippets in this workspace timeline.
+                  </p>
+                )}
+
+                {normalizedSearchQuery && isSearchLoading ? (
+                  <p className="muted">Searching terminal history output...</p>
+                ) : null}
+                {normalizedSearchQuery && isSearchError ? (
+                  <p className="error-text">
+                    {searchError instanceof Error ? searchError.message : 'Failed to search terminal history output.'}
+                  </p>
+                ) : null}
+                {normalizedSearchQuery && !isSearchLoading && !isSearchError && searchData ? (
+                  <>
+                    {searchData.items.length === 0 ? (
+                      <p className="muted">No matched sessions in this workspace for the current query.</p>
+                    ) : (
+                      <div className="monitor-table-wrap">
+                        <table className="monitor-table">
+                          <thead>
+                            <tr>
+                              <th>Session</th>
+                              <th>Status</th>
+                              <th>Owner</th>
+                              <th>Snapshot At</th>
+                              <th>Matches</th>
+                              <th>Snippets</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {searchData.items.map((entry, index) => (
+                              <tr key={entry.session.session_id}>
+                                <td>{entry.session.session_id}</td>
+                                <td>{entry.session.status}</td>
+                                <td>{entry.session.owner_user_id}</td>
+                                <td>{formatDate(entry.snapshot_at)}</td>
+                                <td>{entry.match_count.toLocaleString()}</td>
+                                <td>
+                                  <div style={{ display: 'grid', gap: '0.25rem' }}>
+                                    {entry.snippets.map((snippet, snippetIndex) => (
+                                      <code key={`${entry.session.session_id}-snippet-${snippetIndex}`}>{snippet}</code>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td>
+                                  <PrimaryButton
+                                    className="button--ghost"
+                                    onClick={() => openDetailFromSearch(index, 'first')}
+                                    type="button"
+                                  >
+                                    {detailSessionId === entry.session.session_id ? 'Viewing' : 'View Details'}
+                                  </PrimaryButton>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    <div className="terminal-timeline-pagination" style={{ marginTop: '0.75rem' }}>
+                      <span className="muted">
+                        Offset {searchData.offset} · Page Size {searchData.limit} · Total {searchData.total}
+                      </span>
+                      <div className="terminal-actions">
+                        <PrimaryButton
+                          className="button--ghost"
+                          disabled={searchOffset === 0 || isSearchFetching}
+                          onClick={() => setSearchOffset((value) => Math.max(0, value - SEARCH_PAGE_SIZE))}
+                          type="button"
+                        >
+                          Previous
+                        </PrimaryButton>
+                        <PrimaryButton
+                          className="button--ghost"
+                          disabled={!searchData.has_more || isSearchFetching}
+                          onClick={() => setSearchOffset((value) => value + SEARCH_PAGE_SIZE)}
+                          type="button"
+                        >
+                          Next
+                        </PrimaryButton>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+
               {isTimelineLoading ? <p className="muted">Loading timeline...</p> : null}
               {isTimelineError ? (
                 <p className="error-text">
@@ -461,7 +845,10 @@ export function Terminals() {
                               <td>
                                 <PrimaryButton
                                   className="button--ghost"
-                                  onClick={() => setDetailSessionId(entry.session.session_id)}
+                                  onClick={() => {
+                                    setDetailSessionId(entry.session.session_id)
+                                    setPendingMatchAnchor('first')
+                                  }}
                                   type="button"
                                 >
                                   {detailSessionId === entry.session.session_id ? 'Viewing' : 'View Details'}
@@ -530,6 +917,34 @@ export function Terminals() {
                       <p>{detailData.output_bytes.toLocaleString()}</p>
                     </div>
                   </div>
+
+                  {normalizedSearchQuery && detailMatchRanges.length > 0 ? (
+                    <div
+                      className="terminal-actions"
+                      style={{ alignItems: 'center', marginBottom: '0.75rem' }}
+                    >
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={!canMovePreviousMatch}
+                        onClick={goToPreviousMatch}
+                        type="button"
+                      >
+                        Previous Match
+                      </PrimaryButton>
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={!canMoveNextMatch}
+                        onClick={goToNextMatch}
+                        type="button"
+                      >
+                        Next Match
+                      </PrimaryButton>
+                      <span className="muted">
+                        Match {Math.min(activeDetailMatchIndex + 1, detailMatchRanges.length)} / {detailMatchRanges.length}
+                      </span>
+                    </div>
+                  ) : null}
+
                   <pre
                     style={{
                       margin: 0,
@@ -539,7 +954,27 @@ export function Terminals() {
                       overflow: 'auto',
                     }}
                   >
-                    {detailData.output || '(no output)'}
+                    {detailData.output === ''
+                      ? '(no output)'
+                      : detailOutputSegments.map((segment, index) => {
+                          if (segment.matchIndex === null) {
+                            return <span key={`segment-${index}`}>{segment.text}</span>
+                          }
+                          const isActive = segment.matchIndex === activeDetailMatchIndex
+                          return (
+                            <mark
+                              key={`segment-${index}`}
+                              ref={isActive ? activeMatchRef : undefined}
+                              style={{
+                                backgroundColor: isActive ? '#fbbf24' : '#fde68a',
+                                color: 'inherit',
+                                padding: 0,
+                              }}
+                            >
+                              {segment.text}
+                            </mark>
+                          )
+                        })}
                   </pre>
                 </>
               ) : null}

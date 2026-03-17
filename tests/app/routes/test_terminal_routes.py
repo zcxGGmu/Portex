@@ -87,6 +87,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     get_response = api_client.get("/terminals/project-alpha/sessions/current")
     history_response = api_client.get("/terminals/project-alpha/sessions/current/history")
     timeline_response = api_client.get("/terminals/project-alpha/sessions/history")
+    search_response = api_client.get("/terminals/project-alpha/sessions/history/search?q=error")
     detail_response = api_client.get("/terminals/project-alpha/sessions/history/test-session")
     delete_response = api_client.delete("/terminals/project-alpha/sessions/current")
     force_delete_response = api_client.delete("/terminals/project-alpha/sessions/force")
@@ -95,6 +96,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     assert get_response.status_code == 401
     assert history_response.status_code == 401
     assert timeline_response.status_code == 401
+    assert search_response.status_code == 401
     assert detail_response.status_code == 401
     assert delete_response.status_code == 401
     assert force_delete_response.status_code == 401
@@ -521,6 +523,169 @@ def test_terminal_history_timeline_route_returns_404_when_workspace_has_no_histo
     try:
         response = api_client.get(
             "/terminals/project-alpha/sessions/history",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "terminal session not found"
+
+
+def test_owner_can_search_terminal_history_output(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            from datetime import datetime, timezone
+
+            self.record = TerminalSessionRecord(
+                session_id="terminal-session-search",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-search",
+                status="closed",
+                created_at=datetime(2026, 3, 17, 10, 0, tzinfo=timezone.utc),
+            )
+            self.last_call: tuple[str, str, int, int] | None = None
+
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+        ):
+            from datetime import datetime, timezone
+
+            self.last_call = (group_folder, query, limit, offset)
+            return SimpleNamespace(
+                query=query,
+                limit=limit,
+                offset=offset,
+                total=1,
+                has_more=False,
+                items=[
+                    SimpleNamespace(
+                        record=self.record,
+                        snapshot_at=datetime(2026, 3, 17, 10, 5, tzinfo=timezone.utc),
+                        match_count=2,
+                        snippets=["...ERROR one...", "...error two..."],
+                    )
+                ],
+            )
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search?q=error&limit=1&offset=0",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["query"] == "error"
+    assert payload["limit"] == 1
+    assert payload["offset"] == 0
+    assert payload["total"] == 1
+    assert payload["has_more"] is False
+    assert payload["items"][0]["session"]["session_id"] == "terminal-session-search"
+    assert payload["items"][0]["match_count"] == 2
+    assert payload["items"][0]["snippets"] == ["...ERROR one...", "...error two..."]
+    assert service.last_call == ("project-alpha", "error", 1, 0)
+
+
+def test_terminal_history_search_route_returns_empty_page_when_no_match(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+        ):
+            _ = (group_folder, query, limit, offset)
+            return SimpleNamespace(
+                query=query,
+                limit=limit,
+                offset=offset,
+                total=0,
+                has_more=False,
+                items=[],
+            )
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search?q=not-found",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+    assert response.json()["total"] == 0
+
+
+def test_terminal_history_search_route_returns_404_when_workspace_has_no_history(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionNotFoundError
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+        ):
+            _ = (group_folder, query, limit, offset)
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search?q=error",
             headers=owner_headers,
         )
     finally:

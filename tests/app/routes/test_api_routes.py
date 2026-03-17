@@ -2285,6 +2285,14 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "owner_user_id" in parameter_names
     assert "session_id_prefix" in parameter_names
 
+    get_terminal_history_search_operation = schema["paths"]["/terminals/{group_id}/sessions/history/search"]["get"]
+    assert "search" in get_terminal_history_search_operation["summary"].lower()
+    assert "404" in get_terminal_history_search_operation["responses"]
+    search_parameter_names = {item["name"] for item in get_terminal_history_search_operation["parameters"]}
+    assert "q" in search_parameter_names
+    assert "limit" in search_parameter_names
+    assert "offset" in search_parameter_names
+
     get_terminal_history_detail_operation = schema["paths"]["/terminals/{group_id}/sessions/history/{session_id}"][
         "get"
     ]
@@ -2481,6 +2489,8 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "AuditMessageResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistorySummaryResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistoryTimelineResponse" in schema["components"]["schemas"]
+    assert "TerminalSessionHistorySearchResponse" in schema["components"]["schemas"]
+    assert "TerminalSessionHistorySearchMatchResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistoryDetailResponse" in schema["components"]["schemas"]
 
     terminal_workspace_schema = schema["components"]["schemas"]["TerminalWorkspaceSummaryResponse"]
@@ -2496,6 +2506,15 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "offset" in terminal_history_timeline_schema["properties"]
     assert "has_more" in terminal_history_timeline_schema["properties"]
     assert "items" in terminal_history_timeline_schema["properties"]
+
+    terminal_history_search_schema = schema["components"]["schemas"]["TerminalSessionHistorySearchResponse"]
+    assert "query" in terminal_history_search_schema["properties"]
+    assert "total" in terminal_history_search_schema["properties"]
+    assert "items" in terminal_history_search_schema["properties"]
+
+    terminal_history_search_match_schema = schema["components"]["schemas"]["TerminalSessionHistorySearchMatchResponse"]
+    assert "match_count" in terminal_history_search_match_schema["properties"]
+    assert "snippets" in terminal_history_search_match_schema["properties"]
 
     terminal_history_detail_schema = schema["components"]["schemas"]["TerminalSessionHistoryDetailResponse"]
     assert "snapshot_at" in terminal_history_detail_schema["properties"]

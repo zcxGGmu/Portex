@@ -984,6 +984,50 @@ class TerminalSessionHistoryTimelineResponse(BaseModel):
     )
 
 
+class TerminalSessionHistorySearchMatchResponse(BaseModel):
+    session: TerminalSessionResponse = Field(
+        description="Terminal session snapshot associated with this search result.",
+    )
+    snapshot_at: datetime = Field(
+        description="Timestamp when this terminal-history snapshot was captured.",
+        examples=["2026-03-17T10:05:00Z"],
+    )
+    match_count: int = Field(
+        description="Total number of case-insensitive substring matches found in this session output.",
+        examples=[2],
+    )
+    snippets: list[str] = Field(
+        description="Bounded plain-text snippets around matching output fragments.",
+        examples=[["...ERROR one...", "...error two..."]],
+    )
+
+
+class TerminalSessionHistorySearchResponse(BaseModel):
+    query: str = Field(
+        description="Normalized terminal-history output query used for this search page.",
+        examples=["error"],
+    )
+    limit: int = Field(
+        description="Maximum number of search results requested for this page.",
+        examples=[20],
+    )
+    offset: int = Field(
+        description="Zero-based starting offset into matched search results.",
+        examples=[0],
+    )
+    total: int = Field(
+        description="Total number of matched sessions for this query and workspace.",
+        examples=[4],
+    )
+    has_more: bool = Field(
+        description="Whether additional matched sessions are available after this page.",
+        examples=[True],
+    )
+    items: list[TerminalSessionHistorySearchMatchResponse] = Field(
+        description="Paginated session-level terminal-history output matches.",
+    )
+
+
 class TerminalSessionHistoryDetailResponse(BaseModel):
     session: TerminalSessionResponse = Field(
         description="Terminal session snapshot associated with this history detail entry.",
@@ -1746,6 +1790,8 @@ __all__ = [
     "TaskRunLogResponse",
     "TaskResponse",
     "TerminalSessionHistoryDetailResponse",
+    "TerminalSessionHistorySearchMatchResponse",
+    "TerminalSessionHistorySearchResponse",
     "TerminalSessionHistoryResponse",
     "TerminalSessionHistorySummaryResponse",
     "TerminalSessionHistoryTimelineResponse",

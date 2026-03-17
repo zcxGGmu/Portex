@@ -161,6 +161,22 @@ export interface TerminalSessionHistoryTimelineResponse {
   items: TerminalSessionHistorySummary[]
 }
 
+export interface TerminalSessionHistorySearchMatch {
+  session: TerminalSessionResponse
+  snapshot_at: string
+  match_count: number
+  snippets: string[]
+}
+
+export interface TerminalSessionHistorySearchResponse {
+  query: string
+  limit: number
+  offset: number
+  total: number
+  has_more: boolean
+  items: TerminalSessionHistorySearchMatch[]
+}
+
 export interface TerminalWorkspaceSummary {
   group_id: string
   group_name: string
@@ -607,6 +623,32 @@ export const apiClient = {
     const suffix = params.toString() ? `?${params.toString()}` : ''
     return request<TerminalSessionHistoryTimelineResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history${suffix}`,
+      { token },
+    )
+  },
+  getTerminalHistorySearch(
+    token: string,
+    groupId: string,
+    options: {
+      query: string
+      limit?: number
+      offset?: number
+    },
+  ): Promise<TerminalSessionHistorySearchResponse> {
+    const query = options.query.trim()
+    if (!query) {
+      throw new Error('Search query is required')
+    }
+    const params = new URLSearchParams()
+    params.set('q', query)
+    if (typeof options.limit === 'number') {
+      params.set('limit', String(options.limit))
+    }
+    if (typeof options.offset === 'number') {
+      params.set('offset', String(options.offset))
+    }
+    return request<TerminalSessionHistorySearchResponse>(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/search?${params.toString()}`,
       { token },
     )
   },

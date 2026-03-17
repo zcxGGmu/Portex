@@ -15,6 +15,8 @@ from domain.schemas import (
     CreateTerminalSessionRequest,
     DeleteTerminalSessionResponse,
     TerminalSessionHistoryDetailResponse,
+    TerminalSessionHistorySearchMatchResponse,
+    TerminalSessionHistorySearchResponse,
     TerminalSessionHistoryResponse,
     TerminalSessionHistorySummaryResponse,
     TerminalSessionHistoryTimelineResponse,
@@ -31,6 +33,7 @@ from services.terminal_sessions import (
     TerminalBackendUnsupportedError,
     TerminalSessionConflictError,
     TerminalSessionEvent,
+    TerminalSessionHistorySearchMatch,
     TerminalSessionHistorySummary,
     TerminalSessionNotFoundError,
     TerminalSessionOwnershipError,
@@ -64,6 +67,17 @@ def _to_terminal_history_summary_response(item: TerminalSessionHistorySummary) -
         output_bytes=item.output_bytes,
         history_max_bytes=item.history_max_bytes,
         truncated=item.truncated,
+    )
+
+
+def _to_terminal_history_search_match_response(
+    item: TerminalSessionHistorySearchMatch,
+) -> TerminalSessionHistorySearchMatchResponse:
+    return TerminalSessionHistorySearchMatchResponse(
+        session=_to_terminal_session_response(item.record),
+        snapshot_at=item.snapshot_at,
+        match_count=item.match_count,
+        snippets=list(item.snippets),
     )
 
 
@@ -389,6 +403,52 @@ async def get_terminal_history_timeline(
         offset=page.offset,
         has_more=page.has_more,
         items=[_to_terminal_history_summary_response(item) for item in page.items],
+    )
+
+
+@router.get(
+    "/terminals/{group_id}/sessions/history/search",
+    response_model=TerminalSessionHistorySearchResponse,
+    summary="Search terminal history output",
+    description="Search one accessible workspace terminal-history output and return paginated session-level matches.",
+    responses=openapi_error_responses(
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def search_terminal_history_output(
+    group_id: str,
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> TerminalSessionHistorySearchResponse:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        page = await service.search_history_by_group(
+            workspace.folder,
+            query=q,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+    return TerminalSessionHistorySearchResponse(
+        query=page.query,
+        limit=page.limit,
+        offset=page.offset,
+        total=page.total,
+        has_more=page.has_more,
+        items=[_to_terminal_history_search_match_response(item) for item in page.items],
     )
 
 

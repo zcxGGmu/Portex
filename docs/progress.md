@@ -1,7 +1,7 @@
 # Portex 开发进度上下文（重启续做入口）
 
 最后更新: 2026-03-17 (Asia/Shanghai)
-仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
+仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
 
 ---
@@ -102,13 +102,20 @@
 - `M8.5.6` 已完成并已落地到 `main`（persistence-aware terminal history inventory on `/terminals` overview）。
 - `M8.5.7` 已完成并已落地到 `main`（multi-snapshot terminal history timeline/pagination on `/terminals/{group_id}/sessions/history` + `/terminals` on-demand timeline view）。
 - `M8.5.8` 已完成并已落地到 `main`（terminal history server-side filters + session detail on `/terminals`）。
-- `M8.5.9` 已在 feature lineage 上完成（`feat/m8-5-9-terminal-history-output-search`，per-workspace terminal history output search + detail highlighting）。
-- `M8.5.10` 已在最新 feature branch 上完成（`feat/m8-5-10-terminal-detail-match-navigation`，local match navigation inside terminal history detail panel）。
-- 当前起点：`main` 当前代码基线停在 `M8.5.8`；如要继续最新 terminal work，请从 `.worktrees/m8-5-10-terminal-detail-match-navigation` / `feat/m8-5-10-terminal-detail-match-navigation` 继续，下一步建议进入 post-`M8.5.10` 的 search result pagination / cross-session match navigation 子项。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.9` 已完成并已落地到 `main`（per-workspace terminal history output search + detail highlighting）。
+- `M8.5.10` 已完成并已落地到 `main`（terminal history detail local match navigation）。
+- `M8.5.11` 已完成并已落地到 `main`（search-result pagination + cross-session match navigation on `/terminals`）。
+- 当前起点：`main` 当前代码基线已到 `M8.5.11`；下一步建议进入 post-`M8.5.11` 的更细粒度搜索体验增强（例如 snippet-to-offset 深链、可选结果排序策略），同时保持 `latest.json` 与 `/sessions/current/history` 兼容边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.11` implementation（on `main`）：新增 `docs/plans/2026-03-17-m8-5-11-terminal-search-pagination-cross-session-navigation-design.md` 与 `docs/plans/2026-03-17-m8-5-11-terminal-search-pagination-cross-session-navigation.md`，将范围固定为“search-result pagination + cross-session match navigation”，明确保持 `latest.json` 与 `/sessions/current/history` 兼容。
+- `M8.5.11` implementation（on `main`）：扩展 `TerminalSessionService`，新增 `search_history_by_group()` 与搜索读模型（`match_count` + snippets + `total/has_more` 分页），复用 merged snapshots（`in-memory + latest.json + archived snapshots`）进行 workspace 内大小写不敏感子串匹配。
+- `M8.5.11` implementation（on `main`）：扩展 terminal schema + route，新增 `TerminalSessionHistorySearchMatchResponse` / `TerminalSessionHistorySearchResponse` 与 `GET /terminals/{group_id}/sessions/history/search?q=...`，保持既有 timeline/detail/current-history 路由与 RBAC 映射不变。
+- `M8.5.11` implementation（on `main`）：扩展 `/terminals` 搜索与导航 UX，新增搜索结果分页表格、detail 输出命中高亮、以及上一条/下一条命中跨 session 与跨搜索页边界跳转能力。
+- `M8.5.11` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`（red->green）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`602 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 
 - `M8.5.10` implementation（on `feat/m8-5-10-terminal-detail-match-navigation`）：新增 `docs/plans/2026-03-16-m8-5-10-terminal-history-detail-match-navigation-design.md` 与 `docs/plans/2026-03-16-m8-5-10-terminal-history-detail-match-navigation.md`，将范围固定为“detail panel local match navigation”，明确不新增 backend route/DTO，不扩展跨 session 导航。
 - `M8.5.10` implementation（on `feat/m8-5-10-terminal-detail-match-navigation`）：扩展 `web/src/pages/Terminals.tsx`，为当前 active search term 和已加载 detail output 本地计算命中区间，新增 `Previous/Next` 导航、`Match N / M` 计数、当前命中高亮，以及 active match `scrollIntoView()`。

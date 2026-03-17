@@ -23,6 +23,8 @@ _TERMINAL_HISTORY_FILENAME = "latest.json"
 _TERMINAL_HISTORY_SNAPSHOTS_DIRNAME = "snapshots"
 _ACTIVE_RECOVERABLE_STATUSES: set[TerminalSessionStatus] = {"created", "attached", "detached"}
 _TERMINAL_ARCHIVE_STATUSES: set[TerminalSessionStatus] = {"closed", "exited"}
+_DEFAULT_SEARCH_SNIPPET_LIMIT = 3
+_DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS = 40
 
 
 class TerminalBackendUnsupportedError(RuntimeError):
@@ -96,6 +98,24 @@ class TerminalSessionHistoryTimelinePage:
     offset: int
     has_more: bool
     items: list[TerminalSessionHistorySummary]
+
+
+@dataclass(frozen=True, slots=True)
+class TerminalSessionHistorySearchMatch:
+    record: TerminalSessionRecord
+    snapshot_at: datetime
+    match_count: int
+    snippets: list[str]
+
+
+@dataclass(frozen=True, slots=True)
+class TerminalSessionHistorySearchPage:
+    query: str
+    limit: int
+    offset: int
+    total: int
+    has_more: bool
+    items: list[TerminalSessionHistorySearchMatch]
 
 
 @dataclass(slots=True)
@@ -263,6 +283,47 @@ class TerminalSessionService:
             if snapshot.record.session_id == normalized_session_id:
                 return snapshot
         raise TerminalSessionNotFoundError("terminal session not found")
+
+    async def search_history_by_group(
+        self,
+        group_folder: str,
+        *,
+        query: str,
+        limit: int = 20,
+        offset: int = 0,
+        snippet_limit: int = _DEFAULT_SEARCH_SNIPPET_LIMIT,
+        snippet_context_chars: int = _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS,
+    ) -> TerminalSessionHistorySearchPage:
+        normalized_query = query.strip()
+        if normalized_query == "":
+            raise ValueError("query must not be empty")
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+        if snippet_limit <= 0:
+            raise ValueError("snippet_limit must be positive")
+        if snippet_context_chars < 0:
+            raise ValueError("snippet_context_chars must be non-negative")
+
+        snapshots = await self._list_merged_history_snapshots_by_group(group_folder)
+        items = self._search_history_snapshots(
+            snapshots,
+            query=normalized_query,
+            snippet_limit=snippet_limit,
+            snippet_context_chars=snippet_context_chars,
+        )
+        total = len(items)
+        page_items = items[offset : offset + limit]
+        has_more = (offset + limit) < total
+        return TerminalSessionHistorySearchPage(
+            query=normalized_query,
+            limit=limit,
+            offset=offset,
+            total=total,
+            has_more=has_more,
+            items=page_items,
+        )
 
     async def attach_session(
         self,
@@ -827,6 +888,84 @@ class TerminalSessionService:
             filtered.append(snapshot)
         return filtered
 
+    @classmethod
+    def _search_history_snapshots(
+        cls,
+        snapshots: list[TerminalSessionHistorySnapshot],
+        *,
+        query: str,
+        snippet_limit: int,
+        snippet_context_chars: int,
+    ) -> list[TerminalSessionHistorySearchMatch]:
+        query_length = len(query)
+        if query_length <= 0:
+            return []
+
+        matches: list[TerminalSessionHistorySearchMatch] = []
+        for snapshot in snapshots:
+            offsets = cls._find_case_insensitive_match_offsets(snapshot.output, query)
+            if not offsets:
+                continue
+            matches.append(
+                TerminalSessionHistorySearchMatch(
+                    record=snapshot.record,
+                    snapshot_at=snapshot.snapshot_at,
+                    match_count=len(offsets),
+                    snippets=cls._build_search_snippets(
+                        snapshot.output,
+                        offsets,
+                        query_length=query_length,
+                        snippet_limit=snippet_limit,
+                        snippet_context_chars=snippet_context_chars,
+                    ),
+                )
+            )
+        matches.sort(
+            key=lambda item: (
+                -item.match_count,
+                -item.snapshot_at.timestamp(),
+                item.record.session_id,
+            )
+        )
+        return matches
+
+    @staticmethod
+    def _find_case_insensitive_match_offsets(text: str, query: str) -> list[int]:
+        if text == "" or query == "":
+            return []
+        lowered_text = text.lower()
+        lowered_query = query.lower()
+        offsets: list[int] = []
+        position = 0
+        while True:
+            found = lowered_text.find(lowered_query, position)
+            if found < 0:
+                break
+            offsets.append(found)
+            position = found + max(1, len(lowered_query))
+        return offsets
+
+    @staticmethod
+    def _build_search_snippets(
+        text: str,
+        offsets: list[int],
+        *,
+        query_length: int,
+        snippet_limit: int,
+        snippet_context_chars: int,
+    ) -> list[str]:
+        snippets: list[str] = []
+        for offset in offsets[:snippet_limit]:
+            start = max(0, offset - snippet_context_chars)
+            end = min(len(text), offset + query_length + snippet_context_chars)
+            snippet = text[start:end]
+            if start > 0:
+                snippet = f"...{snippet}"
+            if end < len(text):
+                snippet = f"{snippet}..."
+            snippets.append(snippet)
+        return snippets
+
     def _list_persisted_history_snapshots(self) -> list[TerminalSessionHistorySnapshot]:
         if not self._history_persist_root.exists():
             return []
@@ -901,6 +1040,8 @@ __all__ = [
     "TerminalBackendUnsupportedError",
     "TerminalSessionConflictError",
     "TerminalSessionEvent",
+    "TerminalSessionHistorySearchMatch",
+    "TerminalSessionHistorySearchPage",
     "TerminalSessionHistorySnapshot",
     "TerminalSessionHistorySummary",
     "TerminalSessionHistoryTimelinePage",
