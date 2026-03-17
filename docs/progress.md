@@ -3,6 +3,7 @@
 最后更新: 2026-03-17 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
+最新提交: `a7dc565` (`feat(terminal): complete M8.5.12 snippet offset deep links`)
 
 ---
 
@@ -116,6 +117,7 @@
 - `M8.5.12` implementation（on `main`）：扩展 `TerminalSessionService` 搜索读模型，新增 `snippet_matches`（`text` + `match_index` + `match_offset`）并保留 `snippets` 兼容字段。
 - `M8.5.12` implementation（on `main`）：扩展 terminal schema + route，新增 `TerminalSessionHistorySearchSnippetResponse` 与 `snippet_matches` 响应字段，保持既有 timeline/detail/current-history 路由和 RBAC 映射不变。
 - `M8.5.12` implementation（on `main`）：扩展 `/terminals` 搜索结果 UX，snippet 可点击并按 `match_offset`（回退 `match_index`）深链到 detail 对应命中高亮位置。
+- `M8.5.12` implementation（on `main`）：里程碑提交为 `a7dc565`（`feat(terminal): complete M8.5.12 snippet offset deep links`）。
 - `M8.5.12` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`（red->green）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`602 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 
 - `M8.5.11` implementation（on `main`）：新增 `docs/plans/2026-03-17-m8-5-11-terminal-search-pagination-cross-session-navigation-design.md` 与 `docs/plans/2026-03-17-m8-5-11-terminal-search-pagination-cross-session-navigation.md`，将范围固定为“search-result pagination + cross-session match navigation”，明确保持 `latest.json` 与 `/sessions/current/history` 兼容。
