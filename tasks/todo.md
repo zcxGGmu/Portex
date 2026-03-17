@@ -1332,8 +1332,8 @@
 - [x] Implement frontend search filter alignment on `/terminals`
 - [x] Run focused terminal regression suite
 - [x] Run full backend/frontend verification plus diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
 - Extended `services/terminal_sessions.py` so `search_history_by_group(...)` accepts additive `status`, `owner_user_id`, and `session_id_prefix` filters and reuses `_filter_history_snapshots(...)` before output matching; filtered-empty snapshot sets now preserve the intended `TerminalSessionNotFoundError` path.
@@ -1351,3 +1351,4 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
+- Feature commit: `93f5385` (`feat(terminal): complete M8.5.13 search filter alignment`).

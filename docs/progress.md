@@ -3,7 +3,7 @@
 最后更新: 2026-03-17 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新提交: `a7dc565` (`feat(terminal): complete M8.5.12 snippet offset deep links`)
+最新提交: `93f5385` (`feat(terminal): complete M8.5.13 search filter alignment`)
 
 ---
 
@@ -107,11 +107,19 @@
 - `M8.5.10` 已完成并已落地到 `main`（terminal history detail local match navigation）。
 - `M8.5.11` 已完成并已落地到 `main`（search-result pagination + cross-session match navigation on `/terminals`）。
 - `M8.5.12` 已完成并已落地到 `main`（snippet-to-offset deep link on `/terminals` search/detail）。
-- 当前起点：`main` 当前代码基线已到 `M8.5.12`；下一步建议进入 post-`M8.5.12` 的搜索体验增强（例如可选结果排序策略或更细粒度的搜索筛选），同时保持 `latest.json` 与 `/sessions/current/history` 兼容边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.13` 已完成并已落地到 `main`（search filter alignment on `/terminals` history search）。
+- 当前起点：`main` 当前代码基线已到 `M8.5.13`；下一步建议进入 post-`M8.5.13` 的搜索体验增强（例如可选结果排序策略或时间范围筛选），同时保持 `latest.json` 与 `/sessions/current/history` 兼容边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.13` implementation（on `main`）：新增 `docs/plans/2026-03-17-m8-5-13-terminal-search-filter-alignment-design.md` 与 `docs/plans/2026-03-17-m8-5-13-terminal-search-filter-alignment.md`，将范围固定为“search filter alignment”，明确保持 `latest.json` 与 `/sessions/current/history` 兼容。
+- `M8.5.13` implementation（on `main`）：扩展 `TerminalSessionService.search_history_by_group(...)`，新增 `status` / `owner_user_id` / `session_id_prefix` 可选筛选，并复用既有 `_filter_history_snapshots(...)` 保持 timeline/search 语义一致。
+- `M8.5.13` implementation（on `main`）：扩展 terminal search route，给 `GET /terminals/{group_id}/sessions/history/search` 增加同名 query 参数，同时保持既有 response DTO、RBAC 映射与 error semantics 不变。
+- `M8.5.13` implementation（on `main`）：扩展 `/terminals` 前端搜索链路，使 search query 复用 timeline filter 状态、将 filters 编入 query key / request params，并在 filter 变化时重置 search offset 与跨页导航状态。
+- `M8.5.13` implementation（on `main`）：里程碑提交为 `93f5385`（`feat(terminal): complete M8.5.13 search filter alignment`）。
+- `M8.5.13` implementation（on `main`）：fresh 验证已通过 `cd web && npm run build`（frontend RED，`status` not in search options）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`、`cd web && npm run lint`、`cd web && npm run build`、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`606 passed`）、`.venv/bin/ruff check .` 与 `git diff --check`。
 
 - `M8.5.12` implementation（on `main`）：新增 `docs/plans/2026-03-17-m8-5-12-terminal-snippet-offset-deeplink-design.md` 与 `docs/plans/2026-03-17-m8-5-12-terminal-snippet-offset-deeplink.md`，将范围固定为“snippet-to-offset deep link”，明确保持 `latest.json` 与 `/sessions/current/history` 兼容。
 - `M8.5.12` implementation（on `main`）：扩展 `TerminalSessionService` 搜索读模型，新增 `snippet_matches`（`text` + `match_index` + `match_offset`）并保留 `snippets` 兼容字段。
@@ -734,7 +742,7 @@
 - `M8.5.5` 当前已完成 active terminal session persistence/recovery：运行时默认 service 启用 startup recovery，恢复态会话可延续 `current/create` 的 owner 冲突语义并在 owner attach 时 lazy 启动 bridge；attach 失败会降级为 `closed` 以允许 fresh create。
 - `M8.5.7` 当前已完成 multi-snapshot history timeline/pagination：`/terminals/{group_id}/sessions/history` 现可按 `limit/offset` 读取 workspace timeline，来源合并 in-memory + `latest.json` + archived snapshots，并保持现有 `latest.json` fallback 合约不回归。
 - `M8.5.8` 当前已完成 history filters/detail：timeline 已支持 `status` / `owner_user_id` / `session_id_prefix` 服务端过滤，`/terminals/{group_id}/sessions/history/{session_id}` 可读取单条 snapshot detail，且 `/terminals` 已提供同页 filter + detail 操作链；该子项已合入 `main`。
-- `M8.5.9` ~ `M8.5.12` 当前都已合入 `main`：已具备 workspace output search、detail local match navigation、search-result pagination + 跨 session 导航，以及 snippet-to-offset 深链能力。
+- `M8.5.9` ~ `M8.5.13` 当前都已合入 `main`：已具备 workspace output search、detail local match navigation、search-result pagination + 跨 session 导航、snippet-to-offset 深链，以及与 timeline 对齐的 search metadata filters。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -745,10 +753,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前代码基线已到 `M8.5.12`。terminal 搜索相关关键点在 `services/terminal_sessions.py`（`search_history_by_group()` + `snippet_matches` metadata）、`app/routes/terminals.py`（`GET /terminals/{group_id}/sessions/history/search` 映射）、`domain/schemas.py`（`TerminalSessionHistorySearchSnippetResponse`）、`web/src/pages/Terminals.tsx`（snippet click deep link 到 detail 命中）。
-3. 如继续 post-`M8.5.12` terminal 开发，建议进入搜索体验增强（例如可选排序策略或更细粒度筛选），并保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引。
+2. `main` 当前代码基线已到 `M8.5.13`。terminal 搜索相关关键点在 `services/terminal_sessions.py`（`search_history_by_group()` + `status/owner_user_id/session_id_prefix` filters）、`app/routes/terminals.py`（`GET /terminals/{group_id}/sessions/history/search` query 映射）、`web/src/api/client.ts` / `web/src/hooks/useApi.ts`（search filter request + cache key）、`web/src/pages/Terminals.tsx`（timeline/search filter 对齐 + snippet deep link）。
+3. 如继续 post-`M8.5.13` terminal 开发，建议进入搜索体验增强（例如可选排序策略或时间范围筛选），并保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引。
 4. 复现当前基线建议命令：
-   - `M8.5.12 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.13 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -760,4 +768,4 @@
 
 ## 5. 一句话版
 
-> `main` 当前已包含 `M8.5.12`；terminal 搜索已具备分页、跨 session 导航与 snippet 深链，下一自然入口是 post-`M8.5.12` 的搜索体验增强（如排序/筛选策略细化）。
+> `main` 当前已包含 `M8.5.13`；terminal 搜索已具备分页、跨 session 导航、snippet 深链以及与 timeline 对齐的 metadata filters，下一自然入口是 post-`M8.5.13` 的搜索体验增强（如排序或时间范围筛选）。
