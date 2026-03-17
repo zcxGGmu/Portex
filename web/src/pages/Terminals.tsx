@@ -34,6 +34,18 @@ const DEFAULT_TIMELINE_FILTERS = {
   snapshotFromLocal: '',
   snapshotToLocal: '',
 }
+type TerminalTimeRangePresetId = '1h' | '6h' | '24h' | '7d' | '30d'
+const TERMINAL_TIME_RANGE_PRESETS: Array<{
+  id: TerminalTimeRangePresetId
+  label: string
+  durationMinutes: number
+}> = [
+  { id: '1h', label: '1h', durationMinutes: 60 },
+  { id: '6h', label: '6h', durationMinutes: 6 * 60 },
+  { id: '24h', label: '24h', durationMinutes: 24 * 60 },
+  { id: '7d', label: '7d', durationMinutes: 7 * 24 * 60 },
+  { id: '30d', label: '30d', durationMinutes: 30 * 24 * 60 },
+]
 
 type MatchRange = {
   start: number
@@ -88,6 +100,44 @@ function localDateTimeToUtcIso(value: string): string | undefined {
     return undefined
   }
   return localDate.toISOString()
+}
+
+function padDateTimePart(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+function toLocalDateTimeInputValue(value: Date): string {
+  const year = value.getFullYear()
+  const month = padDateTimePart(value.getMonth() + 1)
+  const day = padDateTimePart(value.getDate())
+  const hours = padDateTimePart(value.getHours())
+  const minutes = padDateTimePart(value.getMinutes())
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+function buildPresetLocalRange(
+  presetId: TerminalTimeRangePresetId,
+  now: Date = new Date(),
+): {
+  snapshotFromLocal: string
+  snapshotToLocal: string
+} {
+  const preset = TERMINAL_TIME_RANGE_PRESETS.find((item) => item.id === presetId)
+  if (!preset) {
+    return {
+      snapshotFromLocal: '',
+      snapshotToLocal: '',
+    }
+  }
+
+  const end = new Date(now)
+  end.setSeconds(0, 0)
+  const start = new Date(end.getTime() - preset.durationMinutes * 60 * 1000)
+
+  return {
+    snapshotFromLocal: toLocalDateTimeInputValue(start),
+    snapshotToLocal: toLocalDateTimeInputValue(end),
+  }
 }
 
 function summarize(items: TerminalWorkspaceSummary[]) {
@@ -193,6 +243,7 @@ export function Terminals() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOffset, setSearchOffset] = useState(0)
+  const [activePresetId, setActivePresetId] = useState<TerminalTimeRangePresetId | null>(null)
   const [pendingSearchPageMove, setPendingSearchPageMove] = useState<'next' | 'previous' | null>(null)
   const [pendingMatchTarget, setPendingMatchTarget] = useState<PendingMatchTarget | null>(null)
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
@@ -390,6 +441,7 @@ export function Terminals() {
       setTimelineGroupId(null)
       setTimelineOffset(0)
       setTimelineFilters(DEFAULT_TIMELINE_FILTERS)
+      setActivePresetId(null)
       resetSearchState()
       setDetailSessionId(null)
       return
@@ -397,6 +449,7 @@ export function Terminals() {
     setTimelineGroupId(groupId)
     setTimelineOffset(0)
     setTimelineFilters(DEFAULT_TIMELINE_FILTERS)
+    setActivePresetId(null)
     resetSearchState()
     setDetailSessionId(null)
   }
@@ -409,16 +462,26 @@ export function Terminals() {
       snapshotFromLocal: string
       snapshotToLocal: string
     }>,
+    options?: {
+      activePresetId?: TerminalTimeRangePresetId | null
+    },
   ) {
     setTimelineFilters((current) => ({
       ...current,
       ...patch,
     }))
+    if (options && 'activePresetId' in options) {
+      setActivePresetId(options.activePresetId ?? null)
+    }
     setTimelineOffset(0)
     setSearchOffset(0)
     setPendingSearchPageMove(null)
     setDetailSessionId(null)
     setPendingMatchTarget(null)
+  }
+
+  function handlePresetTimeRange(presetId: TerminalTimeRangePresetId) {
+    updateTimelineFilters(buildPresetLocalRange(presetId), { activePresetId: presetId })
   }
 
   function openDetailFromSearch(index: number, anchor: 'first' | 'last') {
@@ -728,6 +791,21 @@ export function Terminals() {
             <section className="panel">
               <h2 style={{ marginTop: 0 }}>History Timeline: {timelineGroupId}</h2>
               <div className="settings-grid" style={{ marginBottom: '1rem' }}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <span className="muted">Preset Ranges</span>
+                  <div className="terminal-actions" style={{ marginTop: '0.35rem' }}>
+                    {TERMINAL_TIME_RANGE_PRESETS.map((preset) => (
+                      <PrimaryButton
+                        key={preset.id}
+                        className={activePresetId === preset.id ? '' : 'button--ghost'}
+                        onClick={() => handlePresetTimeRange(preset.id)}
+                        type="button"
+                      >
+                        {preset.label}
+                      </PrimaryButton>
+                    ))}
+                  </div>
+                </div>
                 <label>
                   <span className="muted">Status</span>
                   <select
@@ -770,7 +848,12 @@ export function Terminals() {
                 <label>
                   <span className="muted">Snapshot From</span>
                   <input
-                    onChange={(event) => updateTimelineFilters({ snapshotFromLocal: event.target.value })}
+                    onChange={(event) =>
+                      updateTimelineFilters(
+                        { snapshotFromLocal: event.target.value },
+                        { activePresetId: null },
+                      )
+                    }
                     style={{ width: '100%', marginTop: '0.35rem' }}
                     type="datetime-local"
                     value={timelineFilters.snapshotFromLocal}
@@ -779,7 +862,12 @@ export function Terminals() {
                 <label>
                   <span className="muted">Snapshot To</span>
                   <input
-                    onChange={(event) => updateTimelineFilters({ snapshotToLocal: event.target.value })}
+                    onChange={(event) =>
+                      updateTimelineFilters(
+                        { snapshotToLocal: event.target.value },
+                        { activePresetId: null },
+                      )
+                    }
                     style={{ width: '100%', marginTop: '0.35rem' }}
                     type="datetime-local"
                     value={timelineFilters.snapshotToLocal}
