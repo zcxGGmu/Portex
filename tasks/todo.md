@@ -1352,3 +1352,24 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Feature commit: `93f5385` (`feat(terminal): complete M8.5.13 search filter alignment`).
+
+# Session Plan (2026-03-17) - M8.5.14 Terminal Time-Range Filters
+
+## Goal
+- Continue post-`M8.5.13` by adding inclusive `snapshot_from` / `snapshot_to` filters to terminal history timeline and search, with local minute-granularity controls on `/terminals`, while preserving RBAC and history compatibility boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and current terminal timeline/search slices
+- [x] Write focused `M8.5.14` design doc
+- [x] Write focused `M8.5.14` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing backend tests for timeline/search time-range filtering (service + route + OpenAPI)
+- [ ] Implement additive backend time-range filter contracts
+- [ ] Drive frontend RED for time-range filter query state
+- [ ] Implement frontend time-range controls on `/terminals`
+- [ ] Run focused terminal regression suite
+- [ ] Run full backend/frontend verification plus diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
