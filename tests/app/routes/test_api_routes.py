@@ -2491,6 +2491,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "TerminalSessionHistoryTimelineResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistorySearchResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistorySearchMatchResponse" in schema["components"]["schemas"]
+    assert "TerminalSessionHistorySearchSnippetResponse" in schema["components"]["schemas"]
     assert "TerminalSessionHistoryDetailResponse" in schema["components"]["schemas"]
 
     terminal_workspace_schema = schema["components"]["schemas"]["TerminalWorkspaceSummaryResponse"]
@@ -2515,6 +2516,14 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     terminal_history_search_match_schema = schema["components"]["schemas"]["TerminalSessionHistorySearchMatchResponse"]
     assert "match_count" in terminal_history_search_match_schema["properties"]
     assert "snippets" in terminal_history_search_match_schema["properties"]
+    assert "snippet_matches" in terminal_history_search_match_schema["properties"]
+
+    terminal_history_search_snippet_schema = schema["components"]["schemas"][
+        "TerminalSessionHistorySearchSnippetResponse"
+    ]
+    assert "text" in terminal_history_search_snippet_schema["properties"]
+    assert "match_index" in terminal_history_search_snippet_schema["properties"]
+    assert "match_offset" in terminal_history_search_snippet_schema["properties"]
 
     terminal_history_detail_schema = schema["components"]["schemas"]["TerminalSessionHistoryDetailResponse"]
     assert "snapshot_at" in terminal_history_detail_schema["properties"]

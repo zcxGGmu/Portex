@@ -166,6 +166,13 @@ export interface TerminalSessionHistorySearchMatch {
   snapshot_at: string
   match_count: number
   snippets: string[]
+  snippet_matches: TerminalSessionHistorySearchSnippet[]
+}
+
+export interface TerminalSessionHistorySearchSnippet {
+  text: string
+  match_index: number
+  match_offset: number
 }
 
 export interface TerminalSessionHistorySearchResponse {

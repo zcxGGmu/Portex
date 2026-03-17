@@ -581,6 +581,18 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
                         snapshot_at=datetime(2026, 3, 17, 10, 5, tzinfo=timezone.utc),
                         match_count=2,
                         snippets=["...ERROR one...", "...error two..."],
+                        snippet_matches=[
+                            SimpleNamespace(
+                                text="...ERROR one...",
+                                match_index=0,
+                                match_offset=120,
+                            ),
+                            SimpleNamespace(
+                                text="...error two...",
+                                match_index=1,
+                                match_offset=256,
+                            ),
+                        ],
                     )
                 ],
             )
@@ -607,6 +619,18 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
     assert payload["items"][0]["session"]["session_id"] == "terminal-session-search"
     assert payload["items"][0]["match_count"] == 2
     assert payload["items"][0]["snippets"] == ["...ERROR one...", "...error two..."]
+    assert payload["items"][0]["snippet_matches"] == [
+        {
+            "text": "...ERROR one...",
+            "match_index": 0,
+            "match_offset": 120,
+        },
+        {
+            "text": "...error two...",
+            "match_index": 1,
+            "match_offset": 256,
+        },
+    ]
     assert service.last_call == ("project-alpha", "error", 1, 0)
 
 

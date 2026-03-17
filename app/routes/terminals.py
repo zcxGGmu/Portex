@@ -16,6 +16,7 @@ from domain.schemas import (
     DeleteTerminalSessionResponse,
     TerminalSessionHistoryDetailResponse,
     TerminalSessionHistorySearchMatchResponse,
+    TerminalSessionHistorySearchSnippetResponse,
     TerminalSessionHistorySearchResponse,
     TerminalSessionHistoryResponse,
     TerminalSessionHistorySummaryResponse,
@@ -78,6 +79,14 @@ def _to_terminal_history_search_match_response(
         snapshot_at=item.snapshot_at,
         match_count=item.match_count,
         snippets=list(item.snippets),
+        snippet_matches=[
+            TerminalSessionHistorySearchSnippetResponse(
+                text=snippet.text,
+                match_index=snippet.match_index,
+                match_offset=snippet.match_offset,
+            )
+            for snippet in item.snippet_matches
+        ],
     )
 
 

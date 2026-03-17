@@ -1,7 +1,11 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { TerminalSessionStatus, TerminalWorkspaceSummary } from '../api/client'
+import type {
+  TerminalSessionHistorySearchMatch,
+  TerminalSessionStatus,
+  TerminalWorkspaceSummary,
+} from '../api/client'
 import { ApiError, apiClient } from '../api/client'
 import { AppLayout } from '../components/layout/AppLayout'
 import { PrimaryButton } from '../components/ui/PrimaryButton'
@@ -37,6 +41,26 @@ type MatchRange = {
 type OutputSegment = {
   text: string
   matchIndex: number | null
+}
+
+type PendingMatchTarget =
+  | { kind: 'first' }
+  | { kind: 'last' }
+  | {
+      kind: 'exact'
+      matchIndex: number
+      matchOffset: number
+    }
+
+function normalizeSnippetMatches(entry: TerminalSessionHistorySearchMatch) {
+  if (entry.snippet_matches.length > 0) {
+    return entry.snippet_matches
+  }
+  return entry.snippets.map((text, matchIndex) => ({
+    text,
+    match_index: matchIndex,
+    match_offset: -1,
+  }))
 }
 
 function formatDate(value: string | null): string {
@@ -153,7 +177,7 @@ export function Terminals() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOffset, setSearchOffset] = useState(0)
   const [pendingSearchPageMove, setPendingSearchPageMove] = useState<'next' | 'previous' | null>(null)
-  const [pendingMatchAnchor, setPendingMatchAnchor] = useState<'first' | 'last' | null>(null)
+  const [pendingMatchTarget, setPendingMatchTarget] = useState<PendingMatchTarget | null>(null)
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
   const [activeDetailMatchIndex, setActiveDetailMatchIndex] = useState(0)
   const activeMatchRef = useRef<HTMLElement | null>(null)
@@ -255,7 +279,7 @@ export function Terminals() {
     const session = searchData.items[targetIndex]?.session
     if (session) {
       setDetailSessionId(session.session_id)
-      setPendingMatchAnchor(pendingSearchPageMove === 'next' ? 'first' : 'last')
+      setPendingMatchTarget({ kind: pendingSearchPageMove === 'next' ? 'first' : 'last' })
     }
     setPendingSearchPageMove(null)
   }, [pendingSearchPageMove, searchData])
@@ -263,18 +287,38 @@ export function Terminals() {
   useEffect(() => {
     if (detailMatchRanges.length === 0) {
       setActiveDetailMatchIndex(0)
-      setPendingMatchAnchor(null)
+      setPendingMatchTarget(null)
       return
     }
 
-    if (pendingMatchAnchor === 'first') {
+    if (pendingMatchTarget?.kind === 'first') {
       setActiveDetailMatchIndex(0)
-      setPendingMatchAnchor(null)
+      setPendingMatchTarget(null)
       return
     }
-    if (pendingMatchAnchor === 'last') {
+    if (pendingMatchTarget?.kind === 'last') {
       setActiveDetailMatchIndex(detailMatchRanges.length - 1)
-      setPendingMatchAnchor(null)
+      setPendingMatchTarget(null)
+      return
+    }
+
+    if (pendingMatchTarget?.kind === 'exact') {
+      const offsetIndex =
+        pendingMatchTarget.matchOffset >= 0
+          ? detailMatchRanges.findIndex((range) => range.start === pendingMatchTarget.matchOffset)
+          : -1
+      if (offsetIndex >= 0) {
+        setActiveDetailMatchIndex(offsetIndex)
+        setPendingMatchTarget(null)
+        return
+      }
+
+      const clampedByIndex = Math.max(
+        0,
+        Math.min(detailMatchRanges.length - 1, pendingMatchTarget.matchIndex),
+      )
+      setActiveDetailMatchIndex(clampedByIndex)
+      setPendingMatchTarget(null)
       return
     }
 
@@ -287,7 +331,7 @@ export function Terminals() {
       }
       return current
     })
-  }, [detailMatchRanges, pendingMatchAnchor])
+  }, [detailMatchRanges, pendingMatchTarget])
 
   useEffect(() => {
     if (!activeMatchRef.current || detailMatchRanges.length === 0) {
@@ -312,7 +356,7 @@ export function Terminals() {
     setSearchQuery('')
     setSearchOffset(0)
     setPendingSearchPageMove(null)
-    setPendingMatchAnchor(null)
+    setPendingMatchTarget(null)
   }
 
   function toggleTimeline(groupId: string) {
@@ -346,7 +390,7 @@ export function Terminals() {
     }))
     setTimelineOffset(0)
     setDetailSessionId(null)
-    setPendingMatchAnchor(null)
+    setPendingMatchTarget(null)
   }
 
   function openDetailFromSearch(index: number, anchor: 'first' | 'last') {
@@ -355,7 +399,25 @@ export function Terminals() {
       return
     }
     setDetailSessionId(session.session_id)
-    setPendingMatchAnchor(anchor)
+    setPendingMatchTarget({ kind: anchor })
+  }
+
+  function openDetailFromSnippet(searchResultIndex: number, entry: TerminalSessionHistorySearchMatch, snippetIndex: number) {
+    const session = searchItems[searchResultIndex]?.session
+    if (!session) {
+      return
+    }
+    const snippet = normalizeSnippetMatches(entry)[snippetIndex]
+    if (!snippet) {
+      return
+    }
+
+    setDetailSessionId(session.session_id)
+    setPendingMatchTarget({
+      kind: 'exact',
+      matchIndex: snippet.match_index,
+      matchOffset: snippet.match_offset,
+    })
   }
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -364,7 +426,7 @@ export function Terminals() {
     setSearchQuery(normalized)
     setSearchOffset(0)
     setPendingSearchPageMove(null)
-    setPendingMatchAnchor('first')
+    setPendingMatchTarget({ kind: 'first' })
     setDetailSessionId(null)
   }
 
@@ -373,7 +435,7 @@ export function Terminals() {
     setSearchQuery('')
     setSearchOffset(0)
     setPendingSearchPageMove(null)
-    setPendingMatchAnchor(null)
+    setPendingMatchTarget(null)
   }
 
   function goToPreviousMatch() {
@@ -756,8 +818,26 @@ export function Terminals() {
                                 <td>{entry.match_count.toLocaleString()}</td>
                                 <td>
                                   <div style={{ display: 'grid', gap: '0.25rem' }}>
-                                    {entry.snippets.map((snippet, snippetIndex) => (
-                                      <code key={`${entry.session.session_id}-snippet-${snippetIndex}`}>{snippet}</code>
+                                    {normalizeSnippetMatches(entry).map((snippet, snippetIndex) => (
+                                      <button
+                                        key={`${entry.session.session_id}-snippet-${snippetIndex}`}
+                                        onClick={() => openDetailFromSnippet(index, entry, snippetIndex)}
+                                        style={{
+                                          background: '#fff',
+                                          border: '1px solid #d0d7de',
+                                          borderRadius: '0.35rem',
+                                          cursor: 'pointer',
+                                          fontFamily:
+                                            'ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
+                                          fontSize: '0.75rem',
+                                          lineHeight: 1.45,
+                                          padding: '0.2rem 0.35rem',
+                                          textAlign: 'left',
+                                        }}
+                                        type="button"
+                                      >
+                                        {snippet.text}
+                                      </button>
                                     ))}
                                   </div>
                                 </td>
@@ -847,7 +927,7 @@ export function Terminals() {
                                   className="button--ghost"
                                   onClick={() => {
                                     setDetailSessionId(entry.session.session_id)
-                                    setPendingMatchAnchor('first')
+                                    setPendingMatchTarget({ kind: 'first' })
                                   }}
                                   type="button"
                                 >

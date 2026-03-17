@@ -1281,3 +1281,37 @@
   - `cd web && npm run lint`
   - `cd web && npm run build`
   - `git diff --check`
+
+# Session Plan (2026-03-17) - M8.5.12 Terminal Snippet-to-Offset Deep Link
+
+## Goal
+- Continue post-`M8.5.11` by adding snippet-level deep links so operators can jump from a specific search snippet directly to its corresponding match location in terminal history detail, while preserving RBAC and history compatibility boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and current terminal search/detail slices
+- [x] Write focused `M8.5.12` design doc
+- [x] Write focused `M8.5.12` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing backend tests for snippet position metadata (service + route + OpenAPI)
+- [x] Implement additive backend snippet metadata contracts (`match_index`, `match_offset`, `text`)
+- [x] Implement frontend snippet click deep link to exact detail match
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-17-m8-5-12-terminal-snippet-offset-deeplink-design.md` and `docs/plans/2026-03-17-m8-5-12-terminal-snippet-offset-deeplink.md` to lock scope as “snippet-to-offset deep link,” while preserving `latest.json` and `/sessions/current/history` compatibility.
+- Extended `services/terminal_sessions.py` with additive snippet metadata in search results: `snippet_matches` (`text`, `match_index`, `match_offset`) while keeping compatibility `snippets`.
+- Extended `domain/schemas.py` and `app/routes/terminals.py` with `TerminalSessionHistorySearchSnippetResponse` and additive `snippet_matches` mapping for `GET /terminals/{group_id}/sessions/history/search`.
+- Added red-green coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for service metadata, route payload contract, and OpenAPI schema exposure.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so search snippets are clickable and deep-link detail selection by `match_offset` with `match_index` fallback.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q` (red then green)
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`602 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Commit: completed in this session with `feat(terminal): complete M8.5.12 snippet offset deep links`.

@@ -106,6 +106,14 @@ class TerminalSessionHistorySearchMatch:
     snapshot_at: datetime
     match_count: int
     snippets: list[str]
+    snippet_matches: list["TerminalSessionHistorySearchSnippet"]
+
+
+@dataclass(frozen=True, slots=True)
+class TerminalSessionHistorySearchSnippet:
+    text: str
+    match_index: int
+    match_offset: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -906,18 +914,20 @@ class TerminalSessionService:
             offsets = cls._find_case_insensitive_match_offsets(snapshot.output, query)
             if not offsets:
                 continue
+            snippet_matches = cls._build_search_snippets(
+                snapshot.output,
+                offsets,
+                query_length=query_length,
+                snippet_limit=snippet_limit,
+                snippet_context_chars=snippet_context_chars,
+            )
             matches.append(
                 TerminalSessionHistorySearchMatch(
                     record=snapshot.record,
                     snapshot_at=snapshot.snapshot_at,
                     match_count=len(offsets),
-                    snippets=cls._build_search_snippets(
-                        snapshot.output,
-                        offsets,
-                        query_length=query_length,
-                        snippet_limit=snippet_limit,
-                        snippet_context_chars=snippet_context_chars,
-                    ),
+                    snippets=[item.text for item in snippet_matches],
+                    snippet_matches=snippet_matches,
                 )
             )
         matches.sort(
@@ -953,9 +963,9 @@ class TerminalSessionService:
         query_length: int,
         snippet_limit: int,
         snippet_context_chars: int,
-    ) -> list[str]:
-        snippets: list[str] = []
-        for offset in offsets[:snippet_limit]:
+    ) -> list[TerminalSessionHistorySearchSnippet]:
+        snippets: list[TerminalSessionHistorySearchSnippet] = []
+        for match_index, offset in enumerate(offsets[:snippet_limit]):
             start = max(0, offset - snippet_context_chars)
             end = min(len(text), offset + query_length + snippet_context_chars)
             snippet = text[start:end]
@@ -963,7 +973,13 @@ class TerminalSessionService:
                 snippet = f"...{snippet}"
             if end < len(text):
                 snippet = f"{snippet}..."
-            snippets.append(snippet)
+            snippets.append(
+                TerminalSessionHistorySearchSnippet(
+                    text=snippet,
+                    match_index=match_index,
+                    match_offset=offset,
+                )
+            )
         return snippets
 
     def _list_persisted_history_snapshots(self) -> list[TerminalSessionHistorySnapshot]:

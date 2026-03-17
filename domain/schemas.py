@@ -984,7 +984,23 @@ class TerminalSessionHistoryTimelineResponse(BaseModel):
     )
 
 
+class TerminalSessionHistorySearchSnippetResponse(BaseModel):
+    text: str = Field(
+        description="Bounded plain-text snippet around one matching output fragment.",
+        examples=["...ERROR one..."],
+    )
+    match_index: int = Field(
+        description="Zero-based match index for this session output.",
+        examples=[0],
+    )
+    match_offset: int = Field(
+        description="Zero-based character offset where this match starts in session output.",
+        examples=[120],
+    )
+
+
 class TerminalSessionHistorySearchMatchResponse(BaseModel):
+
     session: TerminalSessionResponse = Field(
         description="Terminal session snapshot associated with this search result.",
     )
@@ -999,6 +1015,9 @@ class TerminalSessionHistorySearchMatchResponse(BaseModel):
     snippets: list[str] = Field(
         description="Bounded plain-text snippets around matching output fragments.",
         examples=[["...ERROR one...", "...error two..."]],
+    )
+    snippet_matches: list[TerminalSessionHistorySearchSnippetResponse] = Field(
+        description="Snippet metadata with stable match index/offset for deep-linking detail highlights.",
     )
 
 

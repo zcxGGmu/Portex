@@ -1175,12 +1175,17 @@ async def test_terminal_session_service_searches_history_output_with_pagination(
     assert first_page.items[0].match_count == 2
     assert first_page.items[0].snippets
     assert "error" in first_page.items[0].snippets[0].lower()
+    assert [item.match_index for item in first_page.items[0].snippet_matches] == [0, 1]
+    assert [item.match_offset for item in first_page.items[0].snippet_matches] == [0, 10]
+    assert first_page.items[0].snippet_matches[0].text == first_page.items[0].snippets[0]
 
     assert second_page.total == 2
     assert second_page.has_more is False
     assert len(second_page.items) == 1
     assert second_page.items[0].record.session_id == active.session_id
     assert second_page.items[0].match_count == 1
+    assert [item.match_index for item in second_page.items[0].snippet_matches] == [0]
+    assert [item.match_offset for item in second_page.items[0].snippet_matches] == [7]
 
 
 @pytest.mark.asyncio
