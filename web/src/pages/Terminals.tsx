@@ -31,6 +31,8 @@ const DEFAULT_TIMELINE_FILTERS = {
   status: '' as TerminalSessionStatus | '',
   ownerUserId: '',
   sessionIdPrefix: '',
+  snapshotFromLocal: '',
+  snapshotToLocal: '',
 }
 
 type MatchRange = {
@@ -73,6 +75,19 @@ function formatDate(value: string | null): string {
     return value
   }
   return date.toLocaleString()
+}
+
+function localDateTimeToUtcIso(value: string): string | undefined {
+  const normalized = value.trim()
+  if (!normalized) {
+    return undefined
+  }
+
+  const localDate = new Date(normalized)
+  if (Number.isNaN(localDate.getTime())) {
+    return undefined
+  }
+  return localDate.toISOString()
 }
 
 function summarize(items: TerminalWorkspaceSummary[]) {
@@ -172,6 +187,8 @@ export function Terminals() {
     status: TerminalSessionStatus | ''
     ownerUserId: string
     sessionIdPrefix: string
+    snapshotFromLocal: string
+    snapshotToLocal: string
   }>(DEFAULT_TIMELINE_FILTERS)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -197,6 +214,8 @@ export function Terminals() {
       status: timelineFilters.status || undefined,
       ownerUserId: timelineFilters.ownerUserId || undefined,
       sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
+      snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     },
     isOperator && timelineGroupId !== null,
   )
@@ -217,6 +236,8 @@ export function Terminals() {
       status: timelineFilters.status || undefined,
       ownerUserId: timelineFilters.ownerUserId || undefined,
       sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
+      snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     },
     isOperator && timelineGroupId !== null && normalizedSearchQuery !== '',
   )
@@ -385,6 +406,8 @@ export function Terminals() {
       status: TerminalSessionStatus | ''
       ownerUserId: string
       sessionIdPrefix: string
+      snapshotFromLocal: string
+      snapshotToLocal: string
     }>,
   ) {
     setTimelineFilters((current) => ({
@@ -742,6 +765,24 @@ export function Terminals() {
                     style={{ width: '100%', marginTop: '0.35rem' }}
                     type="text"
                     value={timelineFilters.sessionIdPrefix}
+                  />
+                </label>
+                <label>
+                  <span className="muted">Snapshot From</span>
+                  <input
+                    onChange={(event) => updateTimelineFilters({ snapshotFromLocal: event.target.value })}
+                    style={{ width: '100%', marginTop: '0.35rem' }}
+                    type="datetime-local"
+                    value={timelineFilters.snapshotFromLocal}
+                  />
+                </label>
+                <label>
+                  <span className="muted">Snapshot To</span>
+                  <input
+                    onChange={(event) => updateTimelineFilters({ snapshotToLocal: event.target.value })}
+                    style={{ width: '100%', marginTop: '0.35rem' }}
+                    type="datetime-local"
+                    value={timelineFilters.snapshotToLocal}
                   />
                 </label>
               </div>

@@ -609,6 +609,8 @@ export const apiClient = {
       status?: TerminalSessionStatus
       ownerUserId?: string
       sessionIdPrefix?: string
+      snapshotFrom?: string
+      snapshotTo?: string
     } = {},
   ): Promise<TerminalSessionHistoryTimelineResponse> {
     const params = new URLSearchParams()
@@ -627,6 +629,12 @@ export const apiClient = {
     if (options.sessionIdPrefix) {
       params.set('session_id_prefix', options.sessionIdPrefix)
     }
+    if (options.snapshotFrom) {
+      params.set('snapshot_from', options.snapshotFrom)
+    }
+    if (options.snapshotTo) {
+      params.set('snapshot_to', options.snapshotTo)
+    }
     const suffix = params.toString() ? `?${params.toString()}` : ''
     return request<TerminalSessionHistoryTimelineResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history${suffix}`,
@@ -643,6 +651,8 @@ export const apiClient = {
       status?: TerminalSessionStatus
       ownerUserId?: string
       sessionIdPrefix?: string
+      snapshotFrom?: string
+      snapshotTo?: string
     },
   ): Promise<TerminalSessionHistorySearchResponse> {
     const query = options.query.trim()
@@ -665,6 +675,12 @@ export const apiClient = {
     }
     if (options.sessionIdPrefix) {
       params.set('session_id_prefix', options.sessionIdPrefix)
+    }
+    if (options.snapshotFrom) {
+      params.set('snapshot_from', options.snapshotFrom)
+    }
+    if (options.snapshotTo) {
+      params.set('snapshot_to', options.snapshotTo)
     }
     return request<TerminalSessionHistorySearchResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history/search?${params.toString()}`,

@@ -240,6 +240,8 @@ export function useTerminalHistoryTimelineQuery(
     status?: 'created' | 'attached' | 'detached' | 'closed' | 'exited'
     ownerUserId?: string
     sessionIdPrefix?: string
+    snapshotFrom?: string
+    snapshotTo?: string
   },
   enabled = true,
 ) {
@@ -255,6 +257,8 @@ export function useTerminalHistoryTimelineQuery(
       options.status ?? null,
       options.ownerUserId ?? null,
       options.sessionIdPrefix ?? null,
+      options.snapshotFrom ?? null,
+      options.snapshotTo ?? null,
     ],
     enabled: Boolean(token && groupId) && enabled,
     queryFn: async () => {
@@ -298,6 +302,8 @@ export function useTerminalHistorySearchQuery(
     status?: 'created' | 'attached' | 'detached' | 'closed' | 'exited'
     ownerUserId?: string
     sessionIdPrefix?: string
+    snapshotFrom?: string
+    snapshotTo?: string
   },
   enabled = true,
 ) {
@@ -315,6 +321,8 @@ export function useTerminalHistorySearchQuery(
       options.status ?? null,
       options.ownerUserId ?? null,
       options.sessionIdPrefix ?? null,
+      options.snapshotFrom ?? null,
+      options.snapshotTo ?? null,
     ],
     enabled: Boolean(token && groupId && normalizedQuery) && enabled,
     queryFn: async () => {
@@ -329,6 +337,8 @@ export function useTerminalHistorySearchQuery(
         status: options.status,
         ownerUserId: options.ownerUserId,
         sessionIdPrefix: options.sessionIdPrefix,
+        snapshotFrom: options.snapshotFrom,
+        snapshotTo: options.snapshotTo,
       })
     },
     staleTime: 5_000,
