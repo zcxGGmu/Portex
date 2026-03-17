@@ -1315,3 +1315,24 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Commit: completed in this session with `feat(terminal): complete M8.5.12 snippet offset deep links`.
+
+# Session Plan (2026-03-17) - M8.5.13 Terminal Search Filter Alignment
+
+## Goal
+- Continue post-`M8.5.12` by aligning terminal-history search with the existing timeline filters (`status`, `owner_user_id`, `session_id_prefix`) while preserving RBAC and history compatibility boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and current terminal search/timeline slices
+- [x] Write focused `M8.5.13` design doc
+- [x] Write focused `M8.5.13` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing backend tests for filtered search behavior (service + route + OpenAPI)
+- [ ] Implement additive backend search filter contracts
+- [ ] Drive frontend RED for filter-aligned search query state
+- [ ] Implement frontend search filter alignment on `/terminals`
+- [ ] Run focused terminal regression suite
+- [ ] Run full backend/frontend verification plus diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
