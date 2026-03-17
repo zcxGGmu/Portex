@@ -1230,6 +1230,230 @@ async def test_terminal_session_service_search_returns_empty_page_when_no_match(
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_search_filters_snapshots_by_status(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    closed_owner_1 = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _closed_owner_1_attached, queue_0 = await service.attach_session(
+        closed_owner_1.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error in closed owner one\n")
+    await asyncio.wait_for(queue_0.get(), timeout=0.1)
+    await service.close_session(closed_owner_1.session_id, owner_user_id="owner-1")
+
+    attached_owner_2 = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    _attached_owner_2_record, queue_1 = await service.attach_session(
+        attached_owner_2.session_id,
+        owner_user_id="owner-2",
+    )
+    await created_bridges[1].emit_output("error in attached owner two\n")
+    await asyncio.wait_for(queue_1.get(), timeout=0.1)
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+        status="closed",
+    )
+
+    assert page.total == 1
+    assert len(page.items) == 1
+    assert page.items[0].record.session_id == closed_owner_1.session_id
+    assert page.items[0].record.status == "closed"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_search_filters_snapshots_by_owner_user_id(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    owner_1_session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _owner_1_record, queue_0 = await service.attach_session(
+        owner_1_session.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error in owner one session\n")
+    await asyncio.wait_for(queue_0.get(), timeout=0.1)
+    await service.close_session(owner_1_session.session_id, owner_user_id="owner-1")
+
+    owner_2_session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    _owner_2_record, queue_1 = await service.attach_session(
+        owner_2_session.session_id,
+        owner_user_id="owner-2",
+    )
+    await created_bridges[1].emit_output("error in owner two session\n")
+    await asyncio.wait_for(queue_1.get(), timeout=0.1)
+    await service.close_session(owner_2_session.session_id, owner_user_id="owner-2")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+        owner_user_id="owner-2",
+    )
+
+    assert page.total == 1
+    assert len(page.items) == 1
+    assert page.items[0].record.session_id == owner_2_session.session_id
+    assert page.items[0].record.owner_user_id == "owner-2"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_search_filters_snapshots_by_session_id_prefix(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    first_session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _first_record, queue_0 = await service.attach_session(
+        first_session.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error in first session\n")
+    await asyncio.wait_for(queue_0.get(), timeout=0.1)
+    await service.close_session(first_session.session_id, owner_user_id="owner-1")
+
+    second_session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _second_record, queue_1 = await service.attach_session(
+        second_session.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("error in second session\n")
+    await asyncio.wait_for(queue_1.get(), timeout=0.1)
+    await service.close_session(second_session.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+        session_id_prefix=second_session.session_id[:12],
+    )
+
+    assert page.total == 1
+    assert len(page.items) == 1
+    assert page.items[0].record.session_id == second_session.session_id
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_search_raises_when_filters_remove_all_snapshots(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionNotFoundError, TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _record, queue = await service.attach_session(
+        session.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error in only session\n")
+    await asyncio.wait_for(queue.get(), timeout=0.1)
+    await service.close_session(session.session_id, owner_user_id="owner-1")
+
+    with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
+        await service.search_history_by_group(
+            "project-alpha",
+            query="error",
+            limit=10,
+            offset=0,
+            owner_user_id="owner-2",
+        )
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_search_raises_for_missing_workspace() -> None:
     from services.terminal_sessions import TerminalSessionNotFoundError, TerminalSessionService
 

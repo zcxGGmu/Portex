@@ -299,6 +299,9 @@ class TerminalSessionService:
         query: str,
         limit: int = 20,
         offset: int = 0,
+        status: TerminalSessionStatus | None = None,
+        owner_user_id: str | None = None,
+        session_id_prefix: str | None = None,
         snippet_limit: int = _DEFAULT_SEARCH_SNIPPET_LIMIT,
         snippet_context_chars: int = _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS,
     ) -> TerminalSessionHistorySearchPage:
@@ -315,8 +318,16 @@ class TerminalSessionService:
             raise ValueError("snippet_context_chars must be non-negative")
 
         snapshots = await self._list_merged_history_snapshots_by_group(group_folder)
-        items = self._search_history_snapshots(
+        filtered = self._filter_history_snapshots(
             snapshots,
+            status=status,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+        )
+        if not filtered:
+            raise TerminalSessionNotFoundError("terminal session not found")
+        items = self._search_history_snapshots(
+            filtered,
             query=normalized_query,
             snippet_limit=snippet_limit,
             snippet_context_chars=snippet_context_chars,

@@ -1326,13 +1326,28 @@
 - [x] Write focused `M8.5.13` design doc
 - [x] Write focused `M8.5.13` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing backend tests for filtered search behavior (service + route + OpenAPI)
-- [ ] Implement additive backend search filter contracts
-- [ ] Drive frontend RED for filter-aligned search query state
-- [ ] Implement frontend search filter alignment on `/terminals`
-- [ ] Run focused terminal regression suite
-- [ ] Run full backend/frontend verification plus diff hygiene
+- [x] Add failing backend tests for filtered search behavior (service + route + OpenAPI)
+- [x] Implement additive backend search filter contracts
+- [x] Drive frontend RED for filter-aligned search query state
+- [x] Implement frontend search filter alignment on `/terminals`
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
 - [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
 - [ ] Commit milestone changes with a detailed message
 
 ## Review
+- Extended `services/terminal_sessions.py` so `search_history_by_group(...)` accepts additive `status`, `owner_user_id`, and `session_id_prefix` filters and reuses `_filter_history_snapshots(...)` before output matching; filtered-empty snapshot sets now preserve the intended `TerminalSessionNotFoundError` path.
+- Extended `app/routes/terminals.py` so `GET /terminals/{group_id}/sessions/history/search` accepts the same three optional query parameters as the timeline route and forwards them without changing the response DTO shape.
+- Added backend coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for independent service filter behavior, filtered-empty `404`, route pass-through, and OpenAPI parameter exposure.
+- Extended `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, and `web/src/pages/Terminals.tsx` so terminal-history search reuses the current timeline filter state, includes those filters in the query key/request params, and resets search pagination/navigation state when filters change.
+- Verification executed:
+  - `npm run build` in `web/` RED before frontend wiring: TypeScript rejected extra `status` property on `useTerminalHistorySearchQuery(...)` options.
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest -o addopts='' -q` (`606 passed`)
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`

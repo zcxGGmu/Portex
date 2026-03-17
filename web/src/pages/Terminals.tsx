@@ -214,6 +214,9 @@ export function Terminals() {
       query: normalizedSearchQuery,
       limit: SEARCH_PAGE_SIZE,
       offset: searchOffset,
+      status: timelineFilters.status || undefined,
+      ownerUserId: timelineFilters.ownerUserId || undefined,
+      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
     },
     isOperator && timelineGroupId !== null && normalizedSearchQuery !== '',
   )
@@ -389,6 +392,8 @@ export function Terminals() {
       ...patch,
     }))
     setTimelineOffset(0)
+    setSearchOffset(0)
+    setPendingSearchPageMove(null)
     setDetailSessionId(null)
     setPendingMatchTarget(null)
   }

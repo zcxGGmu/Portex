@@ -295,6 +295,9 @@ export function useTerminalHistorySearchQuery(
     query: string
     limit: number
     offset: number
+    status?: 'created' | 'attached' | 'detached' | 'closed' | 'exited'
+    ownerUserId?: string
+    sessionIdPrefix?: string
   },
   enabled = true,
 ) {
@@ -309,6 +312,9 @@ export function useTerminalHistorySearchQuery(
       normalizedQuery,
       options.limit,
       options.offset,
+      options.status ?? null,
+      options.ownerUserId ?? null,
+      options.sessionIdPrefix ?? null,
     ],
     enabled: Boolean(token && groupId && normalizedQuery) && enabled,
     queryFn: async () => {
@@ -320,6 +326,9 @@ export function useTerminalHistorySearchQuery(
         query: normalizedQuery,
         limit: options.limit,
         offset: options.offset,
+        status: options.status,
+        ownerUserId: options.ownerUserId,
+        sessionIdPrefix: options.sessionIdPrefix,
       })
     },
     staleTime: 5_000,

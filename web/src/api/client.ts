@@ -640,6 +640,9 @@ export const apiClient = {
       query: string
       limit?: number
       offset?: number
+      status?: TerminalSessionStatus
+      ownerUserId?: string
+      sessionIdPrefix?: string
     },
   ): Promise<TerminalSessionHistorySearchResponse> {
     const query = options.query.trim()
@@ -653,6 +656,15 @@ export const apiClient = {
     }
     if (typeof options.offset === 'number') {
       params.set('offset', String(options.offset))
+    }
+    if (options.status) {
+      params.set('status', options.status)
+    }
+    if (options.ownerUserId) {
+      params.set('owner_user_id', options.ownerUserId)
+    }
+    if (options.sessionIdPrefix) {
+      params.set('session_id_prefix', options.sessionIdPrefix)
     }
     return request<TerminalSessionHistorySearchResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history/search?${params.toString()}`,

@@ -556,7 +556,7 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
                 status="closed",
                 created_at=datetime(2026, 3, 17, 10, 0, tzinfo=timezone.utc),
             )
-            self.last_call: tuple[str, str, int, int] | None = None
+            self.last_call: tuple[str, str, int, int, str | None, str | None, str | None] | None = None
 
         async def search_history_by_group(
             self,
@@ -565,10 +565,21 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
             query: str,
             limit: int,
             offset: int,
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
         ):
             from datetime import datetime, timezone
 
-            self.last_call = (group_folder, query, limit, offset)
+            self.last_call = (
+                group_folder,
+                query,
+                limit,
+                offset,
+                status,
+                owner_user_id,
+                session_id_prefix,
+            )
             return SimpleNamespace(
                 query=query,
                 limit=limit,
@@ -603,7 +614,8 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
 
     try:
         response = api_client.get(
-            "/terminals/project-alpha/sessions/history/search?q=error&limit=1&offset=0",
+            "/terminals/project-alpha/sessions/history/search?q=error&limit=1&offset=0"
+            f"&status=closed&owner_user_id={owner_id}&session_id_prefix=terminal-session",
             headers=owner_headers,
         )
     finally:
@@ -631,7 +643,15 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
             "match_offset": 256,
         },
     ]
-    assert service.last_call == ("project-alpha", "error", 1, 0)
+    assert service.last_call == (
+        "project-alpha",
+        "error",
+        1,
+        0,
+        "closed",
+        owner_id,
+        "terminal-session",
+    )
 
 
 def test_terminal_history_search_route_returns_empty_page_when_no_match(
@@ -653,8 +673,11 @@ def test_terminal_history_search_route_returns_empty_page_when_no_match(
             query: str,
             limit: int,
             offset: int,
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
         ):
-            _ = (group_folder, query, limit, offset)
+            _ = (group_folder, query, limit, offset, status, owner_user_id, session_id_prefix)
             return SimpleNamespace(
                 query=query,
                 limit=limit,
@@ -700,8 +723,11 @@ def test_terminal_history_search_route_returns_404_when_workspace_has_no_history
             query: str,
             limit: int,
             offset: int,
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
         ):
-            _ = (group_folder, query, limit, offset)
+            _ = (group_folder, query, limit, offset, status, owner_user_id, session_id_prefix)
             raise TerminalSessionNotFoundError("terminal session not found")
 
     app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
