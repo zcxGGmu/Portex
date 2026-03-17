@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from pathlib import Path
 import sys
 
@@ -977,6 +978,134 @@ async def test_terminal_session_service_filters_history_timeline_by_owner_and_pr
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_filters_history_timeline_by_snapshot_from_and_to(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    persist_root = tmp_path / "terminal-history"
+    writer = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+    first = await writer.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await writer.close_session(first.session_id, owner_user_id="owner-1")
+    second = await writer.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await writer.close_session(second.session_id, owner_user_id="owner-1")
+    third = await writer.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await writer.close_session(third.session_id, owner_user_id="owner-1")
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=persist_root,
+    )
+
+    page = await service.list_history_timeline_by_group("project-alpha", limit=20, offset=0)
+    snapshots_by_id = {item.record.session_id: item.snapshot_at for item in page.items}
+    second_snapshot_at = snapshots_by_id[second.session_id]
+    third_snapshot_at = snapshots_by_id[third.session_id]
+    lower_bound = min(second_snapshot_at, third_snapshot_at)
+    upper_bound = max(second_snapshot_at, third_snapshot_at)
+
+    from_filtered = await service.list_history_timeline_by_group(
+        "project-alpha",
+        limit=20,
+        offset=0,
+        snapshot_from=second_snapshot_at,
+    )
+    to_filtered = await service.list_history_timeline_by_group(
+        "project-alpha",
+        limit=20,
+        offset=0,
+        snapshot_to=second_snapshot_at,
+    )
+    bounded = await service.list_history_timeline_by_group(
+        "project-alpha",
+        limit=20,
+        offset=0,
+        snapshot_from=lower_bound,
+        snapshot_to=upper_bound,
+    )
+
+    expected_from = [
+        item.record.session_id
+        for item in page.items
+        if item.snapshot_at >= second_snapshot_at
+    ]
+    expected_to = [
+        item.record.session_id
+        for item in page.items
+        if item.snapshot_at <= second_snapshot_at
+    ]
+    expected_bounded = {
+        item.record.session_id
+        for item in page.items
+        if lower_bound <= item.snapshot_at <= upper_bound
+    }
+
+    assert [item.record.session_id for item in from_filtered.items] == expected_from
+    assert [item.record.session_id for item in to_filtered.items] == expected_to
+    assert {item.record.session_id for item in bounded.items} == expected_bounded
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_time_range_filters_reject_invalid_bounds(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await service.close_session(session.session_id, owner_user_id="owner-1")
+    page = await service.list_history_timeline_by_group("project-alpha", limit=20, offset=0)
+    snapshot_at = page.items[0].snapshot_at
+
+    with pytest.raises(ValueError, match="snapshot_from must be less than or equal to snapshot_to"):
+        await service.list_history_timeline_by_group(
+            "project-alpha",
+            limit=20,
+            offset=0,
+            snapshot_from=snapshot_at,
+            snapshot_to=snapshot_at - timedelta(seconds=1),
+        )
+    with pytest.raises(ValueError, match="snapshot_from must be less than or equal to snapshot_to"):
+        await service.search_history_by_group(
+            "project-alpha",
+            query="error",
+            limit=20,
+            offset=0,
+            snapshot_from=snapshot_at,
+            snapshot_to=snapshot_at - timedelta(seconds=1),
+        )
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_get_history_snapshot_reads_archived_session(
     tmp_path: Path,
 ) -> None:
@@ -1287,6 +1416,68 @@ async def test_terminal_session_service_search_filters_snapshots_by_status(
     assert len(page.items) == 1
     assert page.items[0].record.session_id == closed_owner_1.session_id
     assert page.items[0].record.status == "closed"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_search_filters_snapshots_by_snapshot_to(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    older = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _older_attached, older_queue = await service.attach_session(
+        older.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error in older session\n")
+    await asyncio.wait_for(older_queue.get(), timeout=0.1)
+    await service.close_session(older.session_id, owner_user_id="owner-1")
+
+    newer = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _newer_attached, newer_queue = await service.attach_session(
+        newer.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("error in newer session\n")
+    await asyncio.wait_for(newer_queue.get(), timeout=0.1)
+    await service.close_session(newer.session_id, owner_user_id="owner-1")
+
+    timeline_page = await service.list_history_timeline_by_group("project-alpha", limit=20, offset=0)
+    snapshots_by_id = {item.record.session_id: item.snapshot_at for item in timeline_page.items}
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=20,
+        offset=0,
+        snapshot_to=snapshots_by_id[older.session_id],
+    )
+
+    assert page.total == 1
+    assert [item.record.session_id for item in page.items] == [older.session_id]
 
 
 @pytest.mark.asyncio

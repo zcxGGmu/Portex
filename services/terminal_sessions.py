@@ -252,6 +252,8 @@ class TerminalSessionService:
         status: TerminalSessionStatus | None = None,
         owner_user_id: str | None = None,
         session_id_prefix: str | None = None,
+        snapshot_from: datetime | None = None,
+        snapshot_to: datetime | None = None,
     ) -> TerminalSessionHistoryTimelinePage:
         if limit <= 0:
             raise ValueError("limit must be positive")
@@ -263,6 +265,8 @@ class TerminalSessionService:
             status=status,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
         )
         if not filtered:
             raise TerminalSessionNotFoundError("terminal session not found")
@@ -302,6 +306,8 @@ class TerminalSessionService:
         status: TerminalSessionStatus | None = None,
         owner_user_id: str | None = None,
         session_id_prefix: str | None = None,
+        snapshot_from: datetime | None = None,
+        snapshot_to: datetime | None = None,
         snippet_limit: int = _DEFAULT_SEARCH_SNIPPET_LIMIT,
         snippet_context_chars: int = _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS,
     ) -> TerminalSessionHistorySearchPage:
@@ -323,6 +329,8 @@ class TerminalSessionService:
             status=status,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
         )
         if not filtered:
             raise TerminalSessionNotFoundError("terminal session not found")
@@ -882,7 +890,18 @@ class TerminalSessionService:
         status: TerminalSessionStatus | None,
         owner_user_id: str | None,
         session_id_prefix: str | None,
+        snapshot_from: datetime | None = None,
+        snapshot_to: datetime | None = None,
     ) -> list[TerminalSessionHistorySnapshot]:
+        normalized_snapshot_from = TerminalSessionService._normalize_snapshot_bound(snapshot_from)
+        normalized_snapshot_to = TerminalSessionService._normalize_snapshot_bound(snapshot_to)
+        if (
+            normalized_snapshot_from is not None
+            and normalized_snapshot_to is not None
+            and normalized_snapshot_from > normalized_snapshot_to
+        ):
+            raise ValueError("snapshot_from must be less than or equal to snapshot_to")
+
         normalized_owner_user_id = None if owner_user_id is None else owner_user_id.strip()
         if normalized_owner_user_id == "":
             normalized_owner_user_id = None
@@ -904,8 +923,20 @@ class TerminalSessionService:
                 and not snapshot.record.session_id.startswith(normalized_session_id_prefix)
             ):
                 continue
+            if normalized_snapshot_from is not None and snapshot.snapshot_at < normalized_snapshot_from:
+                continue
+            if normalized_snapshot_to is not None and snapshot.snapshot_at > normalized_snapshot_to:
+                continue
             filtered.append(snapshot)
         return filtered
+
+    @staticmethod
+    def _normalize_snapshot_bound(value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
     @classmethod
     def _search_history_snapshots(

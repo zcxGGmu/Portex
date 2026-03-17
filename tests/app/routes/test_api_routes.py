@@ -2284,6 +2284,8 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "status" in parameter_names
     assert "owner_user_id" in parameter_names
     assert "session_id_prefix" in parameter_names
+    assert "snapshot_from" in parameter_names
+    assert "snapshot_to" in parameter_names
 
     get_terminal_history_search_operation = schema["paths"]["/terminals/{group_id}/sessions/history/search"]["get"]
     assert "search" in get_terminal_history_search_operation["summary"].lower()
@@ -2295,6 +2297,8 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "status" in search_parameter_names
     assert "owner_user_id" in search_parameter_names
     assert "session_id_prefix" in search_parameter_names
+    assert "snapshot_from" in search_parameter_names
+    assert "snapshot_to" in search_parameter_names
 
     get_terminal_history_detail_operation = schema["paths"]["/terminals/{group_id}/sessions/history/{session_id}"][
         "get"

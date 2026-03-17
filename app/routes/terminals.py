@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import json
 from typing import Literal
 
@@ -386,6 +387,8 @@ async def get_terminal_history_timeline(
     ),
     owner_user_id: str | None = Query(default=None),
     session_id_prefix: str | None = Query(default=None),
+    snapshot_from: datetime | None = Query(default=None),
+    snapshot_to: datetime | None = Query(default=None),
     current_user: UserResponse = Depends(get_current_user),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
     service: TerminalSessionService = Depends(get_terminal_session_service),
@@ -404,6 +407,8 @@ async def get_terminal_history_timeline(
             status=status_filter,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
         )
     except Exception as exc:
         raise _map_terminal_error(exc) from exc
@@ -438,6 +443,8 @@ async def search_terminal_history_output(
     ),
     owner_user_id: str | None = Query(default=None),
     session_id_prefix: str | None = Query(default=None),
+    snapshot_from: datetime | None = Query(default=None),
+    snapshot_to: datetime | None = Query(default=None),
     current_user: UserResponse = Depends(get_current_user),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
     service: TerminalSessionService = Depends(get_terminal_session_service),
@@ -457,6 +464,8 @@ async def search_terminal_history_output(
             status=status_filter,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
         )
     except Exception as exc:
         raise _map_terminal_error(exc) from exc
