@@ -130,6 +130,8 @@ class TerminalSessionHistorySearchPage:
 @dataclass(frozen=True, slots=True)
 class _TerminalSessionHistorySearchCandidate:
     match: TerminalSessionHistorySearchMatch
+    whole_word_match_count: int
+    first_whole_word_offset: int
     cluster_span: int
     first_match_offset: int
     match_density: float
@@ -986,7 +988,9 @@ class TerminalSessionService:
             candidates.append(
                 cls._build_search_candidate(
                     match=match,
+                    text=snapshot.output,
                     offsets=offsets,
+                    query_length=query_length,
                     output_length=len(snapshot.output),
                 )
             )
@@ -996,19 +1000,56 @@ class TerminalSessionService:
     def _build_search_candidate(
         *,
         match: TerminalSessionHistorySearchMatch,
+        text: str,
         offsets: list[int],
+        query_length: int,
         output_length: int,
     ) -> _TerminalSessionHistorySearchCandidate:
+        whole_word_match_count, first_whole_word_offset = TerminalSessionService._count_whole_word_hits(
+            text,
+            offsets,
+            query_length=query_length,
+        )
         first_match_offset = offsets[0]
         cluster_span = offsets[-1] - first_match_offset
         normalized_output_length = max(1, output_length)
         match_density = match.match_count / normalized_output_length
         return _TerminalSessionHistorySearchCandidate(
             match=match,
+            whole_word_match_count=whole_word_match_count,
+            first_whole_word_offset=first_whole_word_offset,
             cluster_span=cluster_span,
             first_match_offset=first_match_offset,
             match_density=match_density,
         )
+
+    @staticmethod
+    def _count_whole_word_hits(text: str, offsets: list[int], *, query_length: int) -> tuple[int, int]:
+        whole_word_offsets = [
+            offset
+            for offset in offsets
+            if TerminalSessionService._is_whole_word_match(text, offset, query_length=query_length)
+        ]
+        if not whole_word_offsets:
+            return 0, len(text) + 1
+        return len(whole_word_offsets), whole_word_offsets[0]
+
+    @staticmethod
+    def _is_whole_word_match(text: str, offset: int, *, query_length: int) -> bool:
+        start = offset
+        end = offset + query_length
+        if start < 0 or end > len(text):
+            return False
+
+        prev_char = text[start - 1] if start > 0 else None
+        next_char = text[end] if end < len(text) else None
+        prev_is_word_char = False if prev_char is None else TerminalSessionService._is_word_char(prev_char)
+        next_is_word_char = False if next_char is None else TerminalSessionService._is_word_char(next_char)
+        return not prev_is_word_char and not next_is_word_char
+
+    @staticmethod
+    def _is_word_char(char: str) -> bool:
+        return ("a" <= char <= "z") or ("A" <= char <= "Z") or ("0" <= char <= "9") or char == "_"
 
     @staticmethod
     def _normalize_search_sort(sort: str | None) -> TerminalHistorySearchSort:
@@ -1026,6 +1067,8 @@ class TerminalSessionService:
             matches.sort(
                 key=lambda item: (
                     -item.match.match_count,
+                    -item.whole_word_match_count,
+                    item.first_whole_word_offset,
                     item.cluster_span,
                     item.first_match_offset,
                     -item.match_density,
