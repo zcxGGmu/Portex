@@ -2,10 +2,10 @@
 
 最后更新: 2026-03-18 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
-当前分支: `feat/m8-5-17-terminal-relevance-ranking`
-最新功能提交: `a40fdda` (`feat(terminal): refine M8.5.17 relevance ranking`)
-最新 planning 提交: `372bf85` (`docs(plans): add M8.5.17 terminal relevance ranking implementation plan`)
-最近一次 handoff 同步: `4c2340e` (`docs(handoff): sync M8.5.16 search sort context`)；当前分支待写入 `M8.5.17` handoff 提交
+当前分支: `feat/m8-5-18-terminal-word-boundary-ranking`
+最新功能提交: `244da16` (`feat(terminal): add M8.5.18 word-boundary relevance`)
+最新 planning 提交: `a5f0c47` (`docs(plans): add M8.5.18 word-boundary relevance plan`)
+最近一次 handoff 同步: 当前分支待写入 `M8.5.18` handoff 提交
 
 ---
 
@@ -114,12 +114,18 @@
 - `M8.5.15` 已完成并已落地到 `main`（`/terminals` 新增 `1h` / `6h` / `24h` / `7d` / `30d` preset 时间范围快捷筛选，前端复用既有 `snapshot_from` / `snapshot_to` 契约，无后端改动）。
 - `M8.5.16` 已完成并已落地到 `main`（`/terminals` search 新增显式 `relevance` / `newest` / `oldest` 排序控制，保持既有 pagination、snippet deep link、`latest.json` 与 RBAC 边界不变）。
 - `M8.5.17` 已完成（当前分支 `feat/m8-5-17-terminal-relevance-ranking` 已实现 backend-only terminal `relevance` 排序质量优化；`main` 仍停在 `M8.5.16` + `M8.5.17` planning docs，待后续合并）。
-- 当前起点：当前分支已完成并验证 `M8.5.17`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 line/word-boundary weighting 一类的小型排序改进，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.18` 已完成（当前分支 `feat/m8-5-18-terminal-word-boundary-ranking` 已实现 backend-only word-boundary relevance refinement，补齐 no-whole-word fallback 稳定性修复）。
+- 当前起点：当前分支已完成并验证 `M8.5.18`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 line-boundary weighting 一类的小型排序改进，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
 
+- `M8.5.18` implementation（on `feat/m8-5-18-terminal-word-boundary-ranking`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 whole-word 优先排序、whole-word tie-break、no-whole-word fallback 与全局分页切片行为。
+- `M8.5.18` implementation（on `feat/m8-5-18-terminal-word-boundary-ranking`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `whole_word_match_count` / `first_whole_word_offset` 与本地 whole-word helper；`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.18` implementation（on `feat/m8-5-18-terminal-word-boundary-ranking`）：修复 no-whole-word fallback 稳定性，使用稳定 sentinel 避免长度相关的排序泄漏，并强化 fallback regression fixture。
+- `M8.5.18` implementation（on `feat/m8-5-18-terminal-word-boundary-ranking`）：功能提交为 `244da16`（`feat(terminal): add M8.5.18 word-boundary relevance`）与 `8a122d2`（`fix(terminal): stabilize M8.5.18 no-whole-word fallback ordering`）。
+- `M8.5.18` implementation（on `feat/m8-5-18-terminal-word-boundary-ranking`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`622 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 - `M8.5.17` implementation（on `feat/m8-5-17-terminal-relevance-ranking`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 `relevance` 对命中聚集度、首个命中位置、弱 recency tie-break 与全局分页切片的排序行为。
 - `M8.5.17` implementation（on `feat/m8-5-17-terminal-relevance-ranking`）：重构 `services/terminal_sessions.py` 的内部 `relevance` 排序分支，新增局部 search candidate helper，按 `match_count`、`cluster_span`、`first_match_offset`、`match_density`、弱 recency 与 `session_id` 的确定性元组排序；`newest` / `oldest`、search response shape、snippet/deep-link、`latest.json`、`/sessions/current/history` 与 RBAC 均保持不变。
 - `M8.5.17` implementation（on `feat/m8-5-17-terminal-relevance-ranking`）：功能提交为 `a40fdda`（`feat(terminal): refine M8.5.17 relevance ranking`）。
@@ -777,6 +783,7 @@
 - `M8.5.9` ~ `M8.5.14` 当前都已合入 `main`：已具备 workspace output search、detail local match navigation、search-result pagination + 跨 session 导航、snippet-to-offset 深链、与 timeline 对齐的 metadata filters，以及基于 `snapshot_at` 的时间范围过滤。
 - `M8.5.16` 当前已合入 `main`：terminal 搜索已新增显式 `relevance` / `newest` / `oldest` 排序控制，并继续复用既有 `snapshot_from` / `snapshot_to` 请求契约。
 - `M8.5.17` 当前已在 `feat/m8-5-17-terminal-relevance-ranking` 完成：默认 `relevance` 现会优先按命中聚集度、首个命中位置、轻量密度，再以 recency 作为弱 tie-break 排序；route/UI/RBAC/history compatibility 保持不变。
+- `M8.5.18` 当前已在 `feat/m8-5-18-terminal-word-boundary-ranking` 完成：默认 `relevance` 现会在既有 `M8.5.17` 基础上优先 whole-word 命中与 whole-word 首次命中位置，并在 no-whole-word 命中路径保持稳定回退到既有排序信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -787,10 +794,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前分支 `feat/m8-5-17-terminal-relevance-ranking` 已包含 `a40fdda` 的 `M8.5.17` backend-only relevance ranking refinement；关键文件是 `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking-design.md`、`docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.17` 的小范围 backend-only relevance 质量优化，例如 line/word-boundary weighting；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
+2. 当前分支 `feat/m8-5-18-terminal-word-boundary-ranking` 已包含 `244da16` + `8a122d2` 的 `M8.5.18` backend-only word-boundary relevance refinement；关键文件是 `docs/plans/2026-03-18-m8-5-18-terminal-word-boundary-relevance-design.md`、`docs/plans/2026-03-18-m8-5-18-terminal-word-boundary-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.18` 的小范围 backend-only relevance 质量优化，例如 line-boundary weighting；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
 4. 复现当前基线建议命令：
-   - `M8.5.17 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.18 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -802,4 +809,4 @@
 
 ## 5. 一句话版
 
-> 当前分支已完成 `M8.5.17` 的 backend-only `relevance` 排序优化并通过全量回归；下一自然入口是保持兼容边界不变的小范围搜索质量微调。
+> 当前分支已完成 `M8.5.18` 的 backend-only word-boundary relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的小范围搜索质量微调。

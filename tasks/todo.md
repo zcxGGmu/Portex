@@ -1453,3 +1453,28 @@
 - RED verification ran: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q` -> `3 failed` in the new relevance-heuristic tests before implementation; GREEN rerun passed after the backend-only sort refinement.
 - Verification executed: `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`618 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Feature commit completed in this session: `a40fdda` (`feat(terminal): refine M8.5.17 relevance ranking`).
+
+# Session Plan (2026-03-18) - M8.5.18 Terminal Word-Boundary Relevance
+
+## Goal
+- Continue post-`M8.5.17` by refining default terminal-history `relevance` ordering so whole-word matches outrank substring-only matches, while preserving current search API, pagination semantics, and RBAC/history compatibility boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and current terminal search slices
+- [x] Write focused `M8.5.18` design doc
+- [x] Write focused `M8.5.18` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing backend service tests for word-boundary ordering
+- [x] Implement additive backend word-boundary relevance signals
+- [x] Stabilize no-whole-word fallback ordering and regression coverage
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added service-side TDD coverage in `tests/services/test_terminal_sessions.py` for whole-word-vs-substring ordering, first whole-word offset tie-break, no-whole-word fallback to `M8.5.17` signals, and pagination over globally ranked `relevance` results.
+- Refined `services/terminal_sessions.py` so `relevance` now adds `whole_word_match_count` and `first_whole_word_offset` ahead of existing `M8.5.17` signals, while preserving `newest` / `oldest`, response DTOs, snippets, deep links, `latest.json`, `/sessions/current/history`, and RBAC boundaries.
+- Addressed review findings by introducing a stable no-whole-word sentinel (`_NO_WHOLE_WORD_MATCH_OFFSET`) and strengthening fallback fixture design so transcript length cannot mask fallback-ordering regressions.
+- Verification executed: `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`622 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Feature commits completed in this session: `244da16` (`feat(terminal): add M8.5.18 word-boundary relevance`) and `8a122d2` (`fix(terminal): stabilize M8.5.18 no-whole-word fallback ordering`).
