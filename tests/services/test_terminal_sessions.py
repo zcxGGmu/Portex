@@ -1918,7 +1918,7 @@ async def test_terminal_session_service_relevance_falls_back_to_m8_5_17_signals_
         concentrated.session_id,
         owner_user_id="owner-1",
     )
-    await created_bridges[0].emit_output("terror terror trailing text\n")
+    await created_bridges[0].emit_output(f"terror terror {'y' * 200}\n")
     await asyncio.wait_for(concentrated_queue.get(), timeout=0.1)
     await service.close_session(concentrated.session_id, owner_user_id="owner-1")
 
@@ -1932,7 +1932,7 @@ async def test_terminal_session_service_relevance_falls_back_to_m8_5_17_signals_
         sparse.session_id,
         owner_user_id="owner-1",
     )
-    await created_bridges[1].emit_output(f"terror {'x' * 40} terror trailing text\n")
+    await created_bridges[1].emit_output(f"terror {'x' * 20} terror\n")
     await asyncio.wait_for(sparse_queue.get(), timeout=0.1)
     await service.close_session(sparse.session_id, owner_user_id="owner-1")
 

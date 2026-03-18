@@ -26,6 +26,7 @@ _ACTIVE_RECOVERABLE_STATUSES: set[TerminalSessionStatus] = {"created", "attached
 _TERMINAL_ARCHIVE_STATUSES: set[TerminalSessionStatus] = {"closed", "exited"}
 _DEFAULT_SEARCH_SNIPPET_LIMIT = 3
 _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS = 40
+_NO_WHOLE_WORD_MATCH_OFFSET = 1 << 60
 
 
 class TerminalBackendUnsupportedError(RuntimeError):
@@ -1031,7 +1032,7 @@ class TerminalSessionService:
             if TerminalSessionService._is_whole_word_match(text, offset, query_length=query_length)
         ]
         if not whole_word_offsets:
-            return 0, len(text) + 1
+            return 0, _NO_WHOLE_WORD_MATCH_OFFSET
         return len(whole_word_offsets), whole_word_offsets[0]
 
     @staticmethod
