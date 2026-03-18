@@ -1318,6 +1318,125 @@ async def test_terminal_session_service_searches_history_output_with_pagination(
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_search_supports_explicit_sort_modes(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 18, 10, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    oldest = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _oldest_record, oldest_queue = await service.attach_session(
+        oldest.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error in oldest session\n")
+    await asyncio.wait_for(oldest_queue.get(), timeout=0.1)
+    await service.close_session(oldest.session_id, owner_user_id="owner-1")
+
+    middle = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _middle_record, middle_queue = await service.attach_session(
+        middle.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("error error error in middle session\n")
+    await asyncio.wait_for(middle_queue.get(), timeout=0.1)
+    await service.close_session(middle.session_id, owner_user_id="owner-1")
+
+    newest = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _newest_record, newest_queue = await service.attach_session(
+        newest.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[2].emit_output("error error in newest session\n")
+    await asyncio.wait_for(newest_queue.get(), timeout=0.1)
+    await service.close_session(newest.session_id, owner_user_id="owner-1")
+
+    relevance_page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+    newest_page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=2,
+        offset=0,
+        sort="newest",
+    )
+    newest_second_page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=2,
+        offset=2,
+        sort="newest",
+    )
+    oldest_page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+        sort="oldest",
+    )
+
+    assert [item.record.session_id for item in relevance_page.items] == [
+        middle.session_id,
+        newest.session_id,
+        oldest.session_id,
+    ]
+    assert [item.record.session_id for item in newest_page.items] == [
+        newest.session_id,
+        middle.session_id,
+    ]
+    assert newest_page.has_more is True
+    assert [item.record.session_id for item in newest_second_page.items] == [oldest.session_id]
+    assert newest_second_page.has_more is False
+    assert [item.record.session_id for item in oldest_page.items] == [
+        oldest.session_id,
+        middle.session_id,
+        newest.session_id,
+    ]
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_search_returns_empty_page_when_no_match(
     tmp_path: Path,
 ) -> None:

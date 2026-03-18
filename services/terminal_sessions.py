@@ -18,6 +18,7 @@ from services.terminal_bridge import TerminalBridge, TerminalBridgeEvent
 TerminalRequestedMode = Literal["openai", "host", "container"]
 TerminalBackendName = Literal["docker_container"]
 TerminalSessionStatus = Literal["created", "attached", "detached", "closed", "exited"]
+TerminalHistorySearchSort = Literal["relevance", "newest", "oldest"]
 DEFAULT_TERMINAL_HISTORY_PERSIST_ROOT = Path(__file__).resolve().parents[1] / "data" / "terminal-history"
 _TERMINAL_HISTORY_FILENAME = "latest.json"
 _TERMINAL_HISTORY_SNAPSHOTS_DIRNAME = "snapshots"
@@ -303,6 +304,7 @@ class TerminalSessionService:
         query: str,
         limit: int = 20,
         offset: int = 0,
+        sort: TerminalHistorySearchSort = "relevance",
         status: TerminalSessionStatus | None = None,
         owner_user_id: str | None = None,
         session_id_prefix: str | None = None,
@@ -312,6 +314,7 @@ class TerminalSessionService:
         snippet_context_chars: int = _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS,
     ) -> TerminalSessionHistorySearchPage:
         normalized_query = query.strip()
+        normalized_sort = self._normalize_search_sort(sort)
         if normalized_query == "":
             raise ValueError("query must not be empty")
         if limit <= 0:
@@ -337,6 +340,7 @@ class TerminalSessionService:
         items = self._search_history_snapshots(
             filtered,
             query=normalized_query,
+            sort=normalized_sort,
             snippet_limit=snippet_limit,
             snippet_context_chars=snippet_context_chars,
         )
@@ -944,6 +948,7 @@ class TerminalSessionService:
         snapshots: list[TerminalSessionHistorySnapshot],
         *,
         query: str,
+        sort: TerminalHistorySearchSort,
         snippet_limit: int,
         snippet_context_chars: int,
     ) -> list[TerminalSessionHistorySearchMatch]:
@@ -972,10 +977,42 @@ class TerminalSessionService:
                     snippet_matches=snippet_matches,
                 )
             )
+        return cls._sort_history_search_matches(matches, sort=sort)
+
+    @staticmethod
+    def _normalize_search_sort(sort: str | None) -> TerminalHistorySearchSort:
+        if sort in {"relevance", "newest", "oldest"}:
+            return sort
+        raise ValueError("sort must be one of: relevance, newest, oldest")
+
+    @staticmethod
+    def _sort_history_search_matches(
+        matches: list[TerminalSessionHistorySearchMatch],
+        *,
+        sort: TerminalHistorySearchSort,
+    ) -> list[TerminalSessionHistorySearchMatch]:
+        if sort == "relevance":
+            matches.sort(
+                key=lambda item: (
+                    -item.match_count,
+                    -item.snapshot_at.timestamp(),
+                    item.record.session_id,
+                )
+            )
+            return matches
+        if sort == "newest":
+            matches.sort(
+                key=lambda item: (
+                    -item.snapshot_at.timestamp(),
+                    -item.match_count,
+                    item.record.session_id,
+                )
+            )
+            return matches
         matches.sort(
             key=lambda item: (
+                item.snapshot_at.timestamp(),
                 -item.match_count,
-                -item.snapshot_at.timestamp(),
                 item.record.session_id,
             )
         )

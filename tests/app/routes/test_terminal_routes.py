@@ -669,6 +669,7 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
             query: str,
             limit: int,
             offset: int,
+            sort: str = "relevance",
             status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
@@ -682,6 +683,7 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
                 query,
                 limit,
                 offset,
+                sort,
                 status,
                 owner_user_id,
                 session_id_prefix,
@@ -722,7 +724,7 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
 
     try:
         response = api_client.get(
-            "/terminals/project-alpha/sessions/history/search?q=error&limit=1&offset=0"
+            "/terminals/project-alpha/sessions/history/search?q=error&limit=1&offset=0&sort=oldest"
             f"&status=closed&owner_user_id={owner_id}&session_id_prefix=terminal-session"
             "&snapshot_from=2026-03-16T10:00:00Z&snapshot_to=2026-03-16T11:00:00Z",
             headers=owner_headers,
@@ -757,6 +759,7 @@ def test_owner_can_search_terminal_history_output(api_client: TestClient) -> Non
         "error",
         1,
         0,
+        "oldest",
         "closed",
         owner_id,
         "terminal-session",
@@ -784,6 +787,7 @@ def test_terminal_history_search_route_returns_empty_page_when_no_match(
             query: str,
             limit: int,
             offset: int,
+            sort: str = "relevance",
             status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
@@ -795,6 +799,7 @@ def test_terminal_history_search_route_returns_empty_page_when_no_match(
                 query,
                 limit,
                 offset,
+                sort,
                 status,
                 owner_user_id,
                 session_id_prefix,
@@ -846,6 +851,7 @@ def test_terminal_history_search_route_returns_404_when_workspace_has_no_history
             query: str,
             limit: int,
             offset: int,
+            sort: str = "relevance",
             status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
@@ -857,6 +863,7 @@ def test_terminal_history_search_route_returns_404_when_workspace_has_no_history
                 query,
                 limit,
                 offset,
+                sort,
                 status,
                 owner_user_id,
                 session_id_prefix,
@@ -899,6 +906,7 @@ def test_terminal_history_search_route_returns_400_for_invalid_snapshot_time_ran
             query: str,
             limit: int,
             offset: int,
+            sort: str = "relevance",
             status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
@@ -910,6 +918,7 @@ def test_terminal_history_search_route_returns_400_for_invalid_snapshot_time_ran
                 query,
                 limit,
                 offset,
+                sort,
                 status,
                 owner_user_id,
                 session_id_prefix,
@@ -932,6 +941,76 @@ def test_terminal_history_search_route_returns_400_for_invalid_snapshot_time_ran
 
     assert response.status_code == 400
     assert response.json()["detail"] == "snapshot_from must be less than or equal to snapshot_to"
+
+
+def test_terminal_history_search_route_uses_relevance_sort_by_default(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            self.last_call: tuple[str, str] | None = None
+
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+            sort: str = "relevance",
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (limit, offset, status, owner_user_id, session_id_prefix, snapshot_from, snapshot_to)
+            self.last_call = (group_folder, sort)
+            return SimpleNamespace(
+                query=query,
+                limit=limit,
+                offset=offset,
+                total=0,
+                has_more=False,
+                items=[],
+            )
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search?q=error",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert service.last_call == ("project-alpha", "relevance")
+
+
+def test_terminal_history_search_route_rejects_invalid_sort(
+    api_client: TestClient,
+) -> None:
+    owner_headers, _owner_id = _login_headers(api_client, username="owner", role="owner")
+
+    response = api_client.get(
+        "/terminals/project-alpha/sessions/history/search?q=error&sort=sideways",
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]
 
 
 def test_owner_can_read_terminal_history_detail(api_client: TestClient) -> None:

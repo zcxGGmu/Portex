@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { apiClient } from '../api/client'
+import type { TerminalHistorySearchSort } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 
 export function useHealthQuery() {
@@ -299,6 +300,7 @@ export function useTerminalHistorySearchQuery(
     query: string
     limit: number
     offset: number
+    sort?: TerminalHistorySearchSort
     status?: 'created' | 'attached' | 'detached' | 'closed' | 'exited'
     ownerUserId?: string
     sessionIdPrefix?: string
@@ -318,6 +320,7 @@ export function useTerminalHistorySearchQuery(
       normalizedQuery,
       options.limit,
       options.offset,
+      options.sort ?? 'relevance',
       options.status ?? null,
       options.ownerUserId ?? null,
       options.sessionIdPrefix ?? null,
@@ -334,6 +337,7 @@ export function useTerminalHistorySearchQuery(
         query: normalizedQuery,
         limit: options.limit,
         offset: options.offset,
+        sort: options.sort,
         status: options.status,
         ownerUserId: options.ownerUserId,
         sessionIdPrefix: options.sessionIdPrefix,

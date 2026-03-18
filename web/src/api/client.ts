@@ -124,6 +124,7 @@ export interface GroupImBindingListResponse {
 export type TerminalBackend = 'docker_container'
 
 export type TerminalSessionStatus = 'created' | 'attached' | 'detached' | 'closed' | 'exited'
+export type TerminalHistorySearchSort = 'relevance' | 'newest' | 'oldest'
 
 export interface TerminalSessionResponse {
   session_id: string
@@ -648,6 +649,7 @@ export const apiClient = {
       query: string
       limit?: number
       offset?: number
+      sort?: TerminalHistorySearchSort
       status?: TerminalSessionStatus
       ownerUserId?: string
       sessionIdPrefix?: string
@@ -666,6 +668,9 @@ export const apiClient = {
     }
     if (typeof options.offset === 'number') {
       params.set('offset', String(options.offset))
+    }
+    if (options.sort) {
+      params.set('sort', options.sort)
     }
     if (options.status) {
       params.set('status', options.status)

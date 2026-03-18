@@ -2299,6 +2299,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "session_id_prefix" in search_parameter_names
     assert "snapshot_from" in search_parameter_names
     assert "snapshot_to" in search_parameter_names
+    assert "sort" in search_parameter_names
 
     get_terminal_history_detail_operation = schema["paths"]["/terminals/{group_id}/sessions/history/{session_id}"][
         "get"

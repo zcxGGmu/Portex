@@ -437,6 +437,7 @@ async def search_terminal_history_output(
     q: str = Query(min_length=1),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    sort: Literal["relevance", "newest", "oldest"] = Query(default="relevance"),
     status_filter: Literal["created", "attached", "detached", "closed", "exited"] | None = Query(
         default=None,
         alias="status",
@@ -461,6 +462,7 @@ async def search_terminal_history_output(
             query=q,
             limit=limit,
             offset=offset,
+            sort=sort,
             status=status_filter,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,

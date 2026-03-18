@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type {
+  TerminalHistorySearchSort,
   TerminalSessionHistorySearchMatch,
   TerminalSessionStatus,
   TerminalWorkspaceSummary,
@@ -243,6 +244,7 @@ export function Terminals() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOffset, setSearchOffset] = useState(0)
+  const [searchSort, setSearchSort] = useState<TerminalHistorySearchSort>('relevance')
   const [activePresetId, setActivePresetId] = useState<TerminalTimeRangePresetId | null>(null)
   const [pendingSearchPageMove, setPendingSearchPageMove] = useState<'next' | 'previous' | null>(null)
   const [pendingMatchTarget, setPendingMatchTarget] = useState<PendingMatchTarget | null>(null)
@@ -284,6 +286,7 @@ export function Terminals() {
       query: normalizedSearchQuery,
       limit: SEARCH_PAGE_SIZE,
       offset: searchOffset,
+      sort: searchSort,
       status: timelineFilters.status || undefined,
       ownerUserId: timelineFilters.ownerUserId || undefined,
       sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
@@ -430,6 +433,7 @@ export function Terminals() {
     setSearchInput('')
     setSearchQuery('')
     setSearchOffset(0)
+    setSearchSort('relevance')
     setPendingSearchPageMove(null)
     setPendingMatchTarget(null)
   }
@@ -522,11 +526,17 @@ export function Terminals() {
   }
 
   function clearSearch() {
-    setSearchInput('')
-    setSearchQuery('')
+    resetSearchState()
+  }
+
+  function handleSearchSortChange(nextSort: TerminalHistorySearchSort) {
+    setSearchSort(nextSort)
     setSearchOffset(0)
     setPendingSearchPageMove(null)
     setPendingMatchTarget(null)
+    if (normalizedSearchQuery !== '') {
+      setDetailSessionId(null)
+    }
   }
 
   function goToPreviousMatch() {
@@ -900,6 +910,20 @@ export function Terminals() {
                     type="text"
                     value={searchInput}
                   />
+                    <label>
+                      <span className="muted">Sort</span>
+                      <select
+                        onChange={(event) =>
+                          handleSearchSortChange(event.target.value as TerminalHistorySearchSort)
+                        }
+                      style={{ display: 'block', marginTop: '0.35rem' }}
+                      value={searchSort}
+                    >
+                      <option value="relevance">Relevance</option>
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                    </select>
+                  </label>
                   <PrimaryButton type="submit">Search</PrimaryButton>
                   <PrimaryButton className="button--ghost" onClick={clearSearch} type="button">
                     Clear
