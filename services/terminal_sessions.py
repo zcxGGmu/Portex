@@ -127,6 +127,14 @@ class TerminalSessionHistorySearchPage:
     items: list[TerminalSessionHistorySearchMatch]
 
 
+@dataclass(frozen=True, slots=True)
+class _TerminalSessionHistorySearchCandidate:
+    match: TerminalSessionHistorySearchMatch
+    cluster_span: int
+    first_match_offset: int
+    match_density: float
+
+
 @dataclass(slots=True)
 class _ManagedTerminalSession:
     record: TerminalSessionRecord
@@ -956,7 +964,7 @@ class TerminalSessionService:
         if query_length <= 0:
             return []
 
-        matches: list[TerminalSessionHistorySearchMatch] = []
+        candidates: list[_TerminalSessionHistorySearchCandidate] = []
         for snapshot in snapshots:
             offsets = cls._find_case_insensitive_match_offsets(snapshot.output, query)
             if not offsets:
@@ -968,16 +976,39 @@ class TerminalSessionService:
                 snippet_limit=snippet_limit,
                 snippet_context_chars=snippet_context_chars,
             )
-            matches.append(
-                TerminalSessionHistorySearchMatch(
-                    record=snapshot.record,
-                    snapshot_at=snapshot.snapshot_at,
-                    match_count=len(offsets),
-                    snippets=[item.text for item in snippet_matches],
-                    snippet_matches=snippet_matches,
+            match = TerminalSessionHistorySearchMatch(
+                record=snapshot.record,
+                snapshot_at=snapshot.snapshot_at,
+                match_count=len(offsets),
+                snippets=[item.text for item in snippet_matches],
+                snippet_matches=snippet_matches,
+            )
+            candidates.append(
+                cls._build_search_candidate(
+                    match=match,
+                    offsets=offsets,
+                    output_length=len(snapshot.output),
                 )
             )
-        return cls._sort_history_search_matches(matches, sort=sort)
+        return cls._sort_history_search_matches(candidates, sort=sort)
+
+    @staticmethod
+    def _build_search_candidate(
+        *,
+        match: TerminalSessionHistorySearchMatch,
+        offsets: list[int],
+        output_length: int,
+    ) -> _TerminalSessionHistorySearchCandidate:
+        first_match_offset = offsets[0]
+        cluster_span = offsets[-1] - first_match_offset
+        normalized_output_length = max(1, output_length)
+        match_density = match.match_count / normalized_output_length
+        return _TerminalSessionHistorySearchCandidate(
+            match=match,
+            cluster_span=cluster_span,
+            first_match_offset=first_match_offset,
+            match_density=match_density,
+        )
 
     @staticmethod
     def _normalize_search_sort(sort: str | None) -> TerminalHistorySearchSort:
@@ -987,36 +1018,39 @@ class TerminalSessionService:
 
     @staticmethod
     def _sort_history_search_matches(
-        matches: list[TerminalSessionHistorySearchMatch],
+        matches: list[_TerminalSessionHistorySearchCandidate],
         *,
         sort: TerminalHistorySearchSort,
     ) -> list[TerminalSessionHistorySearchMatch]:
         if sort == "relevance":
             matches.sort(
                 key=lambda item: (
-                    -item.match_count,
-                    -item.snapshot_at.timestamp(),
-                    item.record.session_id,
+                    -item.match.match_count,
+                    item.cluster_span,
+                    item.first_match_offset,
+                    -item.match_density,
+                    -item.match.snapshot_at.timestamp(),
+                    item.match.record.session_id,
                 )
             )
-            return matches
+            return [item.match for item in matches]
         if sort == "newest":
             matches.sort(
                 key=lambda item: (
-                    -item.snapshot_at.timestamp(),
-                    -item.match_count,
-                    item.record.session_id,
+                    -item.match.snapshot_at.timestamp(),
+                    -item.match.match_count,
+                    item.match.record.session_id,
                 )
             )
-            return matches
+            return [item.match for item in matches]
         matches.sort(
             key=lambda item: (
-                item.snapshot_at.timestamp(),
-                -item.match_count,
-                item.record.session_id,
+                item.match.snapshot_at.timestamp(),
+                -item.match.match_count,
+                item.match.record.session_id,
             )
         )
-        return matches
+        return [item.match for item in matches]
 
     @staticmethod
     def _find_case_insensitive_match_offsets(text: str, query: str) -> list[int]:
