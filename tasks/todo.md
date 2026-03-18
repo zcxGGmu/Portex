@@ -1429,3 +1429,25 @@
 - Verification executed: `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`614 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 - Feature commit completed in this session: `5761a3a` (`feat(terminal): add M8.5.16 search sort controls`).
 - Handoff sync commit for this session: `docs(handoff): sync M8.5.16 search sort context`.
+
+# Session Plan (2026-03-18) - M8.5.17 Terminal Relevance Ranking
+
+## Goal
+- Continue post-`M8.5.16` by refining default terminal-history `relevance` ordering so stronger textual matches outrank merely newer results, while preserving current search API, pagination semantics, and RBAC/history compatibility boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and current terminal search slices
+- [x] Write focused `M8.5.17` design doc
+- [x] Write focused `M8.5.17` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing backend service tests for relevance heuristic ordering
+- [ ] Implement additive backend relevance ranking heuristics
+- [ ] Run focused terminal regression suite
+- [ ] Run full backend/frontend verification plus diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending implementation.
+- Design doc created: `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking-design.md`.
+- Implementation plan created: `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking.md`.
