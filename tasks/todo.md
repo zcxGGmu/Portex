@@ -1402,3 +1402,25 @@
 - `AGENTS.md` now points at the latest restart-oriented handoff sync explicitly while keeping the latest functional terminal milestone chain intact.
 - Verification for this docs-only sync will be `git diff --check`.
 - Commit completed in this session: `docs(handoff): refresh latest progress anchors`.
+
+# Session Plan (2026-03-18) - M8.5.16 Terminal Search Sort Controls
+
+## Goal
+- Continue post-`M8.5.15` by adding explicit terminal-history search sort controls (`relevance`, `newest`, `oldest`) while preserving RBAC, history compatibility, and the current timeline/detail boundaries.
+
+## Checklist
+- [x] Re-read `AGENTS.md`, `docs/progress.md`, `docs/TODO.md`, and current terminal search slices
+- [x] Write focused `M8.5.16` design doc
+- [x] Write focused `M8.5.16` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing backend tests for search sort modes (service + route + OpenAPI)
+- [ ] Implement additive backend search sort contracts
+- [ ] Drive frontend RED for search sort query state
+- [ ] Implement frontend sort controls on `/terminals`
+- [ ] Run focused terminal regression suite
+- [ ] Run full backend/frontend verification plus diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
