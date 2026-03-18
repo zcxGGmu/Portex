@@ -5,7 +5,7 @@
 当前分支: `feat/m8-5-18-terminal-word-boundary-ranking`
 最新功能提交: `244da16` (`feat(terminal): add M8.5.18 word-boundary relevance`)
 最新 planning 提交: `a5f0c47` (`docs(plans): add M8.5.18 word-boundary relevance plan`)
-最近一次 handoff 同步: `3c47abc` (`docs(handoff): sync M8.5.18 word-boundary relevance context`)
+最近一次 handoff 同步: 当前分支已包含 `M8.5.18` handoff sync 提交；精确提交顺序以当前分支 `git log` 为准
 
 ---
 
