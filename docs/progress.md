@@ -4,7 +4,8 @@
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
 最新功能提交: `5761a3a` (`feat(terminal): add M8.5.16 search sort controls`)
-最近一次 handoff 同步: `fd314e3` (`docs(sync): refresh M8.5.15 restart context`)
+最新 planning 提交: `372bf85` (`docs(plans): add M8.5.17 terminal relevance ranking implementation plan`)
+最近一次 handoff 同步: `4c2340e` (`docs(handoff): sync M8.5.16 search sort context`)
 
 ---
 
@@ -112,11 +113,16 @@
 - `M8.5.14` 已完成并已落地到 `main`（timeline/search 现支持包含边界的 `snapshot_from` / `snapshot_to` 过滤，且 `/terminals` 新增 minute-granularity 的 `datetime-local` 控件并在请求前转换为 UTC）。
 - `M8.5.15` 已完成并已落地到 `main`（`/terminals` 新增 `1h` / `6h` / `24h` / `7d` / `30d` preset 时间范围快捷筛选，前端复用既有 `snapshot_from` / `snapshot_to` 契约，无后端改动）。
 - `M8.5.16` 已完成并已落地到 `main`（`/terminals` search 新增显式 `relevance` / `newest` / `oldest` 排序控制，保持既有 pagination、snippet deep link、`latest.json` 与 RBAC 边界不变）。
-- 当前起点：`main` 当前代码基线已到 `M8.5.16`；下一步建议进入 post-`M8.5.16` 的搜索体验增强（例如更细粒度的 relevance 排序启发式或 snippet 质量优化），同时保持 `latest.json`、`/sessions/current/history` 与 RBAC 兼容边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.17` 规划已完成但实现未开始（backend-only terminal `relevance` 排序质量优化；设计与 implementation plan 已提交到 `main`）。
+- 当前起点：`main` 当前功能代码基线仍是 `M8.5.16`；已存在 `M8.5.17` 设计与实施计划，下一步应直接实现 post-`M8.5.16` 的 backend-only relevance ranking refinement，同时保持 `latest.json`、`/sessions/current/history` 与 RBAC 兼容边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.17` planning（on `main`）：新增 `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking-design.md`，将范围固定为“默认 `relevance` 排序质量优化”，明确只调整 backend `relevance` 排序分支，不扩展 `sort` API、snippet 协议、timeline、`latest.json` 或 RBAC。
+- `M8.5.17` planning（on `main`）：新增 `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking.md`，将实现拆成 service-side TDD、focused regression、full verification 与 handoff sync 三个任务；当前尚未开始 runtime code implementation。
+- `M8.5.17` planning（on `main`）：规划提交为 `e3d2d2f`（`docs(plans): add M8.5.17 terminal relevance ranking design`）与 `372bf85`（`docs(plans): add M8.5.17 terminal relevance ranking implementation plan`）。
 
 - `M8.5.16` implementation（on `main`）：新增 `docs/plans/2026-03-18-m8-5-16-terminal-search-sort-controls-design.md` 与 `docs/plans/2026-03-18-m8-5-16-terminal-search-sort-controls.md`，将范围固定为“terminal search sort controls”，明确仅扩展 search 路由/前端状态，不改变 timeline、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.16` implementation（on `main`）：扩展 `TerminalSessionService.search_history_by_group(...)` 与 terminal search route，新增默认 `relevance` 的 `sort` 参数，支持 `relevance` / `newest` / `oldest` 三种排序，并保持 search pagination 基于全局排序结果切页。
@@ -650,7 +656,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：`ededce2` `docs(plans): define M7.1 runtime chain parity`
+- 最近一次 handoff/planning 记录提交：`372bf85` `docs(plans): add M8.5.17 terminal relevance ranking implementation plan`
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -765,7 +771,8 @@
 - `M8.5.7` 当前已完成 multi-snapshot history timeline/pagination：`/terminals/{group_id}/sessions/history` 现可按 `limit/offset` 读取 workspace timeline，来源合并 in-memory + `latest.json` + archived snapshots，并保持现有 `latest.json` fallback 合约不回归。
 - `M8.5.8` 当前已完成 history filters/detail：timeline 已支持 `status` / `owner_user_id` / `session_id_prefix` 服务端过滤，`/terminals/{group_id}/sessions/history/{session_id}` 可读取单条 snapshot detail，且 `/terminals` 已提供同页 filter + detail 操作链；该子项已合入 `main`。
 - `M8.5.9` ~ `M8.5.14` 当前都已合入 `main`：已具备 workspace output search、detail local match navigation、search-result pagination + 跨 session 导航、snippet-to-offset 深链、与 timeline 对齐的 metadata filters，以及基于 `snapshot_at` 的时间范围过滤。
-- `M8.5.16` 当前已合入 `main`：terminal 搜索已新增显式 `relevance` / `newest` / `oldest` 排序控制，并继续复用既有 `snapshot_from` / `snapshot_to` 请求契约；如后续继续，应优先改进 `relevance` 自身排序质量，而不是继续扩张 search API 表面。
+- `M8.5.16` 当前已合入 `main`：terminal 搜索已新增显式 `relevance` / `newest` / `oldest` 排序控制，并继续复用既有 `snapshot_from` / `snapshot_to` 请求契约。
+- `M8.5.17` 当前设计/计划已完成：下一步是 backend-only 的 `relevance` 排序质量优化，优先改进 `match_count` 之外的集中度、首个命中位置和弱 recency tie-break，而不是继续扩张 search API 表面。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -776,10 +783,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前代码基线已到 `M8.5.16`。terminal 搜索相关关键点在 `services/terminal_sessions.py`（metadata/time-range filters + `sort` 排序策略）、`app/routes/terminals.py`（timeline/search query 映射）、`web/src/api/client.ts` / `web/src/hooks/useApi.ts`（search sort request + query key）、`web/src/pages/Terminals.tsx`（共享 filter state、preset 时间范围按钮、`searchSort` 选择器与 detail reset 行为）。
-3. 如继续 post-`M8.5.16` terminal 开发，建议进入搜索体验增强的下一小步（例如更细粒度的 relevance 排序启发式或 snippet ranking 调整），并保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引。
+2. `main` 当前功能代码基线已到 `M8.5.16`，且 `M8.5.17` 的设计/实施计划已落地。terminal 搜索下一步关键文件是 `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking-design.md`、`docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking.md`、`services/terminal_sessions.py`（当前 `relevance` 排序逻辑）、`tests/services/test_terminal_sessions.py`（新增 service-side heuristic TDD 入口）、以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，直接实现 `M8.5.17` 的 backend-only relevance ranking refinement，并保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
 4. 复现当前基线建议命令：
-   - `M8.5.16 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.16/M8.5.17 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -791,4 +798,4 @@
 
 ## 5. 一句话版
 
-> `main` 当前已包含 `M8.5.16`：terminal 搜索已具备分页、跨 session 导航、snippet 深链、metadata filters、时间范围过滤、preset 时间范围快捷筛选和显式排序控制，下一自然入口是 `relevance` 排序质量优化。
+> `main` 当前功能代码已到 `M8.5.16`，并已补齐 `M8.5.17` 规划：下一自然入口是 backend-only 的 `relevance` 排序质量优化实现。
