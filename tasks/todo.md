@@ -1413,14 +1413,19 @@
 - [x] Write focused `M8.5.16` design doc
 - [x] Write focused `M8.5.16` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing backend tests for search sort modes (service + route + OpenAPI)
-- [ ] Implement additive backend search sort contracts
-- [ ] Drive frontend RED for search sort query state
-- [ ] Implement frontend sort controls on `/terminals`
-- [ ] Run focused terminal regression suite
-- [ ] Run full backend/frontend verification plus diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing backend tests for search sort modes (service + route + OpenAPI)
+- [x] Implement additive backend search sort contracts
+- [x] Drive frontend RED for search sort query state
+- [x] Implement frontend sort controls on `/terminals`
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Added `sort` support to terminal history search end-to-end: `TerminalSessionService.search_history_by_group(...)` now accepts `relevance` / `newest` / `oldest`, the search route forwards the query parameter with default `relevance`, and OpenAPI now exposes the additive search-only contract.
+- Added focused coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for default ordering, explicit sort modes, pagination over the sorted result set, invalid sort rejection, and OpenAPI parameter exposure.
+- Extended `web/src/api/client.ts`, `web/src/hooks/useApi.ts`, and `web/src/pages/Terminals.tsx` so `/terminals` exposes a search sort selector, includes sort in the request/query-key path, resets pagination/detail anchors when the active search ordering changes, and restores `relevance` on `Clear`.
+- Verification executed: `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`614 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Feature commit completed in this session: `5761a3a` (`feat(terminal): add M8.5.16 search sort controls`).
+- Handoff sync commit for this session: `docs(handoff): sync M8.5.16 search sort context`.

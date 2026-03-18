@@ -3,8 +3,8 @@
 最后更新: 2026-03-18 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `b52697f` (`feat(web): add M8.5.15 terminal preset time ranges`)
-最近一次 handoff 同步: `a3fb321` (`docs(handoff): sync M8.5.15 preset time-range context`)
+最新功能提交: `5761a3a` (`feat(terminal): add M8.5.16 search sort controls`)
+最近一次 handoff 同步: `fd314e3` (`docs(sync): refresh M8.5.15 restart context`)
 
 ---
 
@@ -111,11 +111,18 @@
 - `M8.5.13` 已完成并已落地到 `main`（search filter alignment on `/terminals` history search）。
 - `M8.5.14` 已完成并已落地到 `main`（timeline/search 现支持包含边界的 `snapshot_from` / `snapshot_to` 过滤，且 `/terminals` 新增 minute-granularity 的 `datetime-local` 控件并在请求前转换为 UTC）。
 - `M8.5.15` 已完成并已落地到 `main`（`/terminals` 新增 `1h` / `6h` / `24h` / `7d` / `30d` preset 时间范围快捷筛选，前端复用既有 `snapshot_from` / `snapshot_to` 契约，无后端改动）。
-- 当前起点：`main` 当前代码基线已到 `M8.5.15`；下一步建议进入 post-`M8.5.15` 的搜索体验增强（例如可选结果排序策略），同时保持 `latest.json`、`/sessions/current/history` 与 RBAC 兼容边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.16` 已完成并已落地到 `main`（`/terminals` search 新增显式 `relevance` / `newest` / `oldest` 排序控制，保持既有 pagination、snippet deep link、`latest.json` 与 RBAC 边界不变）。
+- 当前起点：`main` 当前代码基线已到 `M8.5.16`；下一步建议进入 post-`M8.5.16` 的搜索体验增强（例如更细粒度的 relevance 排序启发式或 snippet 质量优化），同时保持 `latest.json`、`/sessions/current/history` 与 RBAC 兼容边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.16` implementation（on `main`）：新增 `docs/plans/2026-03-18-m8-5-16-terminal-search-sort-controls-design.md` 与 `docs/plans/2026-03-18-m8-5-16-terminal-search-sort-controls.md`，将范围固定为“terminal search sort controls”，明确仅扩展 search 路由/前端状态，不改变 timeline、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.16` implementation（on `main`）：扩展 `TerminalSessionService.search_history_by_group(...)` 与 terminal search route，新增默认 `relevance` 的 `sort` 参数，支持 `relevance` / `newest` / `oldest` 三种排序，并保持 search pagination 基于全局排序结果切页。
+- `M8.5.16` implementation（on `main`）：扩展 `web/src/api/client.ts`、`web/src/hooks/useApi.ts` 与 `web/src/pages/Terminals.tsx`，为 `/terminals` search form 增加排序选择器；切换排序时重置 `searchOffset` / `pendingSearchPageMove` / `pendingMatchTarget` 与 detail anchor，`Clear` 会恢复 `relevance`。
+- `M8.5.16` implementation（on `main`）：里程碑实现提交为 `5761a3a`（`feat(terminal): add M8.5.16 search sort controls`）。
+- `M8.5.16` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`614 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 
 - `M8.5.15` implementation（on `main`）：新增 `docs/plans/2026-03-17-m8-5-15-terminal-preset-time-ranges-design.md` 与 `docs/plans/2026-03-17-m8-5-15-terminal-preset-time-ranges.md`，将范围固定为“frontend-only preset time-range shortcuts”，明确不新增 backend query 参数、不改变 `latest.json` / `/sessions/current/history` 契约。
 - `M8.5.15` implementation（on `main`）：扩展 `web/src/pages/Terminals.tsx`，新增 `1h` / `6h` / `24h` / `7d` / `30d` preset 按钮，将快捷范围写回既有 `snapshotFromLocal` / `snapshotToLocal`，timeline 与 search 继续共享同一时间过滤状态。
@@ -758,7 +765,7 @@
 - `M8.5.7` 当前已完成 multi-snapshot history timeline/pagination：`/terminals/{group_id}/sessions/history` 现可按 `limit/offset` 读取 workspace timeline，来源合并 in-memory + `latest.json` + archived snapshots，并保持现有 `latest.json` fallback 合约不回归。
 - `M8.5.8` 当前已完成 history filters/detail：timeline 已支持 `status` / `owner_user_id` / `session_id_prefix` 服务端过滤，`/terminals/{group_id}/sessions/history/{session_id}` 可读取单条 snapshot detail，且 `/terminals` 已提供同页 filter + detail 操作链；该子项已合入 `main`。
 - `M8.5.9` ~ `M8.5.14` 当前都已合入 `main`：已具备 workspace output search、detail local match navigation、search-result pagination + 跨 session 导航、snippet-to-offset 深链、与 timeline 对齐的 metadata filters，以及基于 `snapshot_at` 的时间范围过滤。
-- `M8.5.15` 当前已合入 `main`：terminal 搜索已新增 preset 时间范围快捷筛选，且仍复用既有 `snapshot_from` / `snapshot_to` 请求契约；如后续继续，应从排序/结果优先级体验入手，而不是重复扩张时间过滤协议。
+- `M8.5.16` 当前已合入 `main`：terminal 搜索已新增显式 `relevance` / `newest` / `oldest` 排序控制，并继续复用既有 `snapshot_from` / `snapshot_to` 请求契约；如后续继续，应优先改进 `relevance` 自身排序质量，而不是继续扩张 search API 表面。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -769,10 +776,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前代码基线已到 `M8.5.15`。terminal 搜索相关关键点在 `services/terminal_sessions.py`（时间范围 + metadata filters）、`app/routes/terminals.py`（timeline/search query 映射）、`web/src/api/client.ts` / `web/src/hooks/useApi.ts`（timeline/search filter request + cache key）、`web/src/pages/Terminals.tsx`（共享 filter state、`datetime-local` 输入、UTC 转换、preset 时间范围按钮与 `activePresetId` UI 状态）。
-3. 如继续 post-`M8.5.15` terminal 开发，建议进入搜索体验增强的下一小步（例如可选结果排序策略），并保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引。
+2. `main` 当前代码基线已到 `M8.5.16`。terminal 搜索相关关键点在 `services/terminal_sessions.py`（metadata/time-range filters + `sort` 排序策略）、`app/routes/terminals.py`（timeline/search query 映射）、`web/src/api/client.ts` / `web/src/hooks/useApi.ts`（search sort request + query key）、`web/src/pages/Terminals.tsx`（共享 filter state、preset 时间范围按钮、`searchSort` 选择器与 detail reset 行为）。
+3. 如继续 post-`M8.5.16` terminal 开发，建议进入搜索体验增强的下一小步（例如更细粒度的 relevance 排序启发式或 snippet ranking 调整），并保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引。
 4. 复现当前基线建议命令：
-   - `M8.5.15 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.16 focused`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -784,4 +791,4 @@
 
 ## 5. 一句话版
 
-> `main` 当前已包含 `M8.5.15`：terminal 搜索已具备分页、跨 session 导航、snippet 深链、metadata filters、时间范围过滤和 preset 时间范围快捷筛选，下一自然入口是结果排序/优先级体验增强。
+> `main` 当前已包含 `M8.5.16`：terminal 搜索已具备分页、跨 session 导航、snippet 深链、metadata filters、时间范围过滤、preset 时间范围快捷筛选和显式排序控制，下一自然入口是 `relevance` 排序质量优化。
