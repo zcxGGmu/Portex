@@ -1440,14 +1440,16 @@
 - [x] Write focused `M8.5.17` design doc
 - [x] Write focused `M8.5.17` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing backend service tests for relevance heuristic ordering
-- [ ] Implement additive backend relevance ranking heuristics
-- [ ] Run focused terminal regression suite
-- [ ] Run full backend/frontend verification plus diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing backend service tests for relevance heuristic ordering
+- [x] Implement additive backend relevance ranking heuristics
+- [x] Run focused terminal regression suite
+- [x] Run full backend/frontend verification plus diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending implementation.
-- Design doc created: `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking-design.md`.
-- Implementation plan created: `docs/plans/2026-03-18-m8-5-17-terminal-relevance-ranking.md`.
+- Added service-side TDD coverage in `tests/services/test_terminal_sessions.py` for concentrated-vs-sparse matches, first-match-position tie-breaking, weak recency behavior, and pagination over the globally ranked `relevance` result set.
+- Refined `services/terminal_sessions.py` so `relevance` now sorts by `match_count`, `cluster_span`, `first_match_offset`, `match_density`, weak recency, and `session_id`, while preserving `newest` / `oldest`, response DTOs, snippets, deep links, `latest.json`, `/sessions/current/history`, and RBAC boundaries.
+- RED verification ran: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q` -> `3 failed` in the new relevance-heuristic tests before implementation; GREEN rerun passed after the backend-only sort refinement.
+- Verification executed: `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`618 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+- Feature commit completed in this session: `a40fdda` (`feat(terminal): refine M8.5.17 relevance ranking`).
