@@ -5,7 +5,7 @@
 当前分支: `feat/m8-5-18-terminal-word-boundary-ranking`
 最新功能提交: `244da16` (`feat(terminal): add M8.5.18 word-boundary relevance`)
 最新 planning 提交: `a5f0c47` (`docs(plans): add M8.5.18 word-boundary relevance plan`)
-最近一次 handoff 同步: 当前分支待写入 `M8.5.18` handoff 提交
+最近一次 handoff 同步: `3c47abc` (`docs(handoff): sync M8.5.18 word-boundary relevance context`)
 
 ---
 
@@ -113,7 +113,7 @@
 - `M8.5.14` 已完成并已落地到 `main`（timeline/search 现支持包含边界的 `snapshot_from` / `snapshot_to` 过滤，且 `/terminals` 新增 minute-granularity 的 `datetime-local` 控件并在请求前转换为 UTC）。
 - `M8.5.15` 已完成并已落地到 `main`（`/terminals` 新增 `1h` / `6h` / `24h` / `7d` / `30d` preset 时间范围快捷筛选，前端复用既有 `snapshot_from` / `snapshot_to` 契约，无后端改动）。
 - `M8.5.16` 已完成并已落地到 `main`（`/terminals` search 新增显式 `relevance` / `newest` / `oldest` 排序控制，保持既有 pagination、snippet deep link、`latest.json` 与 RBAC 边界不变）。
-- `M8.5.17` 已完成（当前分支 `feat/m8-5-17-terminal-relevance-ranking` 已实现 backend-only terminal `relevance` 排序质量优化；`main` 仍停在 `M8.5.16` + `M8.5.17` planning docs，待后续合并）。
+- `M8.5.17` 已完成并已合入 `main`（`a40fdda` + `53dcee2`；保持 backend-only terminal `relevance` 排序质量优化边界）。
 - `M8.5.18` 已完成（当前分支 `feat/m8-5-18-terminal-word-boundary-ranking` 已实现 backend-only word-boundary relevance refinement，补齐 no-whole-word fallback 稳定性修复）。
 - 当前起点：当前分支已完成并验证 `M8.5.18`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 line-boundary weighting 一类的小型排序改进，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
