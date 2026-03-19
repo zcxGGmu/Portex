@@ -13,7 +13,7 @@ Improve the default `relevance` ordering for `/terminals` history search so resu
   - line-start detection still remains ordering-only
   - the new signal only improves ordering among already matched snapshots
 - add one lightweight ranking signal derived from already available search data:
-  - `non_line_start_whole_word_match_count`
+  - `conditional_non_line_start_whole_word_match_count`
 - preserve the existing `M8.5.19` relevance signals after the new line-start-quality signal:
   - `whole_word_match_count`
   - `line_start_whole_word_match_count`
@@ -101,7 +101,12 @@ Define:
 
 This counts whole-word hits that are not line-start hits.
 
-The signal is intentionally integer-only. It avoids float ratios while still preferring results where whole-word relevance is concentrated at line starts.
+Use it conditionally:
+
+- when `line_start_whole_word_match_count > 0`, use the computed integer value
+- when `line_start_whole_word_match_count == 0`, use a neutral sentinel `0` so ordering fully falls back to the existing `M8.5.19` signals
+
+The signal is intentionally integer-only. It avoids float ratios while still preferring results where whole-word relevance is concentrated at line starts, without disturbing the no-line-start fallback path.
 
 ### Examples
 
@@ -124,6 +129,7 @@ Examples:
 
 - searching `error` still returns both line-start-heavy and inline-heavy snapshots
 - under `sort="relevance"`, snapshots with the same line-start strength but fewer inline whole-word mentions simply rank ahead of noisier ones
+- when no line-start whole-word hits exist, the new signal becomes neutral and does not change the existing `M8.5.19` fallback behavior
 
 ## Relevance Model
 
@@ -133,7 +139,7 @@ For `sort="relevance"`, order matches by:
 
 1. `match_count` descending
 2. `line_start_whole_word_match_count` descending
-3. `non_line_start_whole_word_match_count` ascending
+3. `conditional_non_line_start_whole_word_match_count` ascending
 4. `whole_word_match_count` descending
 5. `first_line_start_whole_word_offset` ascending
 6. `first_whole_word_offset` ascending
@@ -149,9 +155,10 @@ For `sort="relevance"`, order matches by:
   - total number of case-insensitive substring matches in the snapshot output
 - `line_start_whole_word_match_count`
   - number of whole-word hits whose left edge is also at the start of the transcript or immediately after `\n`
-- `non_line_start_whole_word_match_count`
-  - number of whole-word hits that are not line-start hits
-  - smaller means less inline whole-word noise for the same broad line-start signal
+- `conditional_non_line_start_whole_word_match_count`
+  - when line-start whole-word hits exist, this is the number of whole-word hits that are not line-start hits
+  - when line-start whole-word hits do not exist, this is forced to a neutral sentinel `0`
+  - smaller means less inline whole-word noise for the same broad line-start signal, without changing no-line-start fallback ordering
 - `whole_word_match_count`
   - number of those matches whose edges satisfy the lightweight word-boundary rule
   - still acts as a later strength signal, but no longer blocks the new noise signal from affecting the order
@@ -176,7 +183,9 @@ Keep `search_history_by_group(...)` and `_search_history_snapshots(...)` as the 
 
 Extend the internal search candidate metadata in `services/terminal_sessions.py` with the one new integer field. Reuse the already-computed `whole_word_match_count` and `line_start_whole_word_match_count`; no new search pass, DTO, or route change is needed.
 
-Keep `match_count` first, but move `whole_word_match_count` after the new noise signal. If `whole_word_match_count` stayed ahead of `line_start_whole_word_match_count` plus `non_line_start_whole_word_match_count`, the new signal would be dominated and would not actually change ordering.
+Keep `match_count` first, but move `whole_word_match_count` after the new noise signal. If `whole_word_match_count` stayed ahead of `line_start_whole_word_match_count` plus the new noise signal, the new signal would be dominated and would not actually change ordering.
+
+Also make the new noise signal conditional. If it remained active when `line_start_whole_word_match_count == 0`, it would invert the existing `M8.5.19` fallback by preferring fewer whole-word hits, which is not the intended behavior.
 
 ### Route
 

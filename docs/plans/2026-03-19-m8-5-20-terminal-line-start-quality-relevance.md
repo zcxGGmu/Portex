@@ -62,13 +62,16 @@ Normally skip committing the failing state. Keep the worktree dirty and move str
 
 Extend the internal search candidate metadata in `services/terminal_sessions.py` with:
 
-- `non_line_start_whole_word_match_count`
+- `conditional_non_line_start_whole_word_match_count`
 
 Derive it from already-computed values:
 
 ```python
 non_line_start_whole_word_match_count = (
     whole_word_match_count - line_start_whole_word_match_count
+)
+conditional_non_line_start_whole_word_match_count = (
+    non_line_start_whole_word_match_count if line_start_whole_word_match_count > 0 else 0
 )
 ```
 
@@ -84,7 +87,7 @@ Update the `relevance` sort tuple to:
 (
     -item.match.match_count,
     -item.line_start_whole_word_match_count,
-    item.non_line_start_whole_word_match_count,
+    item.conditional_non_line_start_whole_word_match_count,
     -item.whole_word_match_count,
     item.first_line_start_whole_word_offset,
     item.first_whole_word_offset,
