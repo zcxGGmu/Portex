@@ -16,6 +16,30 @@
 - Consistency check: `git diff --check` passed.
 - Commit completed: `docs(handoff): refresh progress and agent guidance`.
 
+# Session Plan (2026-03-19) - Post-M8.5.18 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.18`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md` with evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.19` line-boundary relevance refinement for terminal history search.
+- Added `docs/plans/2026-03-19-m8-5-19-terminal-line-boundary-relevance-design.md` and `docs/plans/2026-03-19-m8-5-19-terminal-line-boundary-relevance.md` to lock scope, ranking signals, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for line-start whole-word ordering, line-start tie-break, no-line-start fallback, and global pagination.
+- Extended `services/terminal_sessions.py` with `line_start_whole_word_match_count`, `first_line_start_whole_word_offset`, and a local line-start whole-word helper, while keeping `newest` / `oldest`, route/UI, snippets, `latest.json`, `/sessions/current/history`, and RBAC unchanged.
+- Planning commit: `3b85d36` (`docs(plans): add M8.5.19 line-boundary relevance plan`).
+- Feature commit: `5cbe11d` (`feat(terminal): add M8.5.19 line-boundary relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-09) - M5.2.1 Telegram Client
 
 ## Goal
