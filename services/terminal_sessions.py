@@ -134,6 +134,7 @@ class _TerminalSessionHistorySearchCandidate:
     match: TerminalSessionHistorySearchMatch
     whole_word_match_count: int
     line_start_whole_word_match_count: int
+    conditional_non_line_start_whole_word_match_count: int
     first_line_start_whole_word_offset: int
     first_whole_word_offset: int
     cluster_span: int
@@ -1022,6 +1023,12 @@ class TerminalSessionService:
             offsets,
             query_length=query_length,
         )
+        non_line_start_whole_word_match_count = (
+            whole_word_match_count - line_start_whole_word_match_count
+        )
+        conditional_non_line_start_whole_word_match_count = (
+            non_line_start_whole_word_match_count if line_start_whole_word_match_count > 0 else 0
+        )
         first_match_offset = offsets[0]
         cluster_span = offsets[-1] - first_match_offset
         normalized_output_length = max(1, output_length)
@@ -1030,6 +1037,7 @@ class TerminalSessionService:
             match=match,
             whole_word_match_count=whole_word_match_count,
             line_start_whole_word_match_count=line_start_whole_word_match_count,
+            conditional_non_line_start_whole_word_match_count=conditional_non_line_start_whole_word_match_count,
             first_line_start_whole_word_offset=first_line_start_whole_word_offset,
             first_whole_word_offset=first_whole_word_offset,
             cluster_span=cluster_span,
@@ -1098,8 +1106,9 @@ class TerminalSessionService:
             matches.sort(
                 key=lambda item: (
                     -item.match.match_count,
-                    -item.whole_word_match_count,
                     -item.line_start_whole_word_match_count,
+                    item.conditional_non_line_start_whole_word_match_count,
+                    -item.whole_word_match_count,
                     item.first_line_start_whole_word_offset,
                     item.first_whole_word_offset,
                     item.cluster_span,

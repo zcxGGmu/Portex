@@ -2337,6 +2337,235 @@ async def test_terminal_session_service_relevance_line_boundary_pagination_uses_
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_relevance_prefers_cleaner_line_start_results_when_line_start_strength_is_tied(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 11, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    cleaner_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _cleaner_record, cleaner_queue = await service.attach_session(
+        cleaner_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error start\nterror noise\nterror noise\n")
+    await asyncio.wait_for(cleaner_queue.get(), timeout=0.1)
+    await service.close_session(cleaner_line_start.session_id, owner_user_id="owner-1")
+
+    noisier_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _noisier_record, noisier_queue = await service.attach_session(
+        noisier_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("error start\nmid error here\ntail error there\n")
+    await asyncio.wait_for(noisier_queue.get(), timeout=0.1)
+    await service.close_session(noisier_line_start.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        cleaner_line_start.session_id,
+        noisier_line_start.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_preserves_first_line_start_tie_break_when_noise_is_tied(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 11, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    earlier_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _earlier_record, earlier_queue = await service.attach_session(
+        earlier_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error alpha\nprefix error beta\nterror gamma\n")
+    await asyncio.wait_for(earlier_queue.get(), timeout=0.1)
+    await service.close_session(earlier_line_start.session_id, owner_user_id="owner-1")
+
+    later_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _later_record, later_queue = await service.attach_session(
+        later_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("prefix error alpha\nerror beta\nterror gamma\n")
+    await asyncio.wait_for(later_queue.get(), timeout=0.1)
+    await service.close_session(later_line_start.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        earlier_line_start.session_id,
+        later_line_start.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_line_start_quality_pagination_uses_global_ordering(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 11, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    cleaner_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _cleaner_record, cleaner_queue = await service.attach_session(
+        cleaner_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("error start\nterror noise\nterror noise\n")
+    await asyncio.wait_for(cleaner_queue.get(), timeout=0.1)
+    await service.close_session(cleaner_line_start.session_id, owner_user_id="owner-1")
+
+    noisier_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _noisier_record, noisier_queue = await service.attach_session(
+        noisier_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("error start\nmid error here\ntail error there\n")
+    await asyncio.wait_for(noisier_queue.get(), timeout=0.1)
+    await service.close_session(noisier_line_start.session_id, owner_user_id="owner-1")
+
+    no_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _no_line_start_record, no_line_start_queue = await service.attach_session(
+        no_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[2].emit_output("aa error bb error cc\n")
+    await asyncio.wait_for(no_line_start_queue.get(), timeout=0.1)
+    await service.close_session(no_line_start.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=2,
+        offset=1,
+    )
+
+    assert page.total == 3
+    assert page.has_more is False
+    assert [item.record.session_id for item in page.items] == [
+        noisier_line_start.session_id,
+        no_line_start.session_id,
+    ]
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_search_returns_empty_page_when_no_match(
     tmp_path: Path,
 ) -> None:
