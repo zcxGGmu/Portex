@@ -5,7 +5,7 @@
 当前分支: `main`
 最新功能提交: `bf40eca` (`feat(terminal): add M8.5.21 log-marker relevance`)
 最新 planning 提交: `a4154a7` (`docs(plans): add M8.5.21 log-marker relevance plan`)
-最近一次 handoff 同步: 当前工作树已更新到 `M8.5.21` handoff 内容；精确提交顺序以当前分支 `git log` 为准
+最近一次 handoff 同步: 当前分支已包含 `M8.5.21` handoff sync；精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -690,7 +690,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.21` 的 planning 与 handoff 同步内容；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.21` 的 planning + handoff sync 链；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -821,8 +821,8 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前功能代码基线已包含 `bf40eca` 的 `M8.5.21` backend-only log-marker relevance refinement；关键文件是 `docs/plans/2026-03-19-m8-5-21-terminal-log-marker-relevance-design.md`、`docs/plans/2026-03-19-m8-5-21-terminal-log-marker-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.21` 的小范围 backend-only relevance 质量优化，例如 punctuation-aware line-start weighting；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
+2. `main` 当前功能代码基线已包含 `a4154a7` + `bf40eca` 的 `M8.5.21` backend-only log-marker relevance refinement；关键文件是 `docs/plans/2026-03-19-m8-5-21-terminal-log-marker-relevance-design.md`、`docs/plans/2026-03-19-m8-5-21-terminal-log-marker-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.21` 的小范围 backend-only relevance 质量优化，例如 punctuation-aware line-start weighting；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.21` 只额外优先 line-start `query:` 与 strict `query -` marker，不包含 `[query]` 或更泛的标点规则。
 4. 复现当前基线建议命令：
    - `M8.5.21 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
@@ -836,4 +836,4 @@
 
 ## 5. 一句话版
 
-> `main` 当前已包含 `M8.5.21` 的 backend-only log-marker relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的小范围搜索质量微调。
+> `main` 当前已包含 `M8.5.21` 的 backend-only log-marker relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的 punctuation-aware line-start 质量微调。

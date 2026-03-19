@@ -16,6 +16,22 @@
 - Consistency check: `git diff --check` passed.
 - Commit completed: `docs(handoff): refresh progress and agent guidance`.
 
+# Session Plan (2026-03-19) - Docs Sync After M8.5.21
+
+## Goal
+- Refresh `docs/progress.md` and `AGENTS.md` so the restart-oriented handoff matches the latest `M8.5.21` baseline and next-step guidance, then commit the docs sync.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, recent commits, and current branch status
+- [x] Tighten `docs/progress.md` restart wording around the current `M8.5.21` baseline
+- [x] Tighten `AGENTS.md` restart wording around the current `M8.5.21` baseline
+- [x] Check doc consistency and diff hygiene
+- [x] Commit the documentation refresh
+
+## Review
+- Refined `docs/progress.md` so the restart summary points directly at the `a4154a7` + `bf40eca` `M8.5.21` chain and explicitly records that the next natural entry is a punctuation-aware line-start refinement.
+- Refined `AGENTS.md` so the `M8.5.21` baseline now explicitly notes the narrow `query:` / strict `query -` marker scope and reminds future restarts to use branch `git log` when locating the latest handoff-only sync commit.
+
 # Session Plan (2026-03-19) - Post-M8.5.20 Continuation
 
 ## Goal
