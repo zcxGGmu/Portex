@@ -3,9 +3,9 @@
 最后更新: 2026-03-19 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `5cbe11d` (`feat(terminal): add M8.5.19 line-boundary relevance`)
-最新 planning 提交: `3b85d36` (`docs(plans): add M8.5.19 line-boundary relevance plan`)
-最近一次 handoff 同步: 当前工作树已更新到 `M8.5.19` handoff 内容；精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `ef60f28` (`feat(terminal): add M8.5.20 line-start quality relevance`)
+最新 planning 提交: `a167ffa` (`docs(plans): clarify M8.5.20 conditional noise fallback`)
+最近一次 handoff 同步: 当前工作树已更新到 `M8.5.20` handoff 内容；精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -116,11 +116,19 @@
 - `M8.5.17` 已完成并已合入 `main`（`a40fdda` + `53dcee2`；保持 backend-only terminal `relevance` 排序质量优化边界）。
 - `M8.5.18` 已完成并已合入 `main`（`244da16` + `8a122d2`；补齐 backend-only word-boundary relevance refinement 与 no-whole-word fallback 稳定性修复，相关 handoff docs 已同步到 `main`）。
 - `M8.5.19` 已完成并已合入当前工作树（`5cbe11d`；补齐 backend-only line-boundary relevance refinement，保持 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
-- 当前起点：`main` 当前功能代码基线已到 `M8.5.19`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 line-start density / log-marker quality 一类的小型排序改进，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.20` 已完成并已合入当前工作树（`ef60f28`；补齐 backend-only line-start quality relevance refinement，保持 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
+- 当前起点：`main` 当前功能代码基线已到 `M8.5.20`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 log-marker quality / punctuation-aware line-start quality 一类的小型排序改进，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.20` planning（on `main`）：新增 `docs/plans/2026-03-19-m8-5-20-terminal-line-start-quality-relevance-design.md` 与 `docs/plans/2026-03-19-m8-5-20-terminal-line-start-quality-relevance.md`，将范围固定为“backend-only line-start quality relevance refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.20` planning（on `main`）：初始规划提交为 `b06b00b`（`docs(plans): add M8.5.20 line-start quality relevance plan`），随后通过 `ac31ffe`（`docs(plans): refine M8.5.20 line-start quality ordering`）与 `a167ffa`（`docs(plans): clarify M8.5.20 conditional noise fallback`）修正两处关键设计点：`whole_word_match_count` 不能压过新噪音信号，且噪音信号必须在无 line-start 命中时保持中性回退。
+- `M8.5.20` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 cleaner line-start 结果优先、噪音 tie 后仍按首个 line-start 偏移排序，以及基于新全局排序的分页切片行为。
+- `M8.5.20` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增条件性 `conditional_non_line_start_whole_word_match_count`，仅在存在 line-start whole-word 命中时参与排序；无 line-start 命中时保持中性回退到既有 `M8.5.19` 信号。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.20` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`（RED -> GREEN）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`629 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.20` implementation（on `main`）：功能提交为 `ef60f28`（`feat(terminal): add M8.5.20 line-start quality relevance`）。
 
 - `M8.5.19` planning（on `main`）：新增 `docs/plans/2026-03-19-m8-5-19-terminal-line-boundary-relevance-design.md` 与 `docs/plans/2026-03-19-m8-5-19-terminal-line-boundary-relevance.md`，将范围固定为“backend-only line-boundary relevance refinement”，明确仅扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.19` planning（on `main`）：规划提交为 `3b85d36`（`docs(plans): add M8.5.19 line-boundary relevance plan`）；该提交包含 design + implementation plan 两份新文档。
@@ -674,7 +682,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.19` 的 planning 与 handoff 同步内容；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.20` 的 planning 与 handoff 同步内容；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -793,6 +801,7 @@
 - `M8.5.17` 当前已合入 `main`：默认 `relevance` 现会优先按命中聚集度、首个命中位置、轻量密度，再以 recency 作为弱 tie-break 排序；route/UI/RBAC/history compatibility 保持不变。
 - `M8.5.18` 当前已合入 `main`：默认 `relevance` 现会在既有 `M8.5.17` 基础上优先 whole-word 命中与 whole-word 首次命中位置，并在 no-whole-word 命中路径保持稳定回退到既有排序信号。
 - `M8.5.19` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.18` 基础上优先 line-start whole-word 命中与 line-start 首次命中位置，并在无 line-start 命中路径稳定回退到既有排序信号。
+- `M8.5.20` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.19` 基础上优先 cleaner line-start whole-word 结果；仅当存在 line-start 命中时才对非 line-start whole-word 噪音做升序排序，无 line-start 命中时保持稳定回退到既有 `M8.5.19` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -803,10 +812,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. `main` 当前功能代码基线已包含 `5cbe11d` 的 `M8.5.19` backend-only line-boundary relevance refinement；关键文件是 `docs/plans/2026-03-19-m8-5-19-terminal-line-boundary-relevance-design.md`、`docs/plans/2026-03-19-m8-5-19-terminal-line-boundary-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.19` 的小范围 backend-only relevance 质量优化，例如 line-start density / log-marker quality weighting；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
+2. `main` 当前功能代码基线已包含 `ef60f28` 的 `M8.5.20` backend-only line-start quality relevance refinement；关键文件是 `docs/plans/2026-03-19-m8-5-20-terminal-line-start-quality-relevance-design.md`、`docs/plans/2026-03-19-m8-5-20-terminal-line-start-quality-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.20` 的小范围 backend-only relevance 质量优化，例如 log-marker quality / punctuation-aware line-start weighting；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
 4. 复现当前基线建议命令：
-   - `M8.5.19 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.20 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -818,4 +827,4 @@
 
 ## 5. 一句话版
 
-> `main` 当前已包含 `M8.5.19` 的 backend-only line-boundary relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的小范围搜索质量微调。
+> `main` 当前已包含 `M8.5.20` 的 backend-only line-start quality relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的小范围搜索质量微调。

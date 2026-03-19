@@ -16,6 +16,33 @@
 - Consistency check: `git diff --check` passed.
 - Commit completed: `docs(handoff): refresh progress and agent guidance`.
 
+# Session Plan (2026-03-19) - Post-M8.5.19 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.19`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md` with evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.20` line-start quality relevance refinement for terminal history search.
+- Design direction approved: keep `M8.5.19` line-start signals, then add one more narrow ranking signal that prefers results with less non-line-start whole-word noise when line-start quality is otherwise similar.
+- Added `docs/plans/2026-03-19-m8-5-20-terminal-line-start-quality-relevance-design.md` and `docs/plans/2026-03-19-m8-5-20-terminal-line-start-quality-relevance.md` to lock scope, ordering signal, and verification flow before implementation.
+- Corrected the initial `M8.5.20` planning before implementation: `whole_word_match_count` had to move behind the new noise signal, otherwise `non_line_start_whole_word_match_count` would be dominated and the milestone would not change behavior.
+- Corrected the planning a second time before implementation: the new noise signal must be conditional on `line_start_whole_word_match_count > 0`, otherwise the no-line-start path would stop cleanly falling back to `M8.5.19`.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for cleaner line-start ordering, preserved first-line-start tie-break, and global pagination under the new `M8.5.20` ordering.
+- Extended `services/terminal_sessions.py` with `conditional_non_line_start_whole_word_match_count`, active only when line-start whole-word hits exist, while preserving the no-line-start fallback path from `M8.5.19`.
+- Planning commits for this milestone: `b06b00b` (`docs(plans): add M8.5.20 line-start quality relevance plan`), `ac31ffe` (`docs(plans): refine M8.5.20 line-start quality ordering`), and `a167ffa` (`docs(plans): clarify M8.5.20 conditional noise fallback`).
+- Feature commit: `ef60f28` (`feat(terminal): add M8.5.20 line-start quality relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-19) - Post-M8.5.18 Continuation
 
 ## Goal
