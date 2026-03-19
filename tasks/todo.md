@@ -16,6 +16,31 @@
 - Consistency check: `git diff --check` passed.
 - Commit completed: `docs(handoff): refresh progress and agent guidance`.
 
+# Session Plan (2026-03-19) - Post-M8.5.20 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.20`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md` with evidence and next step
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.21` log-marker relevance refinement for terminal history search.
+- Design direction approved: keep `M8.5.20` line-start-quality signals and add a narrower log-marker-aware preference only for line-start `q:` and strict `q -` forms.
+- Added `docs/plans/2026-03-19-m8-5-21-terminal-log-marker-relevance-design.md` and `docs/plans/2026-03-19-m8-5-21-terminal-log-marker-relevance.md` to lock scope, marker rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for marker-over-plain ordering, marker tie-break, no-marker fallback, and global pagination under the new `M8.5.21` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_log_marker_match_count`, `first_line_start_log_marker_offset`, and a narrow marker helper that only recognizes line-start `query:` and strict `query -` forms after an existing line-start whole-word hit.
+- Planning commit: `a4154a7` (`docs(plans): add M8.5.21 log-marker relevance plan`).
+- Feature commit: `bf40eca` (`feat(terminal): add M8.5.21 log-marker relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-19) - Post-M8.5.19 Continuation
 
 ## Goal
