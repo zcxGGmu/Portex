@@ -16,6 +16,31 @@
 - Consistency check: `git diff --check` passed.
 - Commit completed: `docs(handoff): refresh progress and agent guidance`.
 
+# Session Plan (2026-03-19) - Post-M8.5.21 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.21`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.22` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.22` punctuation-aware line-start relevance refinement for terminal history search.
+- Design direction approved: keep `M8.5.21` log-marker priority intact, then add one more narrow ranking signal for line-start `[query]` / `(query)` / `{query}` / `<query>` wrappers only.
+- Added `docs/plans/2026-03-19-m8-5-22-terminal-punctuation-aware-line-start-relevance-design.md` and `docs/plans/2026-03-19-m8-5-22-terminal-punctuation-aware-line-start-relevance.md` to lock scope, wrapper rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for log-marker-over-wrapper ordering, wrapper-over-plain ordering, no-wrapper fallback, and global pagination under the new `M8.5.22` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_punctuation_wrap_match_count`, `first_line_start_punctuation_wrap_offset`, and a narrow wrapper helper that only recognizes line-start single-character pairs around the query.
+- Planning commit: `ab35391` (`docs(plans): add M8.5.22 punctuation-aware line-start relevance plan`).
+- Feature commit: `f543d77` (`feat(terminal): add M8.5.22 punctuation-aware line-start relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q`, `.venv/bin/ruff check .`, `cd web && npm ci`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-19) - Docs Sync After M8.5.21
 
 ## Goal
