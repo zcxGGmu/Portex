@@ -21,7 +21,7 @@
 
 Add focused service tests that assert:
 
-- when `line_start_whole_word_match_count` is tied, results with fewer non-line-start whole-word hits win
+- when `match_count` and `line_start_whole_word_match_count` are tied, results with fewer non-line-start whole-word hits win
 - when `non_line_start_whole_word_match_count` is tied, earlier `first_line_start_whole_word_offset` still wins
 - when neither snapshot has a line-start whole-word hit, ordering falls back to the existing `M8.5.19` relevance signals
 - pagination still slices the fully ranked `relevance` result set after the new ordering is applied
@@ -83,9 +83,9 @@ Update the `relevance` sort tuple to:
 ```python
 (
     -item.match.match_count,
-    -item.whole_word_match_count,
     -item.line_start_whole_word_match_count,
     item.non_line_start_whole_word_match_count,
+    -item.whole_word_match_count,
     item.first_line_start_whole_word_offset,
     item.first_whole_word_offset,
     item.cluster_span,

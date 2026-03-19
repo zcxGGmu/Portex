@@ -132,9 +132,9 @@ Examples:
 For `sort="relevance"`, order matches by:
 
 1. `match_count` descending
-2. `whole_word_match_count` descending
-3. `line_start_whole_word_match_count` descending
-4. `non_line_start_whole_word_match_count` ascending
+2. `line_start_whole_word_match_count` descending
+3. `non_line_start_whole_word_match_count` ascending
+4. `whole_word_match_count` descending
 5. `first_line_start_whole_word_offset` ascending
 6. `first_whole_word_offset` ascending
 7. `cluster_span` ascending
@@ -147,13 +147,14 @@ For `sort="relevance"`, order matches by:
 
 - `match_count`
   - total number of case-insensitive substring matches in the snapshot output
-- `whole_word_match_count`
-  - number of those matches whose edges satisfy the lightweight word-boundary rule
 - `line_start_whole_word_match_count`
   - number of whole-word hits whose left edge is also at the start of the transcript or immediately after `\n`
 - `non_line_start_whole_word_match_count`
   - number of whole-word hits that are not line-start hits
   - smaller means less inline whole-word noise for the same broad line-start signal
+- `whole_word_match_count`
+  - number of those matches whose edges satisfy the lightweight word-boundary rule
+  - still acts as a later strength signal, but no longer blocks the new noise signal from affecting the order
 - `first_line_start_whole_word_offset`
   - earliest offset among line-start whole-word hits
 - `first_whole_word_offset`
@@ -174,6 +175,8 @@ For `sort="relevance"`, order matches by:
 Keep `search_history_by_group(...)` and `_search_history_snapshots(...)` as the main entry points. Only the internal `relevance` candidate-building and sorting logic changes.
 
 Extend the internal search candidate metadata in `services/terminal_sessions.py` with the one new integer field. Reuse the already-computed `whole_word_match_count` and `line_start_whole_word_match_count`; no new search pass, DTO, or route change is needed.
+
+Keep `match_count` first, but move `whole_word_match_count` after the new noise signal. If `whole_word_match_count` stayed ahead of `line_start_whole_word_match_count` plus `non_line_start_whole_word_match_count`, the new signal would be dominated and would not actually change ordering.
 
 ### Route
 
@@ -207,7 +210,7 @@ The following must remain unchanged:
 
 Add focused service tests that lock:
 
-- when `line_start_whole_word_match_count` is tied, results with fewer non-line-start whole-word hits win
+- when `match_count` and `line_start_whole_word_match_count` are tied, results with fewer non-line-start whole-word hits win
 - when the new noise signal is tied, ordering still falls back to `first_line_start_whole_word_offset`
 - when no line-start whole-word hits exist, ordering falls back to the existing `M8.5.19` signals
 - pagination still slices the globally ranked `relevance` result set after the new ordering is applied
