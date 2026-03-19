@@ -27,6 +27,7 @@ _TERMINAL_ARCHIVE_STATUSES: set[TerminalSessionStatus] = {"closed", "exited"}
 _DEFAULT_SEARCH_SNIPPET_LIMIT = 3
 _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS = 40
 _NO_WHOLE_WORD_MATCH_OFFSET = 1 << 60
+_NO_LINE_START_WHOLE_WORD_MATCH_OFFSET = 1 << 60
 
 
 class TerminalBackendUnsupportedError(RuntimeError):
@@ -132,6 +133,8 @@ class TerminalSessionHistorySearchPage:
 class _TerminalSessionHistorySearchCandidate:
     match: TerminalSessionHistorySearchMatch
     whole_word_match_count: int
+    line_start_whole_word_match_count: int
+    first_line_start_whole_word_offset: int
     first_whole_word_offset: int
     cluster_span: int
     first_match_offset: int
@@ -1011,6 +1014,14 @@ class TerminalSessionService:
             offsets,
             query_length=query_length,
         )
+        (
+            line_start_whole_word_match_count,
+            first_line_start_whole_word_offset,
+        ) = TerminalSessionService._count_line_start_whole_word_hits(
+            text,
+            offsets,
+            query_length=query_length,
+        )
         first_match_offset = offsets[0]
         cluster_span = offsets[-1] - first_match_offset
         normalized_output_length = max(1, output_length)
@@ -1018,6 +1029,8 @@ class TerminalSessionService:
         return _TerminalSessionHistorySearchCandidate(
             match=match,
             whole_word_match_count=whole_word_match_count,
+            line_start_whole_word_match_count=line_start_whole_word_match_count,
+            first_line_start_whole_word_offset=first_line_start_whole_word_offset,
             first_whole_word_offset=first_whole_word_offset,
             cluster_span=cluster_span,
             first_match_offset=first_match_offset,
@@ -1036,6 +1049,17 @@ class TerminalSessionService:
         return len(whole_word_offsets), whole_word_offsets[0]
 
     @staticmethod
+    def _count_line_start_whole_word_hits(text: str, offsets: list[int], *, query_length: int) -> tuple[int, int]:
+        line_start_offsets = [
+            offset
+            for offset in offsets
+            if TerminalSessionService._is_line_start_whole_word_match(text, offset, query_length=query_length)
+        ]
+        if not line_start_offsets:
+            return 0, _NO_LINE_START_WHOLE_WORD_MATCH_OFFSET
+        return len(line_start_offsets), line_start_offsets[0]
+
+    @staticmethod
     def _is_whole_word_match(text: str, offset: int, *, query_length: int) -> bool:
         start = offset
         end = offset + query_length
@@ -1047,6 +1071,12 @@ class TerminalSessionService:
         prev_is_word_char = False if prev_char is None else TerminalSessionService._is_word_char(prev_char)
         next_is_word_char = False if next_char is None else TerminalSessionService._is_word_char(next_char)
         return not prev_is_word_char and not next_is_word_char
+
+    @staticmethod
+    def _is_line_start_whole_word_match(text: str, offset: int, *, query_length: int) -> bool:
+        if not TerminalSessionService._is_whole_word_match(text, offset, query_length=query_length):
+            return False
+        return offset == 0 or text[offset - 1] == "\n"
 
     @staticmethod
     def _is_word_char(char: str) -> bool:
@@ -1069,6 +1099,8 @@ class TerminalSessionService:
                 key=lambda item: (
                     -item.match.match_count,
                     -item.whole_word_match_count,
+                    -item.line_start_whole_word_match_count,
+                    item.first_line_start_whole_word_offset,
                     item.first_whole_word_offset,
                     item.cluster_span,
                     item.first_match_offset,

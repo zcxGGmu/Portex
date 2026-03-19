@@ -2037,6 +2037,306 @@ async def test_terminal_session_service_relevance_word_boundary_pagination_uses_
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_relevance_prefers_line_start_whole_word_matches_over_mid_line_whole_word_matches(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 10, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _line_start_record, line_start_queue = await service.attach_session(
+        line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output(f"{'p' * 40}\nerror: alpha\n{'q' * 20}\nerror: beta\n")
+    await asyncio.wait_for(line_start_queue.get(), timeout=0.1)
+    await service.close_session(line_start.session_id, owner_user_id="owner-1")
+
+    mid_line_only = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _mid_line_record, mid_line_queue = await service.attach_session(
+        mid_line_only.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("aa error bb error\n")
+    await asyncio.wait_for(mid_line_queue.get(), timeout=0.1)
+    await service.close_session(mid_line_only.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        line_start.session_id,
+        mid_line_only.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_prefers_earlier_line_start_whole_word_offset_when_counts_tie(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 10, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    earlier_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _earlier_record, earlier_queue = await service.attach_session(
+        earlier_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output(f"{'p' * 18} error alpha\nerror beta\n")
+    await asyncio.wait_for(earlier_queue.get(), timeout=0.1)
+    await service.close_session(earlier_line_start.session_id, owner_user_id="owner-1")
+
+    later_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _later_record, later_queue = await service.attach_session(
+        later_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output(f"aa error alpha {'x' * 40}\nerror beta\n")
+    await asyncio.wait_for(later_queue.get(), timeout=0.1)
+    await service.close_session(later_line_start.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        earlier_line_start.session_id,
+        later_line_start.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_falls_back_to_m8_5_18_signals_when_no_line_start_whole_word_match(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 10, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    concentrated = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _concentrated_record, concentrated_queue = await service.attach_session(
+        concentrated.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output(f"aa error error {'y' * 200}\n")
+    await asyncio.wait_for(concentrated_queue.get(), timeout=0.1)
+    await service.close_session(concentrated.session_id, owner_user_id="owner-1")
+
+    sparse = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _sparse_record, sparse_queue = await service.attach_session(
+        sparse.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output(f"aa error {'x' * 20} error\n")
+    await asyncio.wait_for(sparse_queue.get(), timeout=0.1)
+    await service.close_session(sparse.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        concentrated.session_id,
+        sparse.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_line_boundary_pagination_uses_global_ordering(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 19, 10, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    line_start_dominant = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _line_start_dominant_record, line_start_dominant_queue = await service.attach_session(
+        line_start_dominant.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output(f"{'p' * 50}\nerror one\n{'q' * 30}\nerror two\n")
+    await asyncio.wait_for(line_start_dominant_queue.get(), timeout=0.1)
+    await service.close_session(line_start_dominant.session_id, owner_user_id="owner-1")
+
+    mixed_line_start = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _mixed_line_start_record, mixed_line_start_queue = await service.attach_session(
+        mixed_line_start.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output(f"aa error mid {'x' * 50}\nerror line\n")
+    await asyncio.wait_for(mixed_line_start_queue.get(), timeout=0.1)
+    await service.close_session(mixed_line_start.session_id, owner_user_id="owner-1")
+
+    mid_line_only = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _mid_line_only_record, mid_line_only_queue = await service.attach_session(
+        mid_line_only.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[2].emit_output("aa error bb error\n")
+    await asyncio.wait_for(mid_line_only_queue.get(), timeout=0.1)
+    await service.close_session(mid_line_only.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=2,
+        offset=1,
+    )
+
+    assert page.total == 3
+    assert page.has_more is False
+    assert [item.record.session_id for item in page.items] == [
+        mixed_line_start.session_id,
+        mid_line_only.session_id,
+    ]
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_search_returns_empty_page_when_no_match(
     tmp_path: Path,
 ) -> None:
