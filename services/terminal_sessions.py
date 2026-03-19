@@ -29,6 +29,13 @@ _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS = 40
 _NO_WHOLE_WORD_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_WHOLE_WORD_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_LOG_MARKER_MATCH_OFFSET = 1 << 60
+_NO_LINE_START_PUNCTUATION_WRAP_MATCH_OFFSET = 1 << 60
+_LINE_START_PUNCTUATION_WRAP_PAIRS = {
+    "[": "]",
+    "(": ")",
+    "{": "}",
+    "<": ">",
+}
 
 
 class TerminalBackendUnsupportedError(RuntimeError):
@@ -135,6 +142,8 @@ class _TerminalSessionHistorySearchCandidate:
     match: TerminalSessionHistorySearchMatch
     line_start_log_marker_match_count: int
     first_line_start_log_marker_offset: int
+    line_start_punctuation_wrap_match_count: int
+    first_line_start_punctuation_wrap_offset: int
     whole_word_match_count: int
     line_start_whole_word_match_count: int
     conditional_non_line_start_whole_word_match_count: int
@@ -1034,6 +1043,14 @@ class TerminalSessionService:
             offsets,
             query_length=query_length,
         )
+        (
+            line_start_punctuation_wrap_match_count,
+            first_line_start_punctuation_wrap_offset,
+        ) = TerminalSessionService._count_line_start_punctuation_wrap_hits(
+            text,
+            offsets,
+            query_length=query_length,
+        )
         non_line_start_whole_word_match_count = (
             whole_word_match_count - line_start_whole_word_match_count
         )
@@ -1048,6 +1065,8 @@ class TerminalSessionService:
             match=match,
             line_start_log_marker_match_count=line_start_log_marker_match_count,
             first_line_start_log_marker_offset=first_line_start_log_marker_offset,
+            line_start_punctuation_wrap_match_count=line_start_punctuation_wrap_match_count,
+            first_line_start_punctuation_wrap_offset=first_line_start_punctuation_wrap_offset,
             whole_word_match_count=whole_word_match_count,
             line_start_whole_word_match_count=line_start_whole_word_match_count,
             conditional_non_line_start_whole_word_match_count=conditional_non_line_start_whole_word_match_count,
@@ -1092,6 +1111,17 @@ class TerminalSessionService:
         return len(marker_offsets), marker_offsets[0]
 
     @staticmethod
+    def _count_line_start_punctuation_wrap_hits(text: str, offsets: list[int], *, query_length: int) -> tuple[int, int]:
+        wrapper_offsets = [
+            offset
+            for offset in offsets
+            if TerminalSessionService._is_line_start_punctuation_wrap_match(text, offset, query_length=query_length)
+        ]
+        if not wrapper_offsets:
+            return 0, _NO_LINE_START_PUNCTUATION_WRAP_MATCH_OFFSET
+        return len(wrapper_offsets), wrapper_offsets[0]
+
+    @staticmethod
     def _is_whole_word_match(text: str, offset: int, *, query_length: int) -> bool:
         start = offset
         end = offset + query_length
@@ -1118,6 +1148,25 @@ class TerminalSessionService:
         return text[end : end + 1] == ":" or text[end : end + 2] == " -"
 
     @staticmethod
+    def _is_line_start_punctuation_wrap_match(text: str, offset: int, *, query_length: int) -> bool:
+        if not TerminalSessionService._is_whole_word_match(text, offset, query_length=query_length):
+            return False
+        if offset <= 0:
+            return False
+
+        opening = text[offset - 1]
+        closing = _LINE_START_PUNCTUATION_WRAP_PAIRS.get(opening)
+        if closing is None:
+            return False
+
+        opening_offset = offset - 1
+        if opening_offset != 0 and text[opening_offset - 1] != "\n":
+            return False
+
+        end = offset + query_length
+        return text[end : end + 1] == closing
+
+    @staticmethod
     def _is_word_char(char: str) -> bool:
         return ("a" <= char <= "z") or ("A" <= char <= "Z") or ("0" <= char <= "9") or char == "_"
 
@@ -1138,10 +1187,12 @@ class TerminalSessionService:
                 key=lambda item: (
                     -item.match.match_count,
                     -item.line_start_log_marker_match_count,
+                    -item.line_start_punctuation_wrap_match_count,
                     -item.line_start_whole_word_match_count,
                     item.conditional_non_line_start_whole_word_match_count,
                     -item.whole_word_match_count,
                     item.first_line_start_log_marker_offset,
+                    item.first_line_start_punctuation_wrap_offset,
                     item.first_line_start_whole_word_offset,
                     item.first_whole_word_offset,
                     item.cluster_span,
