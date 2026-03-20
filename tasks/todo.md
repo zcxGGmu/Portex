@@ -8,13 +8,20 @@
 - [x] Confirm the next milestone scope with the user
 - [x] Propose and approve the design
 - [x] Write the design doc and implementation plan docs
-- [ ] Implement the approved refinement with focused TDD
-- [ ] Run focused and regression verification
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.27` evidence
-- [ ] Commit the milestone with a detailed message
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.27` evidence
+- [x] Commit the milestone with a detailed message
 
 ## Review
-- In progress.
+- Confirmed the next backend-only milestone as `M8.5.27` exact-tag colon-marker relevance refinement for terminal history search.
+- Design direction approved: keep raw-marker and stronger wrapper signals intact, then prefer exact-tag colon-marker forms such as `[query]: text` over exact-tag dash-marker forms such as `[query] - text`.
+- Added `docs/plans/2026-03-20-m8-5-27-terminal-exact-tag-colon-marker-relevance-design.md` and `docs/plans/2026-03-20-m8-5-27-terminal-exact-tag-colon-marker-relevance.md` to lock scope, colon-marker rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for colon-marker-over-dash-marker ordering, colon-marker offset tie-break, `M8.5.26` fallback when no exact-tag colon-marker exists, and global pagination under the new `M8.5.27` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_exact_tag_colon_marker_match_count`, `first_line_start_exact_tag_colon_marker_offset`, and a narrow colon-marker helper derived from the existing line-start exact-tag marker rule; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `692622c` (`docs(plans): add M8.5.27 exact-tag colon-marker relevance plan`).
+- Feature commit: `cbde3f1` (`feat(terminal): add M8.5.27 exact-tag colon-marker relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`657 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-20) - Post-M8.5.25 Continuation
 
