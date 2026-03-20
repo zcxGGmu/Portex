@@ -8,13 +8,20 @@
 - [x] Confirm the next milestone scope with the user
 - [x] Propose and approve the design
 - [x] Write the design doc and implementation plan docs
-- [ ] Implement the approved refinement with focused TDD
-- [ ] Run focused and regression verification
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.23` evidence
-- [ ] Commit the milestone with a detailed message
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.23` evidence
+- [x] Commit the milestone with a detailed message
 
 ## Review
-- In progress.
+- Confirmed the next backend-only milestone as `M8.5.23` exact-tag line-start relevance refinement for terminal history search.
+- Design direction approved: keep `M8.5.21` raw log-marker priority intact, then prefer delimiter-aware exact-tag wrapper forms such as `[query] text`, `[query]: text`, and `[query] - text` over tighter non-delimited wrapper forms such as `[query]text`.
+- Added `docs/plans/2026-03-20-m8-5-23-terminal-exact-tag-line-start-relevance-design.md` and `docs/plans/2026-03-20-m8-5-23-terminal-exact-tag-line-start-relevance.md` to lock scope, delimiter rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for exact-tag-over-tight-wrapper ordering, exact-tag offset tie-break, `M8.5.22` fallback when no exact-tag exists, and global pagination under the new `M8.5.23` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_exact_tag_match_count`, `first_line_start_exact_tag_offset`, and a narrow exact-tag helper derived from the existing line-start punctuation-wrapper rule; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `940eac2` (`docs(plans): add M8.5.23 exact-tag line-start relevance plan`).
+- Feature commit: `cd2e80e` (`feat(terminal): add M8.5.23 exact-tag line-start relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`641 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-06) - Docs Sync
 

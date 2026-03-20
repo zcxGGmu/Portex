@@ -1,11 +1,11 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-19 (Asia/Shanghai)
+最后更新: 2026-03-20 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
-当前分支: `feat/m8-5-22-punctuation-aware-line-start-relevance`
-最新功能提交: `f543d77` (`feat(terminal): add M8.5.22 punctuation-aware line-start relevance`)
-最新 planning 提交: `ab35391` (`docs(plans): add M8.5.22 punctuation-aware line-start relevance plan`)
-最近一次 handoff 同步: 当前分支已完成 `M8.5.22` 的 planning + feature 链，本次 docs sync 将补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
+当前分支: `main`
+最新功能提交: `cd2e80e` (`feat(terminal): add M8.5.23 exact-tag line-start relevance`)
+最新 planning 提交: `940eac2` (`docs(plans): add M8.5.23 exact-tag line-start relevance plan`)
+最近一次 handoff 同步: 当前分支已完成 `M8.5.23` 的 planning + feature 链，本次 docs sync 将补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -119,11 +119,19 @@
 - `M8.5.20` 已完成并已合入当前工作树（`ef60f28`；补齐 backend-only line-start quality relevance refinement，保持 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
 - `M8.5.21` 已完成并已合入当前工作树（`bf40eca`；补齐 backend-only line-start log-marker relevance refinement，保持 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
 - `M8.5.22` 已完成并已合入当前工作树（`f543d77`；补齐 backend-only punctuation-aware line-start relevance refinement，新增对行首 `[query]` / `(query)` / `{query}` / `<query>` 包裹命中的排序权重，保持 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
-- 当前起点：当前功能代码基线已到 `M8.5.22`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估另一类小型 delimiter-aware / exact-tag line-start tie-break，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.23` 已完成并已合入当前工作树（`cd2e80e`；补齐 backend-only exact-tag line-start relevance refinement，新增对行首 `[query] text` / `[query]: text` / `[query] - text` 这类 delimiter-aware wrapper 结果的排序优先级，同时保持 `M8.5.21` raw `query:` / strict `query -` marker 仍高于 wrapper 家族，且 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
+- 当前起点：当前功能代码基线已到 `M8.5.23`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 raw line-start marker delimiter-boundary tie-break，例如让 `query: text` / strict `query - text` 优先于 glued `query:text` / `query -text` 形式，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.23` planning（on `main`）：新增 `docs/plans/2026-03-20-m8-5-23-terminal-exact-tag-line-start-relevance-design.md` 与 `docs/plans/2026-03-20-m8-5-23-terminal-exact-tag-line-start-relevance.md`，将范围固定为“backend-only exact-tag line-start relevance refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.23` planning（on `main`）：规划提交为 `940eac2`（`docs(plans): add M8.5.23 exact-tag line-start relevance plan`）；该提交包含 design + implementation plan 两份新文档。
+- `M8.5.23` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 delimiter-aware exact-tag wrapper 高于 tighter wrapper、exact-tag tie-break、无 exact-tag 时稳定回退到既有 `M8.5.22` punctuation-wrapper 信号，以及基于新全局排序的分页切片行为。
+- `M8.5.23` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `line_start_exact_tag_match_count` / `first_line_start_exact_tag_offset` 与本地 exact-tag helper；只认已经满足 `M8.5.22` line-start wrapper 条件，且 closing wrapper 后紧跟 end-of-output、whitespace、`:` + delimiter、或 strict ` -` + delimiter 的窄范围 exact-tag 结果。既有 `M8.5.21` raw `query:` / strict `query -` marker 仍保持更高优先级。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.23` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`（RED -> GREEN）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`641 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.23` implementation（on `main`）：功能提交为 `cd2e80e`（`feat(terminal): add M8.5.23 exact-tag line-start relevance`）。
 
 - `M8.5.22` planning（on `feat/m8-5-22-punctuation-aware-line-start-relevance`）：新增 `docs/plans/2026-03-19-m8-5-22-terminal-punctuation-aware-line-start-relevance-design.md` 与 `docs/plans/2026-03-19-m8-5-22-terminal-punctuation-aware-line-start-relevance.md`，将范围固定为“backend-only punctuation-aware line-start relevance refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.22` planning（on `feat/m8-5-22-punctuation-aware-line-start-relevance`）：规划提交为 `ab35391`（`docs(plans): add M8.5.22 punctuation-aware line-start relevance plan`）；该提交包含 design + implementation plan 两份新文档。
@@ -698,7 +706,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.22` 的 planning + feature 链，本次 docs sync 负责补齐 restart 记录；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.23` 的 planning + feature 链，本次 docs sync 负责补齐 restart 记录；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -820,6 +828,7 @@
 - `M8.5.20` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.19` 基础上优先 cleaner line-start whole-word 结果；仅当存在 line-start 命中时才对非 line-start whole-word 噪音做升序排序，无 line-start 命中时保持稳定回退到既有 `M8.5.19` 信号。
 - `M8.5.21` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.20` 基础上优先 line-start `query:` 与 strict `query -` log-marker 结果；无 marker 命中时保持稳定回退到既有 `M8.5.20` 信号。
 - `M8.5.22` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.21` 基础上优先行首 `[query]` / `(query)` / `{query}` / `<query>` 包裹结果，并保持 `query:` 与 strict `query -` log-marker 仍高于 wrapper；无 wrapper 命中时稳定回退到既有 `M8.5.21` 信号。
+- `M8.5.23` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.22` 基础上优先 delimiter-aware exact-tag wrapper 结果，例如 `[query] text`、`[query]: text`、`[query] - text`，并保持 `M8.5.21` raw `query:` 与 strict `query -` marker 仍高于 wrapper 家族；无 exact-tag 命中时稳定回退到既有 `M8.5.22` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -830,10 +839,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `ab35391` + `f543d77` 的 `M8.5.22` backend-only punctuation-aware line-start relevance refinement；关键文件是 `docs/plans/2026-03-19-m8-5-22-terminal-punctuation-aware-line-start-relevance-design.md`、`docs/plans/2026-03-19-m8-5-22-terminal-punctuation-aware-line-start-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.22` 的小范围 backend-only relevance 质量优化，例如 delimiter-aware / exact-tag line-start tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.22` 只额外优先行首 `[query]` / `(query)` / `{query}` / `<query>` 窄范围 wrapper，不包含任意标点启发式或更宽的 tokenizer 规则。
+2. 当前功能代码基线已包含 `940eac2` + `cd2e80e` 的 `M8.5.23` backend-only exact-tag line-start relevance refinement；关键文件是 `docs/plans/2026-03-20-m8-5-23-terminal-exact-tag-line-start-relevance-design.md`、`docs/plans/2026-03-20-m8-5-23-terminal-exact-tag-line-start-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.23` 的小范围 backend-only relevance 质量优化，例如 raw line-start marker delimiter-boundary tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.23` 只额外优先 delimiter-aware exact-tag wrapper 结果，如 `[query] text`、`[query]: text`、`[query] - text`，不包含 raw marker delimiter 微调或更宽的 tokenizer 规则。
 4. 复现当前基线建议命令：
-   - `M8.5.22 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.23 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -845,4 +854,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.22` 的 backend-only punctuation-aware line-start relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类 delimiter-aware / exact-tag line-start 微调。
+> 当前工作树已包含 `M8.5.23` 的 backend-only exact-tag line-start relevance 优化并通过全量回归；下一自然入口是保持兼容边界不变的 raw line-start marker delimiter-boundary 微调。

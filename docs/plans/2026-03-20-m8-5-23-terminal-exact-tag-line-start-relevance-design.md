@@ -110,11 +110,11 @@ This is the smallest change that closes the explicit `M8.5.22` gap while keeping
 A match counts as a line-start exact-tag hit when:
 
 - it already satisfies the current line-start punctuation-wrapper rule
-- and the character immediately after the closing wrapper is one of:
+- and the text immediately after the closing wrapper is one of:
   - end of output
   - any whitespace character
-  - `:`
-  - strict ` -`
+  - `:` followed by end-of-output or whitespace
+  - strict ` -` followed by end-of-output or whitespace
 
 The search match itself remains case-insensitive because the existing search offsets are already case-insensitive. Delimiter matching remains exact.
 
@@ -252,4 +252,3 @@ Before handoff, run the same repo-wide verification expected by the current proj
 - `cd web && npm run lint`
 - `cd web && npm run build`
 - `git diff --check`
-

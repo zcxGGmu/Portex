@@ -69,8 +69,8 @@ Use a local helper that evaluates already-matched offsets as exact-tag hits only
 
 - end of output
 - whitespace
-- `:`
-- strict ` -`
+- `:` followed by end-of-output or whitespace
+- strict ` -` followed by end-of-output or whitespace
 
 Example target helper shape:
 
