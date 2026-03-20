@@ -32,6 +32,7 @@ _NO_LINE_START_LOG_MARKER_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_DELIMITED_LOG_MARKER_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_EXACT_TAG_MARKER_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_EXACT_TAG_COLON_MARKER_MATCH_OFFSET = 1 << 60
+_NO_LINE_START_SQUARE_BRACKET_EXACT_TAG_DASH_MARKER_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_EXACT_TAG_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_SQUARE_BRACKET_EXACT_TAG_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_PUNCTUATION_WRAP_MATCH_OFFSET = 1 << 60
@@ -153,6 +154,8 @@ class _TerminalSessionHistorySearchCandidate:
     first_line_start_exact_tag_marker_offset: int
     line_start_exact_tag_colon_marker_match_count: int
     first_line_start_exact_tag_colon_marker_offset: int
+    line_start_square_bracket_exact_tag_dash_marker_match_count: int
+    first_line_start_square_bracket_exact_tag_dash_marker_offset: int
     line_start_exact_tag_match_count: int
     first_line_start_exact_tag_offset: int
     line_start_square_bracket_exact_tag_match_count: int
@@ -1091,6 +1094,14 @@ class TerminalSessionService:
             query_length=query_length,
         )
         (
+            line_start_square_bracket_exact_tag_dash_marker_match_count,
+            first_line_start_square_bracket_exact_tag_dash_marker_offset,
+        ) = TerminalSessionService._count_line_start_square_bracket_exact_tag_dash_marker_hits(
+            text,
+            offsets,
+            query_length=query_length,
+        )
+        (
             line_start_square_bracket_exact_tag_match_count,
             first_line_start_square_bracket_exact_tag_offset,
         ) = TerminalSessionService._count_line_start_square_bracket_exact_tag_hits(
@@ -1126,6 +1137,8 @@ class TerminalSessionService:
             first_line_start_exact_tag_marker_offset=first_line_start_exact_tag_marker_offset,
             line_start_exact_tag_colon_marker_match_count=line_start_exact_tag_colon_marker_match_count,
             first_line_start_exact_tag_colon_marker_offset=first_line_start_exact_tag_colon_marker_offset,
+            line_start_square_bracket_exact_tag_dash_marker_match_count=line_start_square_bracket_exact_tag_dash_marker_match_count,
+            first_line_start_square_bracket_exact_tag_dash_marker_offset=first_line_start_square_bracket_exact_tag_dash_marker_offset,
             line_start_exact_tag_match_count=line_start_exact_tag_match_count,
             first_line_start_exact_tag_offset=first_line_start_exact_tag_offset,
             line_start_square_bracket_exact_tag_match_count=line_start_square_bracket_exact_tag_match_count,
@@ -1256,6 +1269,26 @@ class TerminalSessionService:
         if not bracket_offsets:
             return 0, _NO_LINE_START_SQUARE_BRACKET_EXACT_TAG_MATCH_OFFSET
         return len(bracket_offsets), bracket_offsets[0]
+
+    @staticmethod
+    def _count_line_start_square_bracket_exact_tag_dash_marker_hits(
+        text: str,
+        offsets: list[int],
+        *,
+        query_length: int,
+    ) -> tuple[int, int]:
+        dash_marker_offsets = [
+            offset
+            for offset in offsets
+            if TerminalSessionService._is_line_start_square_bracket_exact_tag_dash_marker_match(
+                text,
+                offset,
+                query_length=query_length,
+            )
+        ]
+        if not dash_marker_offsets:
+            return 0, _NO_LINE_START_SQUARE_BRACKET_EXACT_TAG_DASH_MARKER_MATCH_OFFSET
+        return len(dash_marker_offsets), dash_marker_offsets[0]
 
     @staticmethod
     def _count_line_start_exact_tag_marker_hits(
@@ -1396,6 +1429,20 @@ class TerminalSessionService:
         return text[offset - 1 : offset] == "[" and text[offset + query_length : offset + query_length + 1] == "]"
 
     @staticmethod
+    def _is_line_start_square_bracket_exact_tag_dash_marker_match(text: str, offset: int, *, query_length: int) -> bool:
+        if not TerminalSessionService._is_line_start_exact_tag_marker_match(text, offset, query_length=query_length):
+            return False
+        if not TerminalSessionService._is_line_start_square_bracket_exact_tag_match(text, offset, query_length=query_length):
+            return False
+
+        trailing_offset = offset + query_length + 1
+        if text[trailing_offset : trailing_offset + 2] != " -":
+            return False
+
+        after_dash = text[trailing_offset + 2 : trailing_offset + 3]
+        return after_dash == "" or after_dash.isspace()
+
+    @staticmethod
     def _is_word_char(char: str) -> bool:
         return ("a" <= char <= "z") or ("A" <= char <= "Z") or ("0" <= char <= "9") or char == "_"
 
@@ -1419,6 +1466,7 @@ class TerminalSessionService:
                     -item.line_start_delimited_log_marker_match_count,
                     -item.line_start_exact_tag_marker_match_count,
                     -item.line_start_exact_tag_colon_marker_match_count,
+                    -item.line_start_square_bracket_exact_tag_dash_marker_match_count,
                     -item.line_start_exact_tag_match_count,
                     -item.line_start_square_bracket_exact_tag_match_count,
                     -item.line_start_punctuation_wrap_match_count,
@@ -1428,6 +1476,7 @@ class TerminalSessionService:
                     item.first_line_start_log_marker_offset,
                     item.first_line_start_delimited_log_marker_offset,
                     item.first_line_start_exact_tag_colon_marker_offset,
+                    item.first_line_start_square_bracket_exact_tag_dash_marker_offset,
                     item.first_line_start_exact_tag_marker_offset,
                     item.first_line_start_exact_tag_offset,
                     item.first_line_start_square_bracket_exact_tag_offset,
