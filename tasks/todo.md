@@ -1,3 +1,28 @@
+# Session Plan (2026-03-21) - Post-M8.5.30 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.30`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.31` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.31` paren-wrapper marker precedence refinement for terminal history search.
+- Design direction approved: keep raw-marker and square-bracket priority intact, then add one more narrow wrapper-pair precedence so `(query): text` and `(query) - text` outrank `{query}...` and `<query>...` marker forms inside the non-square wrapper family.
+- Added `docs/plans/2026-03-21-m8-5-31-terminal-paren-wrapper-marker-precedence-design.md` and `docs/plans/2026-03-21-m8-5-31-terminal-paren-wrapper-marker-precedence.md` to lock scope, paren-wrapper rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for paren-wrapper-over-brace/angle ordering, paren-wrapper offset tie-break, `M8.5.30` fallback when no paren-wrapper marker exists, and global pagination under the new `M8.5.31` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_paren_wrapper_marker_match_count`, `first_line_start_paren_wrapper_marker_offset`, and a narrow helper derived from the existing exact-tag marker rule; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `06730cd` (`docs(plans): add M8.5.31 paren-wrapper precedence plan`).
+- Feature commit: `7dc9940` (`feat(terminal): add M8.5.31 paren-wrapper precedence`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`673 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.29 Continuation
 
 ## Goal
