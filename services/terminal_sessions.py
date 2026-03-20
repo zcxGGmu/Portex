@@ -29,6 +29,7 @@ _DEFAULT_SEARCH_SNIPPET_CONTEXT_CHARS = 40
 _NO_WHOLE_WORD_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_WHOLE_WORD_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_LOG_MARKER_MATCH_OFFSET = 1 << 60
+_NO_LINE_START_DELIMITED_LOG_MARKER_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_EXACT_TAG_MATCH_OFFSET = 1 << 60
 _NO_LINE_START_PUNCTUATION_WRAP_MATCH_OFFSET = 1 << 60
 _LINE_START_PUNCTUATION_WRAP_PAIRS = {
@@ -143,6 +144,8 @@ class _TerminalSessionHistorySearchCandidate:
     match: TerminalSessionHistorySearchMatch
     line_start_log_marker_match_count: int
     first_line_start_log_marker_offset: int
+    line_start_delimited_log_marker_match_count: int
+    first_line_start_delimited_log_marker_offset: int
     line_start_exact_tag_match_count: int
     first_line_start_exact_tag_offset: int
     line_start_punctuation_wrap_match_count: int
@@ -1047,6 +1050,14 @@ class TerminalSessionService:
             query_length=query_length,
         )
         (
+            line_start_delimited_log_marker_match_count,
+            first_line_start_delimited_log_marker_offset,
+        ) = TerminalSessionService._count_line_start_delimited_log_marker_hits(
+            text,
+            offsets,
+            query_length=query_length,
+        )
+        (
             line_start_punctuation_wrap_match_count,
             first_line_start_punctuation_wrap_offset,
         ) = TerminalSessionService._count_line_start_punctuation_wrap_hits(
@@ -1076,6 +1087,8 @@ class TerminalSessionService:
             match=match,
             line_start_log_marker_match_count=line_start_log_marker_match_count,
             first_line_start_log_marker_offset=first_line_start_log_marker_offset,
+            line_start_delimited_log_marker_match_count=line_start_delimited_log_marker_match_count,
+            first_line_start_delimited_log_marker_offset=first_line_start_delimited_log_marker_offset,
             line_start_exact_tag_match_count=line_start_exact_tag_match_count,
             first_line_start_exact_tag_offset=first_line_start_exact_tag_offset,
             line_start_punctuation_wrap_match_count=line_start_punctuation_wrap_match_count,
@@ -1124,6 +1137,26 @@ class TerminalSessionService:
         return len(marker_offsets), marker_offsets[0]
 
     @staticmethod
+    def _count_line_start_delimited_log_marker_hits(
+        text: str,
+        offsets: list[int],
+        *,
+        query_length: int,
+    ) -> tuple[int, int]:
+        delimited_offsets = [
+            offset
+            for offset in offsets
+            if TerminalSessionService._is_line_start_delimited_log_marker_match(
+                text,
+                offset,
+                query_length=query_length,
+            )
+        ]
+        if not delimited_offsets:
+            return 0, _NO_LINE_START_DELIMITED_LOG_MARKER_MATCH_OFFSET
+        return len(delimited_offsets), delimited_offsets[0]
+
+    @staticmethod
     def _count_line_start_punctuation_wrap_hits(text: str, offsets: list[int], *, query_length: int) -> tuple[int, int]:
         wrapper_offsets = [
             offset
@@ -1170,6 +1203,21 @@ class TerminalSessionService:
             return False
         end = offset + query_length
         return text[end : end + 1] == ":" or text[end : end + 2] == " -"
+
+    @staticmethod
+    def _is_line_start_delimited_log_marker_match(text: str, offset: int, *, query_length: int) -> bool:
+        if not TerminalSessionService._is_line_start_log_marker_match(text, offset, query_length=query_length):
+            return False
+
+        end = offset + query_length
+        if text[end : end + 1] == ":":
+            trailing_offset = end + 1
+        elif text[end : end + 2] == " -":
+            trailing_offset = end + 2
+        else:
+            return False
+
+        return trailing_offset >= len(text) or text[trailing_offset].isspace()
 
     @staticmethod
     def _is_line_start_punctuation_wrap_match(text: str, offset: int, *, query_length: int) -> bool:
@@ -1234,12 +1282,14 @@ class TerminalSessionService:
                 key=lambda item: (
                     -item.match.match_count,
                     -item.line_start_log_marker_match_count,
+                    -item.line_start_delimited_log_marker_match_count,
                     -item.line_start_exact_tag_match_count,
                     -item.line_start_punctuation_wrap_match_count,
                     -item.line_start_whole_word_match_count,
                     item.conditional_non_line_start_whole_word_match_count,
                     -item.whole_word_match_count,
                     item.first_line_start_log_marker_offset,
+                    item.first_line_start_delimited_log_marker_offset,
                     item.first_line_start_exact_tag_offset,
                     item.first_line_start_punctuation_wrap_offset,
                     item.first_line_start_whole_word_offset,
