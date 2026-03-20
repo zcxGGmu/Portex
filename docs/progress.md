@@ -3,9 +3,9 @@
 最后更新: 2026-03-20 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `cbde3f1` (`feat(terminal): add M8.5.27 exact-tag colon-marker relevance`)
-最新 planning 提交: `692622c` (`docs(plans): add M8.5.27 exact-tag colon-marker relevance plan`)
-最近一次 handoff 同步: 当前分支已完成 `M8.5.27` 的 planning + feature 链，本次 docs sync 将补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `85d8891` (`feat(terminal): add M8.5.28 square-bracket dash-marker priority`)
+最新 planning 提交: `1c75bac` (`docs(plans): add M8.5.28 square-bracket dash-marker priority plan`)
+最近一次 handoff 同步: 当前分支已完成 `M8.5.28` 的 planning + feature 链，本次 docs sync 已补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -124,11 +124,19 @@
 - `M8.5.25` 已完成并已合入当前工作树（`8dd1ad2`；补齐 backend-only exact-tag marker relevance refinement，新增对行首 `[query]: text` / `[query] - text` 这类 wrapper marker 结果的排序优先级，同时保持 raw marker 家族仍高于 wrapper 家族，且 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
 - `M8.5.26` 已完成并已合入当前工作树（`17ab845`；补齐 backend-only square-bracket exact-tag priority refinement，新增对行首 `[query]...` 这类 square-bracket exact-tag 结果的排序优先级，同时保持 raw marker 家族仍高于 wrapper 家族，且其他 wrapper-family、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
 - `M8.5.27` 已完成并已合入当前工作树（`cbde3f1`；补齐 backend-only exact-tag colon-marker relevance refinement，新增对行首 `[query]: ...` 这类 colon-style exact-tag marker 结果的排序优先级，同时保持 raw marker 家族仍高于 wrapper 家族，且其他 wrapper-family、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
-- 当前起点：当前功能代码基线已到 `M8.5.27`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 wrapper 家族里的另一类小型 quality tie-break，例如 exact-tag dash-marker 子族、other-wrapper marker 子族，或其他同级窄范围排序信号，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.28` 已完成并已合入当前工作树（`85d8891`；补齐 backend-only square-bracket exact-tag dash-marker priority refinement，新增对行首 `[query] - ...` 这类 square-bracket exact-tag dash-marker 结果的排序优先级；只在既有 exact-tag marker / colon-marker 家族已分层后的 tie-break 中，压过 generic exact-tag 噪音与更早的非方括号 marker，同时保持 raw marker 家族仍高于 wrapper 家族，且 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
+- 当前起点：当前功能代码基线已到 `M8.5.28`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 wrapper marker 家族里的另一类小型 quality tie-break，例如 non-square-bracket exact-tag marker 子族、other-wrapper marker 子族，或其他同级窄范围排序信号，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.28` planning（on `main`）：新增 `docs/plans/2026-03-20-m8-5-28-terminal-square-bracket-exact-tag-dash-marker-priority-design.md` 与 `docs/plans/2026-03-20-m8-5-28-terminal-square-bracket-exact-tag-dash-marker-priority.md`，将范围固定为“backend-only square-bracket exact-tag dash-marker priority refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.28` planning（on `main`）：规划提交为 `1c75bac`（`docs(plans): add M8.5.28 square-bracket dash-marker priority plan`）；该提交包含 design + implementation plan 两份新文档。
+- `M8.5.28` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 square-bracket exact-tag dash-marker 对 generic exact-tag 噪音的优先级、square-bracket dash-marker offset tie-break、无 square-bracket dash-marker 时稳定回退到既有 `M8.5.27` 信号，以及基于新全局排序的分页切片行为。
+- `M8.5.28` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `line_start_square_bracket_exact_tag_dash_marker_match_count` / `first_line_start_square_bracket_exact_tag_dash_marker_offset` 与本地 dash-marker helper；只认已经满足 `M8.5.25` exact-tag marker 与 `M8.5.26` square-bracket exact-tag 条件、且 wrapper 后紧跟 strict ` -` + delimiter 的窄范围结果。该信号放在 colon-marker 之后、generic exact-tag 之前，专门修复 square-bracket dash-marker 本应压过 generic exact-tag 噪音与更早非方括号 marker 的缺口。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.28` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`661 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.28` implementation（on `main`）：功能提交为 `85d8891`（`feat(terminal): add M8.5.28 square-bracket dash-marker priority`）。
 
 - `M8.5.27` planning（on `main`）：新增 `docs/plans/2026-03-20-m8-5-27-terminal-exact-tag-colon-marker-relevance-design.md` 与 `docs/plans/2026-03-20-m8-5-27-terminal-exact-tag-colon-marker-relevance.md`，将范围固定为“backend-only exact-tag colon-marker relevance refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.27` planning（on `main`）：规划提交为 `692622c`（`docs(plans): add M8.5.27 exact-tag colon-marker relevance plan`）；该提交包含 design + implementation plan 两份新文档。
@@ -865,6 +873,7 @@
 - `M8.5.25` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.24` 基础上优先 wrapper marker 结果，例如 `[query]: text` 与 `[query] - text`，并保持 raw marker 家族仍整体高于 wrapper 家族；无 exact-tag marker 命中时稳定回退到既有 `M8.5.24` 信号。
 - `M8.5.26` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.25` 基础上优先 square-bracket exact-tag 结果，例如 `[query] text`、`[query]: text`、`[query] - text`，并保持 raw marker 家族仍整体高于 wrapper 家族；无 square-bracket exact-tag 命中时稳定回退到既有 `M8.5.25` 信号。
 - `M8.5.27` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.26` 基础上优先 exact-tag colon-marker 结果，例如 `[query]: text`，并保持 dash-style exact-tag marker 仍高于 plain exact-tag，且 raw marker 家族仍整体高于 wrapper 家族；无 exact-tag colon-marker 命中时稳定回退到既有 `M8.5.26` 信号。
+- `M8.5.28` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.27` 基础上优先 square-bracket exact-tag dash-marker 结果，例如 `[query] - text`，但仅在 colon-marker 已分层后的 tie-break 中生效；它专门用于压过 generic exact-tag 噪音与更早的非方括号 marker，且无 square-bracket dash-marker 命中时稳定回退到既有 `M8.5.27` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -875,10 +884,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `692622c` + `cbde3f1` 的 `M8.5.27` backend-only exact-tag colon-marker relevance refinement；关键文件是 `docs/plans/2026-03-20-m8-5-27-terminal-exact-tag-colon-marker-relevance-design.md`、`docs/plans/2026-03-20-m8-5-27-terminal-exact-tag-colon-marker-relevance.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.27` 的小范围 backend-only relevance 质量优化，例如 wrapper 家族里的另一类小型 quality tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.27` 只额外优先 exact-tag colon-marker 结果，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
+2. 当前功能代码基线已包含 `1c75bac` + `85d8891` 的 `M8.5.28` backend-only square-bracket exact-tag dash-marker priority refinement；关键文件是 `docs/plans/2026-03-20-m8-5-28-terminal-square-bracket-exact-tag-dash-marker-priority-design.md`、`docs/plans/2026-03-20-m8-5-28-terminal-square-bracket-exact-tag-dash-marker-priority.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.28` 的小范围 backend-only relevance 质量优化，例如 non-square-bracket wrapper marker 家族里的另一类小型 quality tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.28` 只额外优先 square-bracket exact-tag dash-marker 结果，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
 4. 复现当前基线建议命令：
-   - `M8.5.27 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.28 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -890,4 +899,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.27` 的 backend-only exact-tag colon-marker 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类 wrapper-family quality 微调。
+> 当前工作树已包含 `M8.5.28` 的 backend-only square-bracket exact-tag dash-marker 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类 wrapper-marker family quality 微调。

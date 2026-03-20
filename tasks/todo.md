@@ -1,3 +1,28 @@
+# Session Plan (2026-03-20) - Post-M8.5.27 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.27`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.28` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.28` square-bracket exact-tag dash-marker priority refinement for terminal history search.
+- Design direction approved: keep raw-marker and colon-marker priority intact, then add one more narrow tie-break so `[query] - text` beats generic exact-tag noise and earlier non-square-bracket marker placement when stronger signals are already tied.
+- Added `docs/plans/2026-03-20-m8-5-28-terminal-square-bracket-exact-tag-dash-marker-priority-design.md` and `docs/plans/2026-03-20-m8-5-28-terminal-square-bracket-exact-tag-dash-marker-priority.md` to lock scope, dash-marker rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for square-bracket-dash-marker-over-generic-exact-tag-noise ordering, square-bracket dash-marker offset tie-break, `M8.5.27` fallback when no square-bracket dash-marker exists, and global pagination under the new `M8.5.28` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_square_bracket_exact_tag_dash_marker_match_count`, `first_line_start_square_bracket_exact_tag_dash_marker_offset`, and a narrow dash-marker helper derived from the existing exact-tag marker + square-bracket exact-tag rules; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `1c75bac` (`docs(plans): add M8.5.28 square-bracket dash-marker priority plan`).
+- Feature commit: `85d8891` (`feat(terminal): add M8.5.28 square-bracket dash-marker priority`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`661 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-20) - Post-M8.5.26 Continuation
 
 ## Goal
