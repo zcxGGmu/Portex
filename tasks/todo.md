@@ -8,13 +8,20 @@
 - [x] Confirm the next milestone scope with the user
 - [x] Propose and approve the design
 - [x] Write the design doc and implementation plan docs
-- [ ] Implement the approved refinement with focused TDD
-- [ ] Run focused and regression verification
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.24` evidence
-- [ ] Commit the milestone with a detailed message
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.24` evidence
+- [x] Commit the milestone with a detailed message
 
 ## Review
-- In progress.
+- Confirmed the next backend-only milestone as `M8.5.24` delimited log-marker relevance refinement for terminal history search.
+- Design direction approved: keep raw log-marker priority over wrapper families, then prefer delimiter-bounded raw marker forms such as `query: text` and strict `query - text` over glued `query:text` and `query -text` forms.
+- Added `docs/plans/2026-03-20-m8-5-24-terminal-delimited-log-marker-relevance-design.md` and `docs/plans/2026-03-20-m8-5-24-terminal-delimited-log-marker-relevance.md` to lock scope, delimiter-boundary rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for delimited-raw-marker-over-glued-marker ordering, delimited raw-marker offset tie-break, `M8.5.23` fallback when no delimited raw marker exists, and global pagination under the new `M8.5.24` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_delimited_log_marker_match_count`, `first_line_start_delimited_log_marker_offset`, and a narrow delimited raw-marker helper derived from the existing line-start raw log-marker rule; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `fb141e4` (`docs(plans): add M8.5.24 delimited log-marker relevance plan`).
+- Feature commit: `ab24843` (`feat(terminal): add M8.5.24 delimited log-marker relevance`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`645 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-20) - Post-M8.5.22 Continuation
 
