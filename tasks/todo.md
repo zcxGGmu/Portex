@@ -1,3 +1,21 @@
+# Session Plan (2026-03-20) - Post-M8.5.24 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.24`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [ ] Implement the approved refinement with focused TDD
+- [ ] Run focused and regression verification
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.25` evidence
+- [ ] Commit the milestone with a detailed message
+
+## Review
+- In progress.
+
 # Session Plan (2026-03-20) - Post-M8.5.23 Continuation
 
 ## Goal
