@@ -1,3 +1,28 @@
+# Session Plan (2026-03-20) - Post-M8.5.28 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.28`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.29` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.29` non-square-bracket exact-tag colon-marker priority refinement for terminal history search.
+- Design direction approved: keep raw-marker, square-bracket, and colon-marker priority intact, then add one more narrow tie-break so `(query): text` / `{query}: text` / `<query>: text` can win after shared square-bracket colon-marker baselines have already tied stronger signals.
+- Added `docs/plans/2026-03-20-m8-5-29-terminal-non-square-bracket-exact-tag-colon-marker-priority-design.md` and `docs/plans/2026-03-20-m8-5-29-terminal-non-square-bracket-exact-tag-colon-marker-priority.md` to lock scope, non-square colon-marker rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for shared-square-colon-baseline non-square-colon ordering, non-square colon-marker offset tie-break, `M8.5.28` fallback when no non-square colon-marker exists, and global pagination under the new `M8.5.29` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_non_square_bracket_exact_tag_colon_marker_match_count`, `first_line_start_non_square_bracket_exact_tag_colon_marker_offset`, and a narrow helper derived from the existing exact-tag colon-marker and square-bracket exact-tag rules; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `ed891bb` (`docs(plans): add M8.5.29 non-square colon-marker priority plan`).
+- Feature commit: `16685cd` (`feat(terminal): add M8.5.29 non-square colon-marker priority`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`665 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-20) - Post-M8.5.27 Continuation
 
 ## Goal
