@@ -1,3 +1,29 @@
+# Session Plan (2026-03-22) - Post-M8.5.39 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.39`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Refine the planning docs once the initial count-based approach proved redundant in the existing tuple
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.40` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.40` plain exact-tag separator-noise demotion refinement for terminal history search.
+- Initial planning shape was adjusted before implementation: the first count-based separator-noise idea was redundant against existing exact-tag and single-space counters, so the final approved design narrowed to a conditional earliest non-single-space noise offset tie-break.
+- Added and then refined `docs/plans/2026-03-22-m8-5-40-terminal-plain-exact-tag-separator-noise-demotion-design.md` and `docs/plans/2026-03-22-m8-5-40-terminal-plain-exact-tag-separator-noise-demotion.md` to lock the final offset-based scope and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for later non-single-space plain exact-tag noise outranking earlier noise when single-space plain exact-tag hits already exist, `M8.5.39` fallback when no single-space plain exact-tag exists, and global pagination under the new `M8.5.40` ordering.
+- Extended `services/terminal_sessions.py` with `conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset`, the corresponding sentinel, and a narrow helper that recognizes non-marker plain exact-tag hits not covered by the `M8.5.39` single-space helper; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commits: `94aebc2` (`docs(plans): add M8.5.40 plain separator-noise plan`) and `88b2d9a` (`docs(plans): refine M8.5.40 separator-noise tie-break`).
+- Feature commit: `1262bae` (`feat(terminal): add M8.5.40 separator-noise demotion`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`704 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.38 Continuation
 
 ## Goal
