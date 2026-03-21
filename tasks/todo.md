@@ -1,3 +1,28 @@
+# Session Plan (2026-03-21) - Post-M8.5.33 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.33`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.34` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.34` paren-wrapper plain exact-tag precedence refinement for terminal history search.
+- Design direction approved: keep marker families, square-bracket priority, and `M8.5.33` angle demotion intact, then add one more narrow non-marker exact-tag refinement so `(query) text` outranks `{query} text` without widening into a broader wrapper-family model.
+- Added `docs/plans/2026-03-21-m8-5-34-terminal-paren-wrapper-plain-exact-tag-precedence-design.md` and `docs/plans/2026-03-21-m8-5-34-terminal-paren-wrapper-plain-exact-tag-precedence.md` to lock scope, paren plain exact-tag rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for paren-plain-exact-tag-over-brace ordering, paren plain exact-tag offset tie-break, `M8.5.33` fallback when no paren plain exact-tag exists, and global pagination under the new `M8.5.34` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_paren_wrapper_plain_exact_tag_match_count`, `first_line_start_paren_wrapper_plain_exact_tag_offset`, and a narrow helper derived from the existing exact-tag and exact-tag-marker rules; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `37a2951` (`docs(plans): add M8.5.34 paren plain exact-tag plan`).
+- Feature commit: `4e02071` (`feat(terminal): add M8.5.34 paren plain exact-tag precedence`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`685 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.32 Continuation
 
 ## Goal
