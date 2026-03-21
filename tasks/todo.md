@@ -1,3 +1,28 @@
+# Session Plan (2026-03-21) - Post-M8.5.32 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.32`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.33` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.33` angle-wrapper plain exact-tag demotion refinement for terminal history search.
+- Design direction approved: keep marker families and square-bracket priority intact, then add one more narrow non-marker exact-tag refinement so `<query> text` falls behind `(query) text` and `{query} text` without introducing a new `()` versus `{}` ordering.
+- Added `docs/plans/2026-03-21-m8-5-33-terminal-angle-wrapper-exact-tag-demotion-design.md` and `docs/plans/2026-03-21-m8-5-33-terminal-angle-wrapper-exact-tag-demotion.md` to lock scope, angle-wrapper demotion rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for brace-plain-exact-tag-over-angle ordering, paren-plain-exact-tag-over-angle ordering, `M8.5.32` marker-family fallback when no angle plain exact-tag exists, and global pagination under the new `M8.5.33` ordering.
+- Extended `services/terminal_sessions.py` with `line_start_angle_wrapper_plain_exact_tag_match_count` and a narrow helper derived from the existing exact-tag and exact-tag-marker rules; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `1688f7e` (`docs(plans): add M8.5.33 angle-wrapper exact-tag plan`).
+- Feature commit: `ad8e426` (`feat(terminal): add M8.5.33 angle-wrapper exact-tag demotion`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`681 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.31 Continuation
 
 ## Goal
