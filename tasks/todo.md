@@ -1,3 +1,28 @@
+# Session Plan (2026-03-21) - Post-M8.5.36 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.36`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.37` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.37` angle-wrapper plain exact-tag offset tie-break refinement for terminal history search.
+- Design direction approved: keep marker families, square-bracket priority, `M8.5.34` paren plain precedence, `M8.5.35` exact-tag punctuation-noise demotion, and `M8.5.36` brace plain exact-tag precedence intact, then add one more narrow non-marker exact-tag refinement for explicit angle plain exact-tag earliest-offset tie-break behavior.
+- Added `docs/plans/2026-03-21-m8-5-37-terminal-angle-wrapper-plain-exact-tag-offset-tie-break-design.md` and `docs/plans/2026-03-21-m8-5-37-terminal-angle-wrapper-plain-exact-tag-offset-tie-break.md` to lock scope, angle plain exact-tag offset rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for angle plain exact-tag offset tie-break, `M8.5.36` fallback when no angle plain exact-tag exists, and global pagination under the new `M8.5.37` ordering.
+- Extended `services/terminal_sessions.py` with `first_line_start_angle_wrapper_plain_exact_tag_offset` plus the corresponding sentinel and count helper return shape; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `dc1775f` (`docs(plans): add M8.5.37 angle plain exact-tag offset plan`).
+- Feature commit: `4ff848c` (`feat(terminal): add M8.5.37 angle plain exact-tag offset tie-break`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`695 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.35 Continuation
 
 ## Goal
