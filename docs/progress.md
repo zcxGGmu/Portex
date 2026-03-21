@@ -3,9 +3,9 @@
 最后更新: 2026-03-21 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `ce7f93c` (`feat(terminal): add M8.5.38 square-bracket plain exact-tag offset tie-break`)
-最新 planning 提交: `b0667a8` (`docs(plans): add M8.5.38 square-bracket plain exact-tag offset plan`)
-最近一次 handoff 同步: `959d380`（`docs(handoff): sync M8.5.37 angle plain exact-tag offset context`）；当前分支已完成 `M8.5.38` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `3378c02` (`feat(terminal): add M8.5.39 plain exact-tag single-space preference`)
+最新 planning 提交: `0af6a17` (`docs(plans): add M8.5.39 plain exact-tag single-space plan`)
+最近一次 handoff 同步: `e5646bd`（`docs(handoff): sync M8.5.38 square-bracket plain exact-tag offset context`）；当前分支已完成 `M8.5.39` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -135,11 +135,19 @@
 - `M8.5.36` 已完成并已合入当前工作树（`fb4effd`；补齐 backend-only brace-wrapper plain exact-tag precedence refinement，新增对 non-marker exact-tag 分支里 `{query} text` 的显式 count/offset tie-break；只在既有 `M8.5.35` 链中追加 brace plain exact-tag 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - `M8.5.37` 已完成并已合入当前工作树（`4ff848c`；补齐 backend-only angle-wrapper plain exact-tag offset tie-break refinement，新增对 non-marker exact-tag 分支里 `<query> text` 的显式 earliest-offset tie-break；只在既有 `M8.5.36` 链中追加 angle plain exact-tag 偏移元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - `M8.5.38` 已完成并已合入当前工作树（`ce7f93c`；补齐 backend-only square-bracket plain exact-tag offset tie-break refinement，新增对 non-marker exact-tag 分支里 `[query] text` 的显式 earliest-offset tie-break；只在既有 `M8.5.37` 链中追加 square-bracket plain exact-tag 偏移元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
-- 当前起点：当前功能代码基线已到 `M8.5.38`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估下一类窄范围 non-marker exact-tag 质量信号，例如 plain exact-tag 分支里的另一条 cleanliness/tie-break 规则，或其他同级 exact-tag quality 规则，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.39` 已完成并已合入当前工作树（`3378c02`；补齐 backend-only plain exact-tag single-space separator preference refinement，新增对 non-marker exact-tag 分支里 `closing-wrapper + 单个空格 + 文本` 的显式质量偏好；只在既有 `M8.5.38` 链中追加 plain exact-tag 单空格分隔 count/offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
+- 当前起点：当前功能代码基线已到 `M8.5.39`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估下一类窄范围 non-marker exact-tag 质量信号，例如 plain exact-tag 分支里的另一条 cleanliness/tie-break 规则，或其他同级 exact-tag quality 规则，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.39` planning（on `main`）：新增 `docs/plans/2026-03-21-m8-5-39-terminal-plain-exact-tag-single-space-separator-preference-design.md` 与 `docs/plans/2026-03-21-m8-5-39-terminal-plain-exact-tag-single-space-separator-preference.md`，将范围固定为“backend-only plain exact-tag single-space separator preference refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.39` planning（on `main`）：规划提交为 `0af6a17`（`docs(plans): add M8.5.39 plain exact-tag single-space plan`）；该提交包含 design + implementation plan 两份新文档。
+- `M8.5.39` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 single-space plain exact-tag 高于 tab/更松散空白分隔的 plain exact-tag、无 single-space plain exact-tag 时稳定回退到既有 `M8.5.38` 信号，以及基于新全局排序的分页切片行为。
+- `M8.5.39` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `line_start_plain_exact_tag_single_space_separator_match_count` / `first_line_start_plain_exact_tag_single_space_separator_offset` 与对应 sentinel，并新增 narrow plain exact-tag 单空格分隔 helper/count；只认已经满足 line-start exact-tag 且不满足 exact-tag marker、closing wrapper 后紧跟单个 ASCII 空格且随后立刻进入非空白文本的窄范围结果。该信号放在 plain wrapper-specific count/offset 链之后、`conditional_non_exact_tag_punctuation_wrap_match_count` 与 generic exact-tag marker offset 之前参与排序。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.39` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`701 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.39` implementation（on `main`）：功能提交为 `3378c02`（`feat(terminal): add M8.5.39 plain exact-tag single-space preference`）。
 
 - `M8.5.38` planning（on `main`）：新增 `docs/plans/2026-03-21-m8-5-38-terminal-square-bracket-plain-exact-tag-offset-tie-break-design.md` 与 `docs/plans/2026-03-21-m8-5-38-terminal-square-bracket-plain-exact-tag-offset-tie-break.md`，将范围固定为“backend-only square-bracket plain exact-tag offset tie-break refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.38` planning（on `main`）：规划提交为 `b0667a8`（`docs(plans): add M8.5.38 square-bracket plain exact-tag offset plan`）；该提交包含 design + implementation plan 两份新文档。
@@ -964,6 +972,7 @@
 - `M8.5.36` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.35` 基础上显式引入 brace-wrapper plain exact-tag count/offset tie-break（`{query} text`），并在无 brace plain exact-tag 命中路径稳定回退到既有 `M8.5.35` 信号。
 - `M8.5.37` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.36` 基础上显式引入 angle-wrapper plain exact-tag earliest-offset tie-break（`<query> text`），并在无 angle plain exact-tag 命中路径稳定回退到既有 `M8.5.36` 信号。
 - `M8.5.38` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.37` 基础上显式引入 square-bracket plain exact-tag earliest-offset tie-break（`[query] text`），并在无 plain square-bracket exact-tag 命中路径稳定回退到既有 `M8.5.37` 信号。
+- `M8.5.39` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.38` 基础上显式引入 plain exact-tag single-space separator preference（如 `[query] text`、`(query) text`），并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.38` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -974,10 +983,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `b0667a8` + `ce7f93c` 的 `M8.5.38` backend-only square-bracket plain exact-tag offset tie-break refinement；关键文件是 `docs/plans/2026-03-21-m8-5-38-terminal-square-bracket-plain-exact-tag-offset-tie-break-design.md`、`docs/plans/2026-03-21-m8-5-38-terminal-square-bracket-plain-exact-tag-offset-tie-break.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.38` 的小范围 backend-only relevance 质量优化，例如 plain exact-tag 分支里的另一条 cleanliness/tie-break 规则，或其他同级 exact-tag quality 规则；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.38` 只补齐 plain square-bracket exact-tag 的显式 earliest-offset tie-break，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
+2. 当前功能代码基线已包含 `0af6a17` + `3378c02` 的 `M8.5.39` backend-only plain exact-tag single-space separator preference refinement；关键文件是 `docs/plans/2026-03-21-m8-5-39-terminal-plain-exact-tag-single-space-separator-preference-design.md`、`docs/plans/2026-03-21-m8-5-39-terminal-plain-exact-tag-single-space-separator-preference.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.39` 的小范围 backend-only relevance 质量优化，例如 plain exact-tag 分支里的另一条 cleanliness/tie-break 规则，或其他同级 exact-tag quality 规则；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.39` 只补齐 plain exact-tag 的单空格分隔质量偏好，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
 4. 复现当前基线建议命令：
-   - `M8.5.38 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.39 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -989,4 +998,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.38` 的 backend-only square-bracket plain exact-tag earliest-offset tie-break 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类窄范围 non-marker exact-tag 微调。
+> 当前工作树已包含 `M8.5.39` 的 backend-only plain exact-tag single-space separator preference 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类窄范围 non-marker exact-tag 微调。
