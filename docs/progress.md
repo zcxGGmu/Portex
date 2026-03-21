@@ -3,9 +3,9 @@
 最后更新: 2026-03-21 (Asia/Shanghai)
 仓库路径: `/home/zq/work-space/repo/ai-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `67fcc71` (`feat(terminal): add M8.5.35 exact-tag punctuation-noise demotion`)
-最新 planning 提交: `2829cdf` (`docs(plans): add M8.5.35 exact-tag punctuation-noise plan`)
-最近一次 handoff 同步: 当前分支已完成 `M8.5.35` 的 planning + feature 链，本次 docs sync 已补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `fb4effd` (`feat(terminal): add M8.5.36 brace plain exact-tag precedence`)
+最新 planning 提交: `2e90c03` (`docs(plans): add M8.5.36 brace plain exact-tag plan`)
+最近一次 handoff 同步: 当前分支已完成 `M8.5.36` 的 planning + feature 链，本次 docs sync 已补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -132,11 +132,19 @@
 - `M8.5.33` 已完成并已合入当前工作树（`ad8e426`；补齐 backend-only angle-wrapper plain exact-tag demotion refinement，新增对行首 `<query> text` 这类 angle-wrapper plain exact-tag 结果的降权；只在 non-marker exact-tag 分支里把 `<>` 压到 `()` / `{}` 之后，同时保持 marker 家族、square-bracket 链、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
 - `M8.5.34` 已完成并已合入当前工作树（`4e02071`；补齐 backend-only paren-wrapper plain exact-tag precedence refinement，新增对行首 `(query) text` 这类 paren-wrapper plain exact-tag 结果的排序优先级；只在 non-marker exact-tag 分支里把 `()` 提升到 `{}` / `<>` 之前，同时保持 marker 家族、square-bracket 链、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
 - `M8.5.35` 已完成并已合入当前工作树（`67fcc71`；补齐 backend-only exact-tag punctuation-noise demotion refinement，新增对 line-start exact-tag snapshot 内 tighter-wrapper punctuation 噪音的条件性降权；只在存在 exact-tag 命中时把额外的 non-exact-tag punctuation-wrap 计作噪音，同时保持 marker 家族、square-bracket 链、plain wrapper-family 链、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界不变）。
-- 当前起点：当前功能代码基线已到 `M8.5.35`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估下一类窄范围 non-marker exact-tag 质量信号，例如 plain exact-tag 分支里 brace-family 对 generic exact-tag / tighter-wrapper 噪音的另一类 tie-break，或其他同级 exact-tag quality 规则，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.36` 已完成并已合入当前工作树（`fb4effd`；补齐 backend-only brace-wrapper plain exact-tag precedence refinement，新增对 non-marker exact-tag 分支里 `{query} text` 的显式 count/offset tie-break；只在既有 `M8.5.35` 链中追加 brace plain exact-tag 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
+- 当前起点：当前功能代码基线已到 `M8.5.36`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估下一类窄范围 non-marker exact-tag 质量信号，例如 brace plain exact-tag 分支里的额外 cleanliness/tie-break 规则，或其他同级 exact-tag quality 规则，不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.36` planning（on `main`）：新增 `docs/plans/2026-03-21-m8-5-36-terminal-brace-wrapper-plain-exact-tag-precedence-design.md` 与 `docs/plans/2026-03-21-m8-5-36-terminal-brace-wrapper-plain-exact-tag-precedence.md`，将范围固定为“backend-only brace-wrapper plain exact-tag precedence refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.36` planning（on `main`）：规划提交为 `2e90c03`（`docs(plans): add M8.5.36 brace plain exact-tag plan`）；该提交包含 design + implementation plan 两份新文档。
+- `M8.5.36` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 brace plain exact-tag offset tie-break、无 brace plain exact-tag 时稳定回退到既有 `M8.5.35` 信号，以及基于新全局排序的分页切片行为。
+- `M8.5.36` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `line_start_brace_wrapper_plain_exact_tag_match_count` / `first_line_start_brace_wrapper_plain_exact_tag_offset` 与本地 brace-wrapper plain exact-tag helper；只认已经满足 line-start exact-tag 且不满足 exact-tag marker、同时 wrapper pair 恰好为 `{}` 的窄范围结果。该信号放在 paren plain exact-tag 之后、angle plain exact-tag demotion 之前，并按降序 + 偏移升序参与排序。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.36` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`692 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.36` implementation（on `main`）：功能提交为 `fb4effd`（`feat(terminal): add M8.5.36 brace plain exact-tag precedence`）。
 
 - `M8.5.35` planning（on `main`）：新增 `docs/plans/2026-03-21-m8-5-35-terminal-exact-tag-punctuation-noise-demotion-design.md` 与 `docs/plans/2026-03-21-m8-5-35-terminal-exact-tag-punctuation-noise-demotion.md`，将范围固定为“backend-only exact-tag punctuation-noise demotion refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.35` planning（on `main`）：规划提交为 `2829cdf`（`docs(plans): add M8.5.35 exact-tag punctuation-noise plan`）；该提交包含 design + implementation plan 两份新文档。
@@ -937,6 +945,7 @@
 - `M8.5.33` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.32` 基础上降低 angle-wrapper plain exact-tag 结果，例如 `<query> text`，但仅在 non-marker exact-tag 分支内部生效；它专门用于让 `<>` 落后于 `()` / `{}` plain exact-tag 排列，且无 angle-wrapper plain exact-tag 命中时稳定回退到既有 `M8.5.32` 信号。
 - `M8.5.34` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.33` 基础上优先 paren-wrapper plain exact-tag 结果，例如 `(query) text`，但仅在 non-marker exact-tag 分支内部生效；它专门用于让 `()` 领先于 `{}` / `<>` plain exact-tag 排列，且无 paren-wrapper plain exact-tag 命中时稳定回退到既有 `M8.5.33` 信号。
 - `M8.5.35` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.34` 基础上降低 exact-tag snapshot 内的 tighter-wrapper punctuation 噪音，但仅在存在 exact-tag 命中时生效；它专门用于防止 `{query}text` / `(query)text` 这类 tighter-wrapper 噪音把已经命中的 exact-tag snapshot 意外往前推，且无 exact-tag 命中时稳定回退到既有 `M8.5.34` 信号。
+- `M8.5.36` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.35` 基础上显式引入 brace-wrapper plain exact-tag count/offset tie-break（`{query} text`），并在无 brace plain exact-tag 命中路径稳定回退到既有 `M8.5.35` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -947,10 +956,10 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `2829cdf` + `67fcc71` 的 `M8.5.35` backend-only exact-tag punctuation-noise demotion refinement；关键文件是 `docs/plans/2026-03-21-m8-5-35-terminal-exact-tag-punctuation-noise-demotion-design.md`、`docs/plans/2026-03-21-m8-5-35-terminal-exact-tag-punctuation-noise-demotion.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.35` 的小范围 backend-only relevance 质量优化，例如 plain exact-tag 分支里 brace-family 对 generic exact-tag / tighter-wrapper 噪音的另一类 tie-break，或其他同级 non-marker exact-tag quality 规则；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.35` 只额外降低 exact-tag snapshot 内的 punctuation 噪音，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
+2. 当前功能代码基线已包含 `2e90c03` + `fb4effd` 的 `M8.5.36` backend-only brace plain exact-tag precedence refinement；关键文件是 `docs/plans/2026-03-21-m8-5-36-terminal-brace-wrapper-plain-exact-tag-precedence-design.md`、`docs/plans/2026-03-21-m8-5-36-terminal-brace-wrapper-plain-exact-tag-precedence.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.36` 的小范围 backend-only relevance 质量优化，例如 non-marker exact-tag 分支里的 brace plain exact-tag cleanliness/tie-break 细化，或其他同级 exact-tag quality 规则；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.36` 只补齐 brace plain exact-tag 的显式 count/offset tie-break，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
 4. 复现当前基线建议命令：
-   - `M8.5.35 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.36 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -962,4 +971,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.35` 的 backend-only exact-tag punctuation-noise 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类窄范围 non-marker exact-tag 微调。
+> 当前工作树已包含 `M8.5.36` 的 backend-only brace plain exact-tag tie-break 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类窄范围 non-marker exact-tag 微调。
