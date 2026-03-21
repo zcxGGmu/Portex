@@ -5036,7 +5036,7 @@ async def test_terminal_session_service_relevance_falls_back_to_m8_5_36_signals_
 
 
 @pytest.mark.asyncio
-async def test_terminal_session_service_relevance_angle_plain_exact_tag_pagination_uses_global_ordering(
+async def test_terminal_session_service_relevance_angle_plain_exact_tag_offset_pagination_uses_global_ordering(
     tmp_path: Path,
 ) -> None:
     from datetime import datetime, timedelta, timezone
