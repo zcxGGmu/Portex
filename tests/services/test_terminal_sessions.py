@@ -5810,6 +5810,235 @@ async def test_terminal_session_service_relevance_separator_noise_pagination_use
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_relevance_prefers_fewer_payloadless_plain_exact_tag_separators_when_stronger_signals_tie(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 22, 2, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    payloadful_non_single = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _payloadful_record, payloadful_queue = await service.attach_session(
+        payloadful_non_single.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("[error]: aa\n[error] ok\n[error]\tok\n[error]  bb\n")
+    await asyncio.wait_for(payloadful_queue.get(), timeout=0.1)
+    await service.close_session(payloadful_non_single.session_id, owner_user_id="owner-1")
+
+    payloadless_non_single = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _payloadless_record, payloadless_queue = await service.attach_session(
+        payloadless_non_single.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("[error]: aa\n[error] ok\n[error]\t  \n[error]  bb\n")
+    await asyncio.wait_for(payloadless_queue.get(), timeout=0.1)
+    await service.close_session(payloadless_non_single.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        payloadful_non_single.session_id,
+        payloadless_non_single.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_falls_back_to_m8_5_40_signals_when_no_single_space_plain_exact_tag_exists(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 22, 2, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    without_payloadless = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _without_payloadless_record, without_payloadless_queue = await service.attach_session(
+        without_payloadless.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("[error]: aa\n[error]\tok\n[error]  bb\n")
+    await asyncio.wait_for(without_payloadless_queue.get(), timeout=0.1)
+    await service.close_session(without_payloadless.session_id, owner_user_id="owner-1")
+
+    with_payloadless = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _with_payloadless_record, with_payloadless_queue = await service.attach_session(
+        with_payloadless.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("[error]: aa\n[error]\t  \n[error]  bb\n")
+    await asyncio.wait_for(with_payloadless_queue.get(), timeout=0.1)
+    await service.close_session(with_payloadless.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        with_payloadless.session_id,
+        without_payloadless.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_payloadless_plain_exact_tag_separator_pagination_uses_global_ordering(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 22, 2, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    payloadful_non_single = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _payloadful_record, payloadful_queue = await service.attach_session(
+        payloadful_non_single.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("[error]: aa\n[error] ok\n[error]\tok\n[error]  bb\n")
+    await asyncio.wait_for(payloadful_queue.get(), timeout=0.1)
+    await service.close_session(payloadful_non_single.session_id, owner_user_id="owner-1")
+
+    payloadless_non_single = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _payloadless_record, payloadless_queue = await service.attach_session(
+        payloadless_non_single.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("[error]: aa\n[error] ok\n[error]\t  \n[error]  bb\n")
+    await asyncio.wait_for(payloadless_queue.get(), timeout=0.1)
+    await service.close_session(payloadless_non_single.session_id, owner_user_id="owner-1")
+
+    lower_rank = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _lower_record, lower_queue = await service.attach_session(
+        lower_rank.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[2].emit_output("mid error here\n")
+    await asyncio.wait_for(lower_queue.get(), timeout=0.1)
+    await service.close_session(lower_rank.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=2,
+        offset=1,
+    )
+
+    assert page.total == 3
+    assert page.has_more is False
+    assert [item.record.session_id for item in page.items] == [
+        payloadless_non_single.session_id,
+        lower_rank.session_id,
+    ]
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_relevance_falls_back_to_m8_5_33_signals_when_no_paren_plain_exact_tag_exists(
     tmp_path: Path,
 ) -> None:
