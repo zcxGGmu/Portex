@@ -5,7 +5,7 @@
 当前分支: `main`
 最新功能提交: `fb4effd` (`feat(terminal): add M8.5.36 brace plain exact-tag precedence`)
 最新 planning 提交: `2e90c03` (`docs(plans): add M8.5.36 brace plain exact-tag plan`)
-最近一次 handoff 同步: 当前分支已完成 `M8.5.36` 的 planning + feature 链，本次 docs sync 已补齐 restart 记录；精确提交顺序以当前分支 `git log` 为准
+最近一次 handoff 同步: `1219f31`（`docs(handoff): sync M8.5.36 brace plain exact-tag context`）；当前分支已完成 `M8.5.36` 的 planning + feature + handoff 链，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
