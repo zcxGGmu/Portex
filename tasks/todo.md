@@ -1,3 +1,28 @@
+# Session Plan (2026-03-21) - Post-M8.5.34 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.34`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.35` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.35` exact-tag punctuation-noise demotion refinement for terminal history search.
+- Design direction approved: keep marker families, square-bracket priority, and the existing plain exact-tag wrapper ordering intact, then add one more narrow conditional demotion so snapshots with exact-tag hits stop gaining accidental credit from tighter-wrapper punctuation noise.
+- Added `docs/plans/2026-03-21-m8-5-35-terminal-exact-tag-punctuation-noise-demotion-design.md` and `docs/plans/2026-03-21-m8-5-35-terminal-exact-tag-punctuation-noise-demotion.md` to lock scope, conditional punctuation-noise rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for clean-exact-tag-over-noisy-exact-tag ordering, fewer-exact-tag-noises ordering, `M8.5.34` fallback when no exact-tag exists, and global pagination under the new `M8.5.35` ordering.
+- Extended `services/terminal_sessions.py` with `conditional_non_exact_tag_punctuation_wrap_match_count`, derived from the existing exact-tag and punctuation-wrap counts; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `2829cdf` (`docs(plans): add M8.5.35 exact-tag punctuation-noise plan`).
+- Feature commit: `67fcc71` (`feat(terminal): add M8.5.35 exact-tag punctuation-noise demotion`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`689 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.33 Continuation
 
 ## Goal
