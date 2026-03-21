@@ -1,3 +1,28 @@
+# Session Plan (2026-03-21) - Post-M8.5.37 Continuation
+
+## Goal
+- Confirm the next formal milestone after `M8.5.37`, lock the design/plan, then implement and verify the approved refinement.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current terminal search slices
+- [x] Confirm the next milestone scope with the user
+- [x] Propose and approve the design
+- [x] Write the design doc and implementation plan docs
+- [x] Implement the approved refinement with focused TDD
+- [x] Run focused and regression verification
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` with `M8.5.38` evidence
+- [x] Commit the milestone with a detailed message
+
+## Review
+- Confirmed the next backend-only milestone as `M8.5.38` square-bracket plain exact-tag offset tie-break refinement for terminal history search.
+- Design direction approved: keep marker families, square-bracket family preference, `M8.5.34` paren plain precedence, `M8.5.35` exact-tag punctuation-noise demotion, `M8.5.36` brace plain exact-tag precedence, and `M8.5.37` angle plain offset tie-break intact, then add one more narrow non-marker exact-tag refinement for explicit plain square-bracket earliest-offset tie-break behavior.
+- Added `docs/plans/2026-03-21-m8-5-38-terminal-square-bracket-plain-exact-tag-offset-tie-break-design.md` and `docs/plans/2026-03-21-m8-5-38-terminal-square-bracket-plain-exact-tag-offset-tie-break.md` to lock scope, plain square-bracket offset rules, and verification flow before implementation.
+- Added focused TDD coverage in `tests/services/test_terminal_sessions.py` for plain square-bracket exact-tag offset tie-break, `M8.5.37` fallback when no plain square-bracket exact-tag exists, and global pagination under the new `M8.5.38` ordering.
+- Extended `services/terminal_sessions.py` with `first_line_start_square_bracket_plain_exact_tag_offset` plus the corresponding sentinel and narrow plain square-bracket helper/count; `newest` / `oldest`, route/UI/snippet/DTO, `latest.json`, `/sessions/current/history`, and RBAC all remain unchanged.
+- Planning commit: `b0667a8` (`docs(plans): add M8.5.38 square-bracket plain exact-tag offset plan`).
+- Feature commit: `ce7f93c` (`feat(terminal): add M8.5.38 square-bracket plain exact-tag offset tie-break`).
+- Fresh verification passed: `.venv/bin/pytest tests/services/test_terminal_sessions.py -q`, `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`698 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint`, `cd web && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-21) - Post-M8.5.36 Continuation
 
 ## Goal
