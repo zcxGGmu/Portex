@@ -176,6 +176,7 @@ class _TerminalSessionHistorySearchCandidate:
     line_start_paren_wrapper_plain_exact_tag_match_count: int
     first_line_start_paren_wrapper_plain_exact_tag_offset: int
     line_start_angle_wrapper_plain_exact_tag_match_count: int
+    conditional_non_exact_tag_punctuation_wrap_match_count: int
     line_start_punctuation_wrap_match_count: int
     first_line_start_punctuation_wrap_offset: int
     whole_word_match_count: int
@@ -1180,6 +1181,13 @@ class TerminalSessionService:
             offsets,
             query_length=query_length,
         )
+        non_exact_tag_punctuation_wrap_match_count = max(
+            0,
+            line_start_punctuation_wrap_match_count - line_start_exact_tag_match_count,
+        )
+        conditional_non_exact_tag_punctuation_wrap_match_count = (
+            non_exact_tag_punctuation_wrap_match_count if line_start_exact_tag_match_count > 0 else 0
+        )
         non_line_start_whole_word_match_count = (
             whole_word_match_count - line_start_whole_word_match_count
         )
@@ -1217,6 +1225,7 @@ class TerminalSessionService:
             line_start_paren_wrapper_plain_exact_tag_match_count=line_start_paren_wrapper_plain_exact_tag_match_count,
             first_line_start_paren_wrapper_plain_exact_tag_offset=first_line_start_paren_wrapper_plain_exact_tag_offset,
             line_start_angle_wrapper_plain_exact_tag_match_count=line_start_angle_wrapper_plain_exact_tag_match_count,
+            conditional_non_exact_tag_punctuation_wrap_match_count=conditional_non_exact_tag_punctuation_wrap_match_count,
             line_start_punctuation_wrap_match_count=line_start_punctuation_wrap_match_count,
             first_line_start_punctuation_wrap_offset=first_line_start_punctuation_wrap_offset,
             whole_word_match_count=whole_word_match_count,
@@ -1732,6 +1741,7 @@ class TerminalSessionService:
                     -item.line_start_square_bracket_exact_tag_match_count,
                     -item.line_start_paren_wrapper_plain_exact_tag_match_count,
                     item.line_start_angle_wrapper_plain_exact_tag_match_count,
+                    item.conditional_non_exact_tag_punctuation_wrap_match_count,
                     -item.line_start_punctuation_wrap_match_count,
                     -item.line_start_whole_word_match_count,
                     item.conditional_non_line_start_whole_word_match_count,
