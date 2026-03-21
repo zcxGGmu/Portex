@@ -2,7 +2,7 @@
 
 ## Goal
 
-Refine terminal history `relevance` ordering so, inside the non-marker exact-tag branch, snapshots that already contain single-space plain exact-tag hits are demoted when they also contain extra multi-space or tab-separated plain exact-tag separator noise, while preserving existing marker-family priority, wrapper-family ordering, and API/UI/history compatibility boundaries.
+Refine terminal history `relevance` ordering so, inside the non-marker exact-tag branch, snapshots that already contain clean single-space plain exact-tag hits gain an explicit tie-break against snapshots whose first extra non-single-space plain exact-tag separator noise appears earlier, while preserving existing marker-family priority, wrapper-family ordering, and API/UI/history compatibility boundaries.
 
 ## Scope
 
@@ -14,8 +14,8 @@ Refine terminal history `relevance` ordering so, inside the non-marker exact-tag
   - raw marker and exact-tag marker families remain ordering-only
   - non-marker exact-tag branch remains ordering-only
 - add one narrow internal signal for conditional plain exact-tag separator noise:
-  - `conditional_non_single_space_plain_exact_tag_separator_match_count`
-- preserve existing `M8.5.39` signals and ordering semantics outside the new separator-noise demotion
+  - `conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset`
+- preserve existing `M8.5.39` signals and ordering semantics outside the new separator-noise tie-break
 - keep `newest` / `oldest` behavior unchanged
 
 ## Out Of Scope
@@ -31,25 +31,38 @@ Refine terminal history `relevance` ordering so, inside the non-marker exact-tag
 
 `M8.5.34`, `M8.5.36`, `M8.5.37`, and `M8.5.38` progressively made the plain exact-tag wrapper families more explicit with wrapper-specific tie-breaks. `M8.5.39` then added a plain exact-tag single-space separator preference so cleaner forms like `[query] text` rank ahead of looser whitespace forms such as `[query]\ttext`.
 
-That leaves a smaller but still real gap inside snapshots that already contain at least one clean single-space plain exact-tag hit. Today a snapshot like `[error] ok\n[error]\tok\n` still keeps the extra tab-separated plain exact-tag hit as a neutral peer once stronger signals tie, even though it should act as noise relative to a snapshot containing only clean single-space exact-tag separators. The smallest next step is to add one conditional demotion signal that only activates when at least one clean single-space plain exact-tag hit already exists.
+That leaves a smaller but still real gap inside snapshots that already contain at least one clean single-space plain exact-tag hit. Today a snapshot like `[error]: aa\n[error] ok\n[error]\tok\n` and another like `[error]: aa\n[error]\tok\n[error] ok\n` remain peers once stronger signals tie, even though the snapshot whose first noisy separator appears later should be slightly better. A count-based noise field would be redundant with earlier exact-tag counters in the current tuple, so the smallest effective next step is an earliest-noise-offset tie-break that activates only when at least one clean single-space plain exact-tag hit already exists.
 
 ## Approaches Considered
 
-### 1. Conditional plain exact-tag separator-noise demotion (recommended)
+### 1. Conditional earliest-noise-offset tie-break (recommended)
 
-Add a conditional signal that penalizes additional non-single-space plain exact-tag hits, but only when at least one single-space plain exact-tag hit exists.
+Add a conditional signal that records the earliest non-single-space plain exact-tag separator offset, but only when at least one single-space plain exact-tag hit exists.
 
 Pros:
 
 - directly targets the remaining ranking defect
 - stays neutral when no clean single-space plain exact-tag exists
-- aligns with the narrow conditional-demotion style already used by `M8.5.35`
+- actually affects ordering without duplicating information already present earlier in the tuple
 
 Cons:
 
 - introduces one additional derived metadata field
 
-### 2. Broader separator scoring model
+### 2. Count-based separator-noise demotion
+
+Penalize the number of non-single-space plain exact-tag hits.
+
+Pros:
+
+- easy to describe on paper
+
+Cons:
+
+- redundant with existing exact-tag and single-space counters in the current tuple
+- would not change ranking once stronger counters are tied
+
+### 3. Broader separator scoring model
 
 Explicitly weight multiple separator classes such as single-space, multi-space, and tab forms.
 
@@ -62,22 +75,9 @@ Cons:
 - wider than the immediate gap
 - harder to regression test and explain
 
-### 3. More wrapper-specific micro-tie-breaks
-
-Continue refining each wrapper pair separately instead of modeling separator noise directly.
-
-Pros:
-
-- matches the recent wrapper-specific cadence
-
-Cons:
-
-- the wrapper-family chain is already explicit enough
-- does not address the actual separator-noise problem
-
 ## Recommended Approach
 
-Use approach 1: add a conditional plain exact-tag separator-noise demotion.
+Use approach 1: add a conditional earliest-noise-offset tie-break.
 
 ## Separator-Noise Model
 
@@ -85,32 +85,31 @@ Use approach 1: add a conditional plain exact-tag separator-noise demotion.
 
 The new signal is:
 
-- `conditional_non_single_space_plain_exact_tag_separator_match_count`
+- `conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset`
 
 Calculate it as:
 
-- `line_start_plain_exact_tag_match_count_total - line_start_plain_exact_tag_single_space_separator_match_count`
+- the earliest offset among non-single-space plain exact-tag hits
   when `line_start_plain_exact_tag_single_space_separator_match_count > 0`
-- `0` when `line_start_plain_exact_tag_single_space_separator_match_count == 0`
+  and at least one non-single-space plain exact-tag hit exists
+- a stable sentinel when either:
+  - no single-space plain exact-tag hit exists, or
+  - no non-single-space plain exact-tag hit exists
 
-Where `line_start_plain_exact_tag_match_count_total` is derived only from existing non-marker plain exact-tag helper families:
+Where non-single-space plain exact-tag hits are derived only from the existing non-marker plain exact-tag helper families and the current single-space separator helper.
 
-- square-bracket plain exact-tag hits
-- paren-wrapper plain exact-tag hits
-- brace-wrapper plain exact-tag hits
-- angle-wrapper plain exact-tag hits
+Higher is better:
 
-Lower is better.
+- later noise is better than earlier noise
+- no noise is best and uses the sentinel
 
 ### Examples
 
-- noise count is `0`:
-  - `[error] ok`
-  - `(error) ok`
-- noise count is `1`:
-  - `[error] ok\n[error]\tok`
-  - `(error) ok\n(error)  ok`
-- signal stays neutral:
+- better:
+  - `[error]: aa\n[error] ok\npadding\n[error]\tok`
+- worse:
+  - `[error]: aa\n[error]\tok\n[error] ok`
+- neutral fallback:
   - `[error]\tok`
   - `(error)  ok`
   - because there is no single-space plain exact-tag hit in the snapshot
@@ -119,14 +118,19 @@ Lower is better.
 
 For `sort="relevance"`, keep all existing sort keys and insert:
 
-1. `conditional_non_single_space_plain_exact_tag_separator_match_count` (ascending)
+1. `conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset` (later is better)
 
 Placement:
 
 - place the new key after `line_start_plain_exact_tag_single_space_separator_match_count`
 - place it before `conditional_non_exact_tag_punctuation_wrap_match_count`
 
-This preserves the existing wrapper-family and single-space preference chain while explicitly demoting snapshots that mix clean and noisy plain exact-tag separator forms.
+Implementation detail:
+
+- sort this key in descending offset order by negating it in the tuple
+- use a large sentinel so “no applicable noise” sorts ahead of earlier noise
+
+This preserves the existing wrapper-family and single-space preference chain while explicitly preferring snapshots whose separator noise appears later, or not at all.
 
 ## Backend Design
 
@@ -135,14 +139,11 @@ This preserves the existing wrapper-family and single-space preference chain whi
 In `services/terminal_sessions.py`:
 
 - extend `_TerminalSessionHistorySearchCandidate` with:
-  - `conditional_non_single_space_plain_exact_tag_separator_match_count`
-- derive `line_start_plain_exact_tag_match_count_total` from existing helper results:
-  - square-bracket plain exact-tag count
-  - paren-wrapper plain exact-tag count
-  - brace-wrapper plain exact-tag count
-  - angle-wrapper plain exact-tag count
-- compute the conditional noise count in `_build_search_candidate(...)`
-- update the `relevance` sort tuple with the new key at the placement above
+  - `conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset`
+- add `_NO_LINE_START_NON_SINGLE_SPACE_PLAIN_EXACT_TAG_SEPARATOR_MATCH_OFFSET`
+- derive the earliest non-single-space plain exact-tag offset only from existing non-marker plain exact-tag helper families and the current single-space separator helper
+- compute the conditional offset in `_build_search_candidate(...)`
+- update the `relevance` sort tuple with the new key at the placement above, using descending offset semantics
 
 No new parser or route contract is required.
 
@@ -164,9 +165,9 @@ No change to:
 
 Focused service TDD in `tests/services/test_terminal_sessions.py`:
 
-- snapshots with fewer separator-noise plain exact-tag hits outrank noisier snapshots when stronger signals tie
+- when stronger signals tie, snapshots whose first separator-noise hit appears later outrank snapshots whose first noise appears earlier
 - fallback to `M8.5.39` chain when no single-space plain exact-tag exists
-- pagination still slices globally ordered relevance results after the new separator-noise demotion
+- pagination still slices globally ordered relevance results after the new separator-noise tie-break
 
 Regression verification:
 
@@ -176,8 +177,8 @@ Regression verification:
 
 ## Risks And Mitigations
 
-- Risk: accidental inclusion of marker-form counts in the plain separator-noise total.
-  - Mitigation: derive the total only from existing non-marker plain exact-tag helper families.
+- Risk: accidental inclusion of marker-form offsets in the plain separator-noise signal.
+  - Mitigation: derive the earliest noise offset only from existing non-marker plain exact-tag helper families.
 - Risk: placing the signal too early and overriding wrapper-family ordering.
   - Mitigation: place it after the existing single-space preference and cover fallback behavior explicitly.
 

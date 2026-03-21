@@ -2,15 +2,15 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add a narrow backend-only `relevance` refinement so snapshots that already contain clean single-space plain exact-tag hits are demoted when they also contain extra non-single-space plain exact-tag separator noise.
+**Goal:** Add a narrow backend-only `relevance` refinement so snapshots that already contain clean single-space plain exact-tag hits gain an explicit tie-break against earlier non-single-space plain exact-tag separator noise.
 
-**Architecture:** Keep route/API/frontend contracts unchanged and only extend `TerminalSessionService` internal search-candidate metadata. Reuse the existing plain exact-tag helper results, derive one conditional separator-noise count from those already-computed families, inject it into the current `relevance` tuple immediately after the single-space preference, and preserve all other ranking families and compatibility boundaries.
+**Architecture:** Keep route/API/frontend contracts unchanged and only extend `TerminalSessionService` internal search-candidate metadata. Reuse the existing plain exact-tag helper results, derive one conditional earliest-noise offset from those already-computed families, inject it into the current `relevance` tuple immediately after the single-space preference, and preserve all other ranking families and compatibility boundaries.
 
 **Tech Stack:** FastAPI, Python dataclasses, pytest, Ruff, React 19, TypeScript, Vite
 
 ---
 
-### Task 1: Add Failing Service Tests For Conditional Separator-Noise Demotion
+### Task 1: Add Failing Service Tests For Conditional Earliest-Noise Tie-Break
 
 **Files:**
 - Modify: `tests/services/test_terminal_sessions.py`
@@ -21,9 +21,9 @@
 
 Add focused tests that assert:
 
-- when stronger signals are tied, snapshots with fewer non-single-space plain exact-tag separator noises outrank noisier snapshots
+- when stronger signals are tied, snapshots whose first non-single-space plain exact-tag separator noise appears later outrank snapshots whose first noise appears earlier
 - when no single-space plain exact-tag exists, ordering falls back to existing `M8.5.39` signals
-- pagination still slices the globally ranked result set after the new demotion
+- pagination still slices the globally ranked result set after the new tie-break
 
 **Step 2: Run the service suite to confirm RED**
 
@@ -35,9 +35,9 @@ Run:
 
 Expected:
 
-- at least one new test fails because current `relevance` does not include conditional plain exact-tag separator-noise metadata
+- at least one new test fails because current `relevance` does not include the conditional earliest separator-noise offset metadata
 
-### Task 2: Implement Minimal Conditional Separator-Noise Metadata And Sort Key
+### Task 2: Implement Minimal Conditional Earliest-Noise Metadata And Sort Key
 
 **Files:**
 - Modify: `services/terminal_sessions.py`
@@ -47,38 +47,32 @@ Expected:
 
 Add one field to `_TerminalSessionHistorySearchCandidate`:
 
-- `conditional_non_single_space_plain_exact_tag_separator_match_count`
+- `conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset`
 
-**Step 2: Derive the total plain exact-tag count**
+Add one sentinel constant:
 
-Compute `line_start_plain_exact_tag_match_count_total` only from existing non-marker plain exact-tag helper results:
+- `_NO_LINE_START_NON_SINGLE_SPACE_PLAIN_EXACT_TAG_SEPARATOR_MATCH_OFFSET`
 
-- square-bracket plain exact-tag count
-- paren-wrapper plain exact-tag count
-- brace-wrapper plain exact-tag count
-- angle-wrapper plain exact-tag count
+**Step 2: Derive the earliest non-single-space noise offset**
 
-Do not reuse marker-family counters.
-
-**Step 3: Wire `_build_search_candidate(...)`**
-
-Compute:
-
-- `line_start_plain_exact_tag_match_count_total`
-- `conditional_non_single_space_plain_exact_tag_separator_match_count`
+Compute the earliest non-single-space plain exact-tag offset only from existing non-marker plain exact-tag helper families and the current single-space separator helper.
 
 Rules:
 
-- if `line_start_plain_exact_tag_single_space_separator_match_count > 0`, use `total - single_space_count`
-- otherwise use `0`
+- if `line_start_plain_exact_tag_single_space_separator_match_count > 0` and at least one non-single-space plain exact-tag hit exists, use the earliest such offset
+- otherwise use the sentinel
 
-Populate candidate metadata with the new field.
+Do not reuse marker-family counters or offsets.
+
+**Step 3: Wire `_build_search_candidate(...)`**
+
+Populate candidate metadata with the new conditional earliest-noise offset field.
 
 **Step 4: Update `relevance` tuple only**
 
 Insert the new key in `sort="relevance"`:
 
-- `item.conditional_non_single_space_plain_exact_tag_separator_match_count` after `-item.line_start_plain_exact_tag_single_space_separator_match_count`
+- `-item.conditional_first_line_start_non_single_space_plain_exact_tag_separator_offset` after `-item.line_start_plain_exact_tag_single_space_separator_match_count`
 
 Keep:
 
