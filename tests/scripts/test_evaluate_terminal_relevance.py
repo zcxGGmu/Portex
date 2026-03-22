@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def test_load_fixture_reads_version_and_cases() -> None:
+    from scripts import evaluate_terminal_relevance
+
+    fixture = evaluate_terminal_relevance.load_fixture(
+        PROJECT_ROOT / "tests" / "fixtures" / "terminal_relevance_baseline.json"
+    )
+
+    assert fixture.version == 1
+    assert len(fixture.cases) == 4
+    assert fixture.cases[0].id == "raw-marker-priority"
+
+
+def test_evaluate_fixture_returns_expected_summary_metrics() -> None:
+    from scripts import evaluate_terminal_relevance
+
+    fixture = evaluate_terminal_relevance.load_fixture(
+        PROJECT_ROOT / "tests" / "fixtures" / "terminal_relevance_baseline.json"
+    )
+    report = evaluate_terminal_relevance.evaluate_fixture(fixture)
+
+    assert report.case_count == 4
+    assert report.pass_count == 4
+    assert report.pass_rate == 1.0
+    assert report.top1_accuracy == 1.0
+    assert report.mrr == 1.0
+    assert all(case.passed for case in report.cases)
+
+
+def test_main_returns_non_zero_when_fixture_expectations_fail(tmp_path: Path) -> None:
+    from scripts import evaluate_terminal_relevance
+
+    fixture_path = tmp_path / "bad-baseline.json"
+    fixture_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "cases": [
+                    {
+                        "id": "intentionally-wrong-order",
+                        "query": "error",
+                        "entries": [
+                            {"id": "raw-marker", "output": "error: startup failed\n"},
+                            {"id": "plain-exact-tag", "output": "[error] startup failed\n"},
+                        ],
+                        "expected_order": ["plain-exact-tag", "raw-marker"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = evaluate_terminal_relevance.main(
+        ["--fixture", str(fixture_path), "--format", "json"]
+    )
+
+    assert exit_code == 1
