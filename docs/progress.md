@@ -5,7 +5,7 @@
 当前分支: `main`
 最新功能提交: `94f2320` (`feat(terminal): add M8.5.50 mixed-other payload demotion`)
 最新 planning 提交: `260248a`（`docs(plans): add M8.5.50 mixed-other payload demotion plan`）
-最近一次 handoff 同步: `8c9cf4b`（`docs(handoff): sync M8.5.48 mixed whitespace payload offset context`）；当前分支已完成 `M8.5.50` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最近一次 handoff 同步: `221a363`（`docs(handoff): sync M8.5.50 mixed-other payload context`）；当前分支已完成 `M8.5.50` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -911,7 +911,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.27` 的 planning + feature 链，本次 docs sync 负责补齐 restart 记录；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.50` 的 planning + feature + handoff 链（`260248a` + `94f2320` + `221a363`）；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
