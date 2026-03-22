@@ -197,6 +197,7 @@ class _TerminalSessionHistorySearchCandidate:
     conditional_first_line_start_plain_exact_tag_tab_prefixed_payload_offset: int
     conditional_line_start_plain_exact_tag_multi_space_payload_match_count: int
     conditional_first_line_start_plain_exact_tag_multi_space_payload_offset: int
+    conditional_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count: int
     conditional_non_exact_tag_punctuation_wrap_match_count: int
     line_start_punctuation_wrap_match_count: int
     first_line_start_punctuation_wrap_offset: int
@@ -1303,6 +1304,18 @@ class TerminalSessionService:
             if line_start_plain_exact_tag_single_space_separator_match_count > 0
             else _NO_LINE_START_PLAIN_EXACT_TAG_MULTI_SPACE_PAYLOAD_MATCH_OFFSET
         )
+        line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count = (
+            TerminalSessionService._count_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_hits(
+                text,
+                offsets,
+                query_length=query_length,
+            )
+        )
+        conditional_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count = (
+            line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count
+            if line_start_plain_exact_tag_single_space_separator_match_count > 0
+            else 0
+        )
         (
             line_start_exact_tag_marker_match_count,
             first_line_start_exact_tag_marker_offset,
@@ -1368,6 +1381,7 @@ class TerminalSessionService:
             conditional_first_line_start_plain_exact_tag_tab_prefixed_payload_offset=conditional_first_line_start_plain_exact_tag_tab_prefixed_payload_offset,
             conditional_line_start_plain_exact_tag_multi_space_payload_match_count=conditional_line_start_plain_exact_tag_multi_space_payload_match_count,
             conditional_first_line_start_plain_exact_tag_multi_space_payload_offset=conditional_first_line_start_plain_exact_tag_multi_space_payload_offset,
+            conditional_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count=conditional_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count,
             conditional_non_exact_tag_punctuation_wrap_match_count=conditional_non_exact_tag_punctuation_wrap_match_count,
             line_start_punctuation_wrap_match_count=line_start_punctuation_wrap_match_count,
             first_line_start_punctuation_wrap_offset=first_line_start_punctuation_wrap_offset,
@@ -1670,6 +1684,23 @@ class TerminalSessionService:
             ):
                 return offset
         return _NO_LINE_START_PLAIN_EXACT_TAG_MULTI_SPACE_PAYLOAD_MATCH_OFFSET
+
+    @staticmethod
+    def _count_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_hits(
+        text: str,
+        offsets: list[int],
+        *,
+        query_length: int,
+    ) -> int:
+        return sum(
+            1
+            for offset in offsets
+            if TerminalSessionService._is_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match(
+                text,
+                offset,
+                query_length=query_length,
+            )
+        )
 
     @staticmethod
     def _count_line_start_paren_wrapper_plain_exact_tag_hits(
@@ -2097,6 +2128,51 @@ class TerminalSessionService:
         return False
 
     @staticmethod
+    def _is_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match(
+        text: str,
+        offset: int,
+        *,
+        query_length: int,
+    ) -> bool:
+        if not TerminalSessionService._is_line_start_exact_tag_match(text, offset, query_length=query_length):
+            return False
+        if TerminalSessionService._is_line_start_exact_tag_marker_match(text, offset, query_length=query_length):
+            return False
+        if TerminalSessionService._is_line_start_plain_exact_tag_payloadless_separator_match(
+            text,
+            offset,
+            query_length=query_length,
+        ):
+            return False
+        if TerminalSessionService._is_line_start_plain_exact_tag_tab_prefixed_payload_match(
+            text,
+            offset,
+            query_length=query_length,
+        ):
+            return False
+        if TerminalSessionService._is_line_start_plain_exact_tag_multi_space_payload_match(
+            text,
+            offset,
+            query_length=query_length,
+        ):
+            return False
+
+        separator_offset = offset + query_length + 1
+        if text[separator_offset : separator_offset + 1] != " ":
+            return False
+
+        second_separator = text[separator_offset + 1 : separator_offset + 2]
+        if second_separator == "" or not second_separator.isspace() or second_separator == " ":
+            return False
+
+        cursor = separator_offset
+        while cursor < len(text) and text[cursor] != "\n":
+            if not text[cursor].isspace():
+                return True
+            cursor += 1
+        return False
+
+    @staticmethod
     def _is_line_start_paren_wrapper_plain_exact_tag_match(text: str, offset: int, *, query_length: int) -> bool:
         if not TerminalSessionService._is_line_start_exact_tag_match(text, offset, query_length=query_length):
             return False
@@ -2218,6 +2294,7 @@ class TerminalSessionService:
                     -item.conditional_first_line_start_plain_exact_tag_tab_prefixed_payload_offset,
                     item.conditional_line_start_plain_exact_tag_multi_space_payload_match_count,
                     -item.conditional_first_line_start_plain_exact_tag_multi_space_payload_offset,
+                    item.conditional_line_start_plain_exact_tag_space_prefixed_mixed_whitespace_payload_match_count,
                     item.conditional_non_exact_tag_punctuation_wrap_match_count,
                     -item.line_start_punctuation_wrap_match_count,
                     -item.line_start_whole_word_match_count,
