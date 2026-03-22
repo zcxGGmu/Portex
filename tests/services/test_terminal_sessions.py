@@ -6726,6 +6726,235 @@ async def test_terminal_session_service_relevance_tab_prefixed_payload_offset_ti
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_relevance_prefers_fewer_multi_space_payload_plain_exact_tag_separators_when_stronger_signals_tie(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 22, 5, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    fewer_multi_space = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _fewer_record, fewer_queue = await service.attach_session(
+        fewer_multi_space.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("[error]: aa\n[error] ok\n[error]  bb\n[error]\f  cc\n")
+    await asyncio.wait_for(fewer_queue.get(), timeout=0.1)
+    await service.close_session(fewer_multi_space.session_id, owner_user_id="owner-1")
+
+    more_multi_space = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _more_record, more_queue = await service.attach_session(
+        more_multi_space.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("[error]: aa\n[error] ok\n[error]  bb\n[error]   cc\n")
+    await asyncio.wait_for(more_queue.get(), timeout=0.1)
+    await service.close_session(more_multi_space.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        fewer_multi_space.session_id,
+        more_multi_space.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_multi_space_payload_tie_break_falls_back_when_no_single_space_plain_exact_tag_exists(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 22, 5, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    earlier_multi_space = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _earlier_record, earlier_queue = await service.attach_session(
+        earlier_multi_space.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("[error]: aa\n[error]  bb\npadding\n[error]\f  cc\n")
+    await asyncio.wait_for(earlier_queue.get(), timeout=0.1)
+    await service.close_session(earlier_multi_space.session_id, owner_user_id="owner-1")
+
+    later_multi_space = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _later_record, later_queue = await service.attach_session(
+        later_multi_space.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("[error]: aa\npadding\n[error]  bb\n[error]\f  cc\n")
+    await asyncio.wait_for(later_queue.get(), timeout=0.1)
+    await service.close_session(later_multi_space.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=10,
+        offset=0,
+    )
+
+    assert [item.record.session_id for item in page.items] == [
+        earlier_multi_space.session_id,
+        later_multi_space.session_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_relevance_multi_space_payload_pagination_uses_global_ordering(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    current_time = datetime(2026, 3, 22, 5, 0, tzinfo=timezone.utc)
+
+    def now_func() -> datetime:
+        nonlocal current_time
+        value = current_time
+        current_time = current_time + timedelta(seconds=1)
+        return value
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+        now_func=now_func,
+    )
+
+    fewer_multi_space = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _fewer_record, fewer_queue = await service.attach_session(
+        fewer_multi_space.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("[error]: aa\n[error] ok\n[error]  bb\n[error]\f  cc\n")
+    await asyncio.wait_for(fewer_queue.get(), timeout=0.1)
+    await service.close_session(fewer_multi_space.session_id, owner_user_id="owner-1")
+
+    more_multi_space = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _more_record, more_queue = await service.attach_session(
+        more_multi_space.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[1].emit_output("[error]: aa\n[error] ok\n[error]  bb\n[error]   cc\n")
+    await asyncio.wait_for(more_queue.get(), timeout=0.1)
+    await service.close_session(more_multi_space.session_id, owner_user_id="owner-1")
+
+    lower_rank = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _lower_record, lower_queue = await service.attach_session(
+        lower_rank.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[2].emit_output("mid error here\n")
+    await asyncio.wait_for(lower_queue.get(), timeout=0.1)
+    await service.close_session(lower_rank.session_id, owner_user_id="owner-1")
+
+    page = await service.search_history_by_group(
+        "project-alpha",
+        query="error",
+        limit=2,
+        offset=1,
+    )
+
+    assert page.total == 3
+    assert page.has_more is False
+    assert [item.record.session_id for item in page.items] == [
+        more_multi_space.session_id,
+        lower_rank.session_id,
+    ]
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_relevance_falls_back_to_m8_5_33_signals_when_no_paren_plain_exact_tag_exists(
     tmp_path: Path,
 ) -> None:
