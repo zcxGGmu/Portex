@@ -3,9 +3,9 @@
 最后更新: 2026-03-22 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `6fce60f` (`feat(terminal): add M8.5.42 payloadless offset tie-break`)
-最新 planning 提交: `6fce60f`（同提交已包含 `M8.5.42` design + implementation plan 文档）
-最近一次 handoff 同步: `2b3f28e`（`docs(handoff): sync M8.5.42 payloadless offset context`）；当前分支已完成 `M8.5.42` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `faf0ec1` (`feat(terminal): add M8.5.43 tab payload demotion`)
+最新 planning 提交: `6db793a`（`docs(plans): add M8.5.43 tab payload plan`）
+最近一次 handoff 同步: `b6f2c0d`（`docs(handoff): sync M8.5.42 restart context`）；当前分支已完成 `M8.5.43` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -139,11 +139,18 @@
 - `M8.5.40` 已完成并已合入当前工作树（`1262bae`；补齐 backend-only plain exact-tag separator-noise demotion refinement，新增对 non-marker exact-tag 分支里“已存在 single-space plain exact-tag 命中时，首个非 single-space 噪音出现得更晚更好”的显式 tie-break；只在既有 `M8.5.39` 链中追加 conditional earliest-noise offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - `M8.5.41` 已完成并已合入当前工作树（`a5c563f`；补齐 backend-only plain exact-tag payloadless separator demotion refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在时，payloadless plain exact-tag separator 越少越好”的显式 tie-break；只在既有 `M8.5.40` 链中追加 conditional payloadless count 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - `M8.5.42` 已完成并已合入当前工作树（`6fce60f`；补齐 backend-only plain exact-tag payloadless separator offset tie-break refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在且 payloadless 计数打平时，payloadless separator 更晚出现更好”的显式 tie-break；只在既有 `M8.5.41` 链中追加 conditional payloadless earliest-offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
-- 当前起点：当前功能代码基线已到 `M8.5.42`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估下一类窄范围 non-marker exact-tag 质量信号（例如同级 cleanliness/tie-break 规则），不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.43` 已完成并已合入当前工作树（`faf0ec1`；补齐 backend-only plain exact-tag tab-prefixed payload demotion refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在时，tab-prefixed payload separator 越少越好”的显式 tie-break；只在既有 `M8.5.42` 链中追加 conditional tab-prefixed payload count 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
+- 当前起点：当前功能代码基线已到 `M8.5.43`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估下一类窄范围 non-marker exact-tag 质量信号（例如 payloadful 非单空格分隔里的另一类 cleanliness/tie-break 规则），不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.43` planning（on `main`）：新增 `docs/plans/2026-03-22-m8-5-43-terminal-plain-exact-tag-tab-prefixed-payload-demotion-design.md` 与 `docs/plans/2026-03-22-m8-5-43-terminal-plain-exact-tag-tab-prefixed-payload-demotion.md`，范围固定为“backend-only plain exact-tag tab-prefixed payload demotion refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.43` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 stronger signals 已打平时更少的 tab-prefixed payload plain exact-tag separator 高于更多 tab-prefixed payload separator、无 single-space plain exact-tag 时稳定回退到既有 `M8.5.42` 信号，以及基于新全局排序的分页切片行为。
+- `M8.5.43` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `conditional_line_start_plain_exact_tag_tab_prefixed_payload_match_count` 与 tab-prefixed payload helper/count；只认已经满足 line-start exact-tag 且不满足 exact-tag marker、不是 payloadless、closing wrapper 后首个 separator 字符为 tab 且后续仍有非空白 payload 的窄范围结果，且只在存在 single-space plain exact-tag 命中时参与升序（更少更好）排序。该信号放在 `M8.5.42` 的 conditional payloadless earliest-offset 之后、`conditional_non_exact_tag_punctuation_wrap_match_count` 之前。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.43` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -k "tab_prefixed_payload" -q`（RED→GREEN）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`713 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.43` implementation（on `main`）：planning 提交为 `6db793a`（`docs(plans): add M8.5.43 tab payload plan`）；功能提交为 `faf0ec1`（`feat(terminal): add M8.5.43 tab payload demotion`）。
 
 - `M8.5.42` planning（on `main`）：新增 `docs/plans/2026-03-22-m8-5-42-terminal-plain-exact-tag-payloadless-separator-offset-tie-break-design.md` 与 `docs/plans/2026-03-22-m8-5-42-terminal-plain-exact-tag-payloadless-separator-offset-tie-break.md`，范围固定为“backend-only plain exact-tag payloadless separator offset tie-break refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.42` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 stronger signals 与 payloadless 计数已打平时“payloadless separator 更晚出现更好”；无 single-space plain exact-tag 时稳定回退到既有 `M8.5.41` 信号；并补齐基于新全局排序的分页切片行为。
@@ -997,6 +1004,7 @@
 - `M8.5.40` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.39` 基础上显式引入 conditional separator-noise earliest-offset tie-break；当 single-space plain exact-tag 已存在时，更晚出现的 non-single-space plain exact-tag noise 比更早出现的 noise 更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.39` 信号。
 - `M8.5.41` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.40` 基础上显式引入 conditional payloadless plain exact-tag separator count tie-break；当 single-space plain exact-tag 已存在时，payloadless separator 更少的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.40` 信号。
 - `M8.5.42` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.41` 基础上显式引入 conditional payloadless plain exact-tag separator earliest-offset tie-break；当 single-space plain exact-tag 已存在且 payloadless 计数打平时，payloadless separator 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.41` 信号。
+- `M8.5.43` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.42` 基础上显式引入 conditional tab-prefixed payload plain exact-tag count tie-break；当 single-space plain exact-tag 已存在时，tab-prefixed payload separator 更少的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.42` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -1007,10 +1015,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `6fce60f` 的 `M8.5.42` backend-only plain exact-tag payloadless separator offset tie-break refinement；关键文件是 `docs/plans/2026-03-22-m8-5-42-terminal-plain-exact-tag-payloadless-separator-offset-tie-break-design.md`、`docs/plans/2026-03-22-m8-5-42-terminal-plain-exact-tag-payloadless-separator-offset-tie-break.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.42` 的小范围 backend-only relevance 质量优化（仍限于 non-marker exact-tag 分支同级 cleanliness/tie-break）；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.42` 只补齐 conditional payloadless separator earliest-offset tie-break，不包含更宽的 wrapper-family weighting 或 tokenizer 规则。
+2. 当前功能代码基线已包含 `6db793a` + `faf0ec1` 的 `M8.5.43` backend-only plain exact-tag tab-prefixed payload demotion refinement；关键文件是 `docs/plans/2026-03-22-m8-5-43-terminal-plain-exact-tag-tab-prefixed-payload-demotion-design.md`、`docs/plans/2026-03-22-m8-5-43-terminal-plain-exact-tag-tab-prefixed-payload-demotion.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.43` 的小范围 backend-only relevance 质量优化（仍限于 non-marker exact-tag 分支同级 cleanliness/tie-break）；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.43` 只补齐 conditional tab-prefixed payload count tie-break，不包含更宽的 wrapper-family weighting、mixed-separator family 打分或 tokenizer 规则。
 4. 复现当前基线建议命令：
-   - `M8.5.42 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.43 focused RED→GREEN`：`.venv/bin/pytest tests/services/test_terminal_sessions.py -k "tab_prefixed_payload" -q`
+   - `M8.5.43 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -1022,4 +1031,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.42` 的 backend-only plain exact-tag payloadless separator earliest-offset tie-break 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类窄范围 non-marker exact-tag 微调。
+> 当前工作树已包含 `M8.5.43` 的 backend-only plain exact-tag tab-prefixed payload demotion 优化并通过全量回归；下一自然入口是保持兼容边界不变的另一类窄范围 non-marker exact-tag payloadful separator 微调。
