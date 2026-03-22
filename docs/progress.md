@@ -3,9 +3,9 @@
 最后更新: 2026-03-22 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `c4efc33` (`feat(terminal): add offline relevance evaluation baseline`)
-最新 planning 提交: `1bce130`（`docs(plans): add terminal relevance offline baseline plan`）
-最近一次 handoff 同步: `eafd0b6`（`docs(handoff): sync auth/message warning-fix baseline`）；当前分支已完成 `M8.5.51` 的 planning + feature 链、auth/message 告警修复与离线 relevance 基准脚本落地，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `0ba9c2d` (`feat(terminal): expand offline relevance baseline fixtures`)
+最新 planning 提交: `d94877d`（`docs(plans): add terminal relevance offline baseline expansion plan`）
+最近一次 handoff 同步: `eafd0b6`（`docs(handoff): sync auth/message warning-fix baseline`）；当前分支已完成 `M8.5.51` 链、auth/message 告警修复、离线 relevance 基准脚本与基准样本扩充链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -150,11 +150,17 @@
 - `M8.5.51` 已完成并已合入当前工作树（`d569c75`；补齐 backend-only plain exact-tag other-leading mixed-whitespace payload offset tie-break refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在且 mixed-other payload 计数打平时，mixed-other payload separator 更晚出现更好”的显式 tie-break；只在既有 `M8.5.50` 链中追加 conditional mixed-other earliest-offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - auth/message 技术债告警修复已完成并已合入当前工作树（`fd0344a`；`services/auth.py` 去除 passlib 运行时依赖并改为内置 `scrypt-v1` 哈希格式，`services/message_service.py` 改为 UTC-aware timestamp 并在 refresh 后标准化时区，相关服务测试已补齐）。
 - terminal relevance 离线评估基准已完成并已合入当前工作树（`c4efc33`；新增 `scripts/evaluate_terminal_relevance.py`、固定样本 `tests/fixtures/terminal_relevance_baseline.json` 与 `tests/scripts/test_evaluate_terminal_relevance.py`，可离线计算 `pass_rate/top1_accuracy/mrr` 并在失败时返回非零）。
-- 当前起点：当前功能代码基线为 `M8.5.51` + `fd0344a` + `c4efc33`；terminal 搜索线若继续，优先在离线基准样本上扩充场景并观察指标，再决定是否继续细分 tie-break；保持 `latest.json`、`/sessions/current/history`、API/UI 与 RBAC 边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- terminal relevance 离线评估基准扩样已完成并已合入当前工作树（`0ba9c2d`；`tests/fixtures/terminal_relevance_baseline.json` 从 4 个样本扩到 8 个样本，新增 marker ladder 与 `M8.5.50`/`M8.5.51` 分页切片样本，`tests/scripts/test_evaluate_terminal_relevance.py` 同步指标断言）。
+- 当前起点：当前功能代码基线为 `M8.5.51` + `fd0344a` + 离线 baseline（`c4efc33` + `0ba9c2d`）；terminal 搜索线若继续，优先在 8-case 离线基准上继续扩充场景并观察指标，再决定是否继续细分 tie-break；保持 `latest.json`、`/sessions/current/history`、API/UI 与 RBAC 边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- terminal relevance offline baseline expansion（on `main`）：新增 `docs/plans/2026-03-22-terminal-relevance-offline-baseline-expansion-design.md` 与 `docs/plans/2026-03-22-terminal-relevance-offline-baseline-expansion.md`，范围固定为“离线基准扩样，不改排序逻辑/route/API/UI/RBAC/search contract”。
+- terminal relevance offline baseline expansion（on `main`）：`tests/fixtures/terminal_relevance_baseline.json` 从 4 case 扩到 8 case，新增 `raw > wrapper > plain` marker ladder、`M8.5.50` mixed-other count pagination、`M8.5.51` mixed-other offset pagination、`M8.5.51` no-single-space fallback pagination。
+- terminal relevance offline baseline expansion（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`（RED→GREEN）、`.venv/bin/python scripts/evaluate_terminal_relevance.py --format text`（`case_count=8`, `pass_count=8`, `pass_rate/top1_accuracy/mrr = 1.000`）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`740 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- terminal relevance offline baseline expansion（on `main`）：planning 提交为 `d94877d`（`docs(plans): add terminal relevance offline baseline expansion plan`）；功能提交为 `0ba9c2d`（`feat(terminal): expand offline relevance baseline fixtures`）。
 
 - terminal relevance offline baseline（on `main`）：新增 `docs/plans/2026-03-22-terminal-relevance-offline-evaluation-baseline-design.md` 与 `docs/plans/2026-03-22-terminal-relevance-offline-evaluation-baseline.md`，范围固定为“离线固定样本 + 指标评估脚本”，不改 route/API/UI/RBAC/search contract。
 - terminal relevance offline baseline（on `main`）：新增 `scripts/evaluate_terminal_relevance.py`，内置 fixture 校验、deterministic harness、`pass_rate/top1_accuracy/mrr` 指标汇总与 `text/json` 输出；当任一 case 失败或 fixture 非法时返回 `exit 1`。
@@ -932,7 +938,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 offline baseline 的 planning + feature 链（`1bce130` + `c4efc33`），此前 `M8.5.51` 与 auth/message warning fix 链分别为（`684474a` + `d569c75` + `a76f6ee`）与 `fd0344a`；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 offline baseline expansion 的 planning + feature 链（`d94877d` + `0ba9c2d`），此前 baseline 初版链为（`1bce130` + `c4efc33`），`M8.5.51` 与 auth/message warning fix 链分别为（`684474a` + `d569c75` + `a76f6ee`）与 `fd0344a`；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -1083,7 +1089,7 @@
 - refined `M8.5.49` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.48` 基础上显式引入 conditional other-leading-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 residual other-leading-whitespace payload family 出现时，该 family 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.48` 信号。
 - `M8.5.50` 当前已合入工作树：默认 `relevance` 现会在既有 refined `M8.5.49` 基础上显式引入 conditional other-leading mixed-whitespace payload plain exact-tag count tie-break；当 single-space plain exact-tag 已存在时，other-leading + extra-whitespace payload separator 更少的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 refined `M8.5.49` 信号。
 - `M8.5.51` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.50` 基础上显式引入 conditional other-leading mixed-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 mixed-other payload 计数打平时，mixed-other payload separator 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.50` 信号。
-- terminal relevance 离线评估基准当前已合入工作树：可通过 `scripts/evaluate_terminal_relevance.py` 在固定 fixture 上离线输出 `pass_rate/top1_accuracy/mrr`，当前 baseline 为 `4/4` 全通过。
+- terminal relevance 离线评估基准当前已合入工作树：可通过 `scripts/evaluate_terminal_relevance.py` 在固定 fixture 上离线输出 `pass_rate/top1_accuracy/mrr`，当前 baseline 为 `8/8` 全通过（含 marker ladder 与 pagination 切片样本）。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` `DeprecationWarning: crypt` 已在 `fd0344a` 修复（runtime 不再依赖 passlib）。
@@ -1094,8 +1100,8 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `1bce130` + `c4efc33` 的 terminal relevance offline baseline、`684474a` + `d569c75` 的 `M8.5.51` 排序优化，以及 `fd0344a` 的 auth/message warning fix；关键文件是 `scripts/evaluate_terminal_relevance.py`、`tests/fixtures/terminal_relevance_baseline.json`、`tests/scripts/test_evaluate_terminal_relevance.py`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`、`services/auth.py`、`services/message_service.py`。
-3. 如继续当前 terminal 开发，优先先扩充离线 baseline 样本（新 case + 预期顺序）并观察 `pass_rate/top1_accuracy/mrr`，再决定是否继续细分 post-`M8.5.51` tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
+2. 当前功能代码基线已包含 `d94877d` + `0ba9c2d` 的 terminal relevance offline baseline expansion、`1bce130` + `c4efc33` 的 baseline 初版、`684474a` + `d569c75` 的 `M8.5.51` 排序优化，以及 `fd0344a` 的 auth/message warning fix；关键文件是 `scripts/evaluate_terminal_relevance.py`、`tests/fixtures/terminal_relevance_baseline.json`、`tests/scripts/test_evaluate_terminal_relevance.py`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`、`services/auth.py`、`services/message_service.py`。
+3. 如继续当前 terminal 开发，优先在当前 8-case 离线 baseline 上继续补充真实/边界样本并观察 `pass_rate/top1_accuracy/mrr`，只有指标或样本暴露稳定缺口时再决定是否进入 post-`M8.5.51` 新 tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
 4. 复现当前基线建议命令：
    - `offline baseline`：`.venv/bin/python scripts/evaluate_terminal_relevance.py --format text`
    - `offline baseline tests`：`.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`
@@ -1113,4 +1119,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.51` terminal relevance 链、`fd0344a` auth/message warning fix 与离线 relevance baseline 脚本并通过全量回归；下一自然入口是扩充 baseline 样本后再决定是否继续细分 tie-break。
+> 当前工作树已包含 `M8.5.51` terminal relevance 链、`fd0344a` auth/message warning fix 与离线 relevance baseline 扩样（8-case）并通过全量回归；下一自然入口是在该基线上继续补样并用指标驱动是否进入下一轮 tie-break。
