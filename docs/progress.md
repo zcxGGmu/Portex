@@ -5,7 +5,7 @@
 当前分支: `main`
 最新功能提交: `0ba9c2d` (`feat(terminal): expand offline relevance baseline fixtures`)
 最新 planning 提交: `d94877d`（`docs(plans): add terminal relevance offline baseline expansion plan`）
-最近一次 handoff 同步: `eafd0b6`（`docs(handoff): sync auth/message warning-fix baseline`）；当前分支已完成 `M8.5.51` 链、auth/message 告警修复、离线 relevance 基准脚本与基准样本扩充链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最近一次 handoff 同步: `2192c20`（`docs(handoff): sync offline relevance baseline expansion context`）；当前分支已完成 `M8.5.51` 链、auth/message 告警修复、离线 relevance 基准脚本与基准样本扩充链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -161,6 +161,7 @@
 - terminal relevance offline baseline expansion（on `main`）：`tests/fixtures/terminal_relevance_baseline.json` 从 4 case 扩到 8 case，新增 `raw > wrapper > plain` marker ladder、`M8.5.50` mixed-other count pagination、`M8.5.51` mixed-other offset pagination、`M8.5.51` no-single-space fallback pagination。
 - terminal relevance offline baseline expansion（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`（RED→GREEN）、`.venv/bin/python scripts/evaluate_terminal_relevance.py --format text`（`case_count=8`, `pass_count=8`, `pass_rate/top1_accuracy/mrr = 1.000`）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`740 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
 - terminal relevance offline baseline expansion（on `main`）：planning 提交为 `d94877d`（`docs(plans): add terminal relevance offline baseline expansion plan`）；功能提交为 `0ba9c2d`（`feat(terminal): expand offline relevance baseline fixtures`）。
+- terminal relevance offline baseline expansion handoff sync（on `main`）：重启入口与 AGENTS 快照已同步到 `2192c20`（`docs(handoff): sync offline relevance baseline expansion context`），保持“先看离线基线指标，再决定是否继续 post-`M8.5.51` tie-break”策略不变。
 
 - terminal relevance offline baseline（on `main`）：新增 `docs/plans/2026-03-22-terminal-relevance-offline-evaluation-baseline-design.md` 与 `docs/plans/2026-03-22-terminal-relevance-offline-evaluation-baseline.md`，范围固定为“离线固定样本 + 指标评估脚本”，不改 route/API/UI/RBAC/search contract。
 - terminal relevance offline baseline（on `main`）：新增 `scripts/evaluate_terminal_relevance.py`，内置 fixture 校验、deterministic harness、`pass_rate/top1_accuracy/mrr` 指标汇总与 `text/json` 输出；当任一 case 失败或 fixture 非法时返回 `exit 1`。
@@ -938,7 +939,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 offline baseline expansion 的 planning + feature 链（`d94877d` + `0ba9c2d`），此前 baseline 初版链为（`1bce130` + `c4efc33`），`M8.5.51` 与 auth/message warning fix 链分别为（`684474a` + `d569c75` + `a76f6ee`）与 `fd0344a`；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 offline baseline expansion 的 planning + feature + handoff 链（`d94877d` + `0ba9c2d` + `2192c20`），此前 baseline 初版链为（`1bce130` + `c4efc33`），`M8.5.51` 与 auth/message warning fix 链分别为（`684474a` + `d569c75` + `a76f6ee`）与 `fd0344a`；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
