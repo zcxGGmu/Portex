@@ -17,7 +17,7 @@ def test_load_fixture_reads_version_and_cases() -> None:
     )
 
     assert fixture.version == 1
-    assert len(fixture.cases) == 4
+    assert len(fixture.cases) == 8
     assert fixture.cases[0].id == "raw-marker-priority"
 
 
@@ -29,8 +29,8 @@ def test_evaluate_fixture_returns_expected_summary_metrics() -> None:
     )
     report = evaluate_terminal_relevance.evaluate_fixture(fixture)
 
-    assert report.case_count == 4
-    assert report.pass_count == 4
+    assert report.case_count == 8
+    assert report.pass_count == 8
     assert report.pass_rate == 1.0
     assert report.top1_accuracy == 1.0
     assert report.mrr == 1.0

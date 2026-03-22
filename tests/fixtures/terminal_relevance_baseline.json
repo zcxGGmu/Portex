@@ -72,6 +72,104 @@
         "earlier-no-single",
         "later-no-single"
       ]
+    },
+    {
+      "id": "raw-wrapper-plain-marker-ladder",
+      "query": "error",
+      "entries": [
+        {
+          "id": "raw-marker",
+          "output": "error: startup failed\n"
+        },
+        {
+          "id": "wrapper-marker",
+          "output": "[error]: startup failed\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "[error] startup failed\n"
+        }
+      ],
+      "expected_order": [
+        "raw-marker",
+        "wrapper-marker",
+        "plain-exact-tag"
+      ]
+    },
+    {
+      "id": "m8-5-50-mixed-other-count-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "cleaner",
+          "output": "[error]: aa\n[error] ok\n[error]\u000bab\n[error]\fcd\n"
+        },
+        {
+          "id": "noisier",
+          "output": "[error]: aa\n[error] ok\n[error]\u000b a\n[error]\f c\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "cleaner",
+        "noisier",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "m8-5-51-mixed-other-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-mixed",
+          "output": "[error]: aa\n[error] ok\n[error]\u000bbb\npadding\n[error]\u000b\tcc\n"
+        },
+        {
+          "id": "earlier-mixed",
+          "output": "[error]: aa\n[error] ok\n[error]\u000bbb\n[error]\u000b\tcc\npadding\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-mixed",
+        "earlier-mixed",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "m8-5-51-no-single-space-fallback-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-no-single-noisier",
+          "output": "[error]: aa\n[error]\u000b\tbb\n[error]\f dd\n"
+        },
+        {
+          "id": "later-no-single-cleaner",
+          "output": "[error]: aa\npadding\n[error]\u000bbb\n[error]\fdd\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-no-single-noisier",
+        "later-no-single-cleaner",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
     }
   ]
 }
