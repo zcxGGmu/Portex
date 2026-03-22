@@ -3,9 +3,9 @@
 最后更新: 2026-03-22 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `94f2320` (`feat(terminal): add M8.5.50 mixed-other payload demotion`)
-最新 planning 提交: `260248a`（`docs(plans): add M8.5.50 mixed-other payload demotion plan`）
-最近一次 handoff 同步: `221a363`（`docs(handoff): sync M8.5.50 mixed-other payload context`）；当前分支已完成 `M8.5.50` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最新功能提交: `d569c75` (`feat(terminal): add M8.5.51 mixed-other payload offset tie-break`)
+最新 planning 提交: `684474a`（`docs(plans): add M8.5.51 mixed-other payload offset plan`）
+最近一次 handoff 同步: `ce084e7`（`docs(handoff): sync M8.5.50 progress and AGENTS context`）；当前分支已完成 `M8.5.51` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
@@ -147,11 +147,18 @@
 - `M8.5.48` 已完成并已合入当前工作树（`fc77eca`；补齐 backend-only plain exact-tag space-prefixed mixed-whitespace payload offset tie-break refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在且 mixed-whitespace payload 计数打平时，mixed-whitespace payload separator 更晚出现更好”的显式 tie-break；只在既有 `M8.5.47` 链中追加 conditional mixed-whitespace payload earliest-offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - refined `M8.5.49` 已完成并已合入当前工作树（`cac916a`；补齐 backend-only plain exact-tag other-leading-whitespace payload earliest-offset tie-break refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在且 residual other-leading-whitespace payload family 出现时，更晚出现更好”的显式 tie-break；该特性基于 `e045432` 对初版 `5dd6cc1` count 方案的规划收敛，只在既有 `M8.5.48` 链中追加 conditional other-leading-whitespace payload earliest-offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
 - `M8.5.50` 已完成并已合入当前工作树（`94f2320`；补齐 backend-only plain exact-tag other-leading mixed-whitespace payload demotion refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在时，other-leading + extra-whitespace payload separator 越少越好”的显式 tie-break；只在既有 refined `M8.5.49` 链中追加 conditional other-leading mixed-whitespace payload count 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
-- 当前起点：当前功能代码基线已到 `M8.5.50`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 post-`M8.5.50` 的同级窄范围 cleanliness/tie-break（例如 other-leading mixed-whitespace payload offset tie-break，或明确停止继续细分），不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- `M8.5.51` 已完成并已合入当前工作树（`d569c75`；补齐 backend-only plain exact-tag other-leading mixed-whitespace payload offset tie-break refinement，新增对 non-marker exact-tag 分支里“当 single-space plain exact-tag 已存在且 mixed-other payload 计数打平时，mixed-other payload separator 更晚出现更好”的显式 tie-break；只在既有 `M8.5.50` 链中追加 conditional mixed-other earliest-offset 元数据，不改 route/UI/snippet/DTO、`latest.json`、`/sessions/current/history` 与 RBAC 边界）。
+- 当前起点：当前功能代码基线已到 `M8.5.51`；若继续 terminal 搜索优化，优先保持 backend-only 范围评估 post-`M8.5.51` 的同级窄范围 cleanliness/tie-break（例如 other-leading mixed-whitespace payload family 的 residual 收口，或明确停止继续细分），不改 `latest.json`、`/sessions/current/history`、API/UI 或 RBAC 边界。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- `M8.5.51` planning（on `main`）：新增 `docs/plans/2026-03-22-m8-5-51-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-offset-tie-break-design.md` 与 `docs/plans/2026-03-22-m8-5-51-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-offset-tie-break.md`，范围固定为“backend-only plain exact-tag other-leading mixed-whitespace payload offset tie-break refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
+- `M8.5.51` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 stronger signals 与 mixed-other payload 计数打平时更晚的 mixed-other payload separator 偏移优先、无 single-space plain exact-tag 时稳定回退到既有 `M8.5.50` 信号，以及基于新全局排序的分页切片行为。
+- `M8.5.51` implementation（on `main`）：扩展 `services/terminal_sessions.py` 的 `relevance` candidate metadata，新增 `conditional_first_line_start_plain_exact_tag_other_leading_mixed_whitespace_payload_offset` 与对应 sentinel，并新增 mixed-other earliest-offset helper；只认已经满足 line-start exact-tag 且不满足 exact-tag marker、满足 other-leading mixed-whitespace payload 规则的窄范围结果，且只在存在 single-space plain exact-tag 命中时参与降序（更晚更好）排序。该信号放在 `M8.5.50` 的 conditional mixed-other count 之后、`M8.5.49` 的 broad other-leading earliest-offset 之前。`newest` / `oldest`、route/UI/snippet/DTO、`latest.json`、`/sessions/current/history`、RBAC 均保持不变。
+- `M8.5.51` implementation（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/services/test_terminal_sessions.py -k "other_leading_mixed_whitespace_payload_offset_tie_break or prefers_later_other_leading_mixed_whitespace_payload" -q`（RED→GREEN）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`737 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint`、`cd web && npm run build` 与 `git diff --check`。
+- `M8.5.51` implementation（on `main`）：planning 提交为 `684474a`（`docs(plans): add M8.5.51 mixed-other payload offset plan`）；功能提交为 `d569c75`（`feat(terminal): add M8.5.51 mixed-other payload offset tie-break`）。
 
 - `M8.5.50` planning（on `main`）：新增 `docs/plans/2026-03-22-m8-5-50-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-demotion-design.md` 与 `docs/plans/2026-03-22-m8-5-50-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-demotion.md`，范围固定为“backend-only plain exact-tag other-leading mixed-whitespace payload demotion refinement”，明确只扩展 `TerminalSessionService` 内部 `relevance` 排序元数据，不改 `sort` API、route/UI、`latest.json`、`/sessions/current/history` 或 RBAC。
 - `M8.5.50` implementation（on `main`）：扩展 `tests/services/test_terminal_sessions.py`，新增 focused TDD 覆盖，锁定 stronger signals 已打平时更少的 other-leading mixed-whitespace payload separator 优先、无 single-space plain exact-tag 时稳定回退到既有 `M8.5.49` 信号，以及基于新全局排序的分页切片行为。
@@ -911,7 +918,7 @@
 - README follow-up focused fix：`.venv/bin/pytest tests/scripts/test_build_docker.py -q` -> `4 passed in 0.33s`; `.venv/bin/ruff check tests/scripts/test_build_docker.py` -> `All checks passed!`
 - README follow-up 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `308 passed, 48 warnings in 15.55s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`
 - 最近一次仓库状态采样：本地 `main` 仍有未推送的 docs/handoff/planning 提交；开始下一轮前以实时 `git status --short --branch` 为准
-- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.50` 的 planning + feature + handoff 链（`260248a` + `94f2320` + `221a363`）；精确顺序以 `git log --oneline` 为准
+- 最近一次 handoff/planning 记录提交：当前分支已更新到 `M8.5.51` 的 planning + feature + handoff 链（`684474a` + `d569c75` + `ce084e7`）；精确顺序以 `git log --oneline` 为准
 - M6.5.3 focused artifact tests：`.venv/bin/pytest tests/scripts/test_build_docker.py tests/container/agent_runner/test_container_files.py -q` -> `7 passed in 0.16s`
 - M6.5.3 仓库回归：`.venv/bin/pytest -o addopts='' -q` -> `307 passed, 48 warnings in 13.93s`; `.venv/bin/ruff check .` -> `All checks passed!`; `cd web && npm run lint` -> `exit 0`; `cd web && npm run build` -> `vite build completed successfully`; `test -f web/dist/index.html` -> `exit 0`
 - M6.5.3 build wrapper blocker path：`.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` -> `docker command not found`, `exit 127`
@@ -1061,6 +1068,7 @@
 - `M8.5.48` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.47` 基础上显式引入 conditional space-prefixed mixed-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 mixed-whitespace payload 计数打平时，mixed-whitespace payload separator 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.47` 信号。
 - refined `M8.5.49` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.48` 基础上显式引入 conditional other-leading-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 residual other-leading-whitespace payload family 出现时，该 family 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.48` 信号。
 - `M8.5.50` 当前已合入工作树：默认 `relevance` 现会在既有 refined `M8.5.49` 基础上显式引入 conditional other-leading mixed-whitespace payload plain exact-tag count tie-break；当 single-space plain exact-tag 已存在时，other-leading + extra-whitespace payload separator 更少的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 refined `M8.5.49` 信号。
+- `M8.5.51` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.50` 基础上显式引入 conditional other-leading mixed-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 mixed-other payload 计数打平时，mixed-other payload separator 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.50` 信号。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` 仍有 `DeprecationWarning: crypt`。
@@ -1071,11 +1079,11 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `260248a` + `94f2320` 的 `M8.5.50` backend-only plain exact-tag other-leading mixed-whitespace payload demotion refinement；关键文件是 `docs/plans/2026-03-22-m8-5-50-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-demotion-design.md`、`docs/plans/2026-03-22-m8-5-50-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-demotion.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
-3. 如继续当前 terminal 开发，优先做 post-`M8.5.50` 的小范围 backend-only relevance 质量优化（仍限于 non-marker exact-tag 分支同级 cleanliness/tie-break）；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.50` 只补齐 other-leading mixed-whitespace payload family 的 count demotion，不包含该子族 offset tie-break 或更宽的 tokenizer / wrapper-family 评分规则。
+2. 当前功能代码基线已包含 `684474a` + `d569c75` 的 `M8.5.51` backend-only plain exact-tag other-leading mixed-whitespace payload offset tie-break refinement；关键文件是 `docs/plans/2026-03-22-m8-5-51-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-offset-tie-break-design.md`、`docs/plans/2026-03-22-m8-5-51-terminal-plain-exact-tag-other-leading-mixed-whitespace-payload-offset-tie-break.md`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`，以及既有 terminal route/API focused suites。
+3. 如继续当前 terminal 开发，优先做 post-`M8.5.51` 的小范围 backend-only relevance 质量优化（仍限于 non-marker exact-tag 分支同级 cleanliness/tie-break）；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。当前 `M8.5.51` 已补齐 mixed-other payload family 的 count + offset tie-break，后续若继续建议优先评估该 residual family 是否还有必要细分，或明确在此收口。
 4. 复现当前基线建议命令：
-   - `M8.5.50 focused RED→GREEN`：`.venv/bin/pytest tests/services/test_terminal_sessions.py -k "other_leading_mixed_whitespace_payload" -q`
-   - `M8.5.50 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+   - `M8.5.51 focused RED→GREEN`：`.venv/bin/pytest tests/services/test_terminal_sessions.py -k "other_leading_mixed_whitespace_payload_offset_tie_break or prefers_later_other_leading_mixed_whitespace_payload" -q`
+   - `M8.5.51 terminal focused baseline`：`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
    - `resize/bridge baseline`：`.venv/bin/pytest tests/services/test_terminal_bridge.py -q`
    - `terminal overview baseline`：`.venv/bin/pytest tests/app/routes/test_terminal_monitor_routes.py -q`
    - 全量后端：`.venv/bin/pytest -o addopts='' -q`
@@ -1087,4 +1095,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.50` 的 backend-only plain exact-tag other-leading mixed-whitespace payload count demotion 优化并通过全量回归；下一自然入口是保持兼容边界不变的同级 residual separator 微调。
+> 当前工作树已包含 `M8.5.51` 的 backend-only plain exact-tag other-leading mixed-whitespace payload offset tie-break 优化并通过全量回归；下一自然入口是保持兼容边界不变评估该 residual family 的继续细分或在当前粒度收口。
