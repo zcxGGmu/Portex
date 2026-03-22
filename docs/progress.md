@@ -5,7 +5,7 @@
 当前分支: `main`
 最新功能提交: `6fce60f` (`feat(terminal): add M8.5.42 payloadless offset tie-break`)
 最新 planning 提交: `6fce60f`（同提交已包含 `M8.5.42` design + implementation plan 文档）
-最近一次 handoff 同步: `3a3921c`（`docs(handoff): sync M8.5.41 payloadless separator context`）；当前分支已完成 `M8.5.42` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
+最近一次 handoff 同步: `2b3f28e`（`docs(handoff): sync M8.5.42 payloadless offset context`）；当前分支已完成 `M8.5.42` 的 planning + feature 链，当前 handoff 以本次 `docs/progress.md` 更新为准，精确提交顺序以当前分支 `git log` 为准
 
 ---
 
