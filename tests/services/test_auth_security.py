@@ -22,6 +22,7 @@ def test_hash_password_and_verify_password_success_and_failure() -> None:
     password_hash = hash_password("password123")
 
     assert password_hash != "password123"
+    assert password_hash.startswith("scrypt-v1$")
     assert verify_password("password123", password_hash) is True
     assert verify_password("bad-password", password_hash) is False
 

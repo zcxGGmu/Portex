@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from uuid import uuid4
 
@@ -52,7 +52,7 @@ async def store_message(
         sender=sender,
         content=content,
         is_from_me=is_from_me,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         slot_id=slot_id,
         attachments=_build_attachments_payload(
             channel=channel,
@@ -65,6 +65,10 @@ async def store_message(
     db.add(message)
     await db.commit()
     await db.refresh(message)
+    if message.timestamp.tzinfo is None:
+        message.timestamp = message.timestamp.replace(tzinfo=timezone.utc)
+    else:
+        message.timestamp = message.timestamp.astimezone(timezone.utc)
     return message
 
 

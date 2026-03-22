@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import sys
@@ -61,6 +61,8 @@ async def test_store_message_persists_with_default_direction(db_session: AsyncSe
     assert message.is_from_me is False
     assert message.slot_id == "main"
     assert isinstance(message.timestamp, datetime)
+    assert message.timestamp.tzinfo is not None
+    assert message.timestamp.utcoffset() == timedelta(0)
 
     persisted = await db_session.get(_message_model(), message.id)
     assert persisted is not None

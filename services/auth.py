@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
 import os
 from typing import Any
 from uuid import uuid4
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from passlib.exc import MissingBackendError, UnknownHashError
 
 
 def _read_positive_int_env(name: str, default: int) -> int:
@@ -31,31 +32,78 @@ DEFAULT_ACCESS_TOKEN_EXPIRE_HOURS = _read_positive_int_env(
     24,
 )
 
-
-def _build_password_context() -> CryptContext:
-    """Prefer bcrypt; safely fallback to pbkdf2_sha256 when bcrypt backend is missing."""
-    preferred = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    try:
-        probe_hash = preferred.hash("portex-password-probe")
-        preferred.verify("portex-password-probe", probe_hash)
-        return preferred
-    except Exception:
-        # Explicit fallback for environments where bcrypt backend is unavailable.
-        return CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+_PASSWORD_HASH_SCHEME = "scrypt-v1"
+_PASSWORD_HASH_N = 1 << 14
+_PASSWORD_HASH_R = 8
+_PASSWORD_HASH_P = 1
+_PASSWORD_HASH_DKLEN = 32
+_PASSWORD_HASH_SALT_BYTES = 16
 
 
-_PWD_CONTEXT = _build_password_context()
+def _base64_urlsafe_encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _base64_urlsafe_decode(value: str) -> bytes:
+    if not value:
+        raise ValueError("empty base64 payload")
+    padded_value = value + ("=" * ((4 - (len(value) % 4)) % 4))
+    return base64.urlsafe_b64decode(padded_value.encode("ascii"))
+
+
+def _derive_password_key(*, password: str, salt: bytes) -> bytes:
+    return hashlib.scrypt(
+        password.encode("utf-8"),
+        salt=salt,
+        n=_PASSWORD_HASH_N,
+        r=_PASSWORD_HASH_R,
+        p=_PASSWORD_HASH_P,
+        dklen=_PASSWORD_HASH_DKLEN,
+    )
+
 _DEFAULT_ACCESS_TOKEN_EXPIRE_DELTA = timedelta(hours=DEFAULT_ACCESS_TOKEN_EXPIRE_HOURS)
 
 
 def hash_password(password: str) -> str:
-    return _PWD_CONTEXT.hash(password)
+    salt = os.urandom(_PASSWORD_HASH_SALT_BYTES)
+    digest = _derive_password_key(password=password, salt=salt)
+    return (
+        f"{_PASSWORD_HASH_SCHEME}"
+        f"${_PASSWORD_HASH_N}"
+        f"${_PASSWORD_HASH_R}"
+        f"${_PASSWORD_HASH_P}"
+        f"${_PASSWORD_HASH_DKLEN}"
+        f"${_base64_urlsafe_encode(salt)}"
+        f"${_base64_urlsafe_encode(digest)}"
+    )
 
 
 def verify_password(password: str, password_hash: str) -> bool:
     try:
-        return _PWD_CONTEXT.verify(password, password_hash)
-    except (MissingBackendError, UnknownHashError, ValueError):
+        scheme, n, r, p, dklen, salt_payload, digest_payload = password_hash.split("$")
+        if scheme != _PASSWORD_HASH_SCHEME:
+            return False
+
+        parsed_n = int(n)
+        parsed_r = int(r)
+        parsed_p = int(p)
+        parsed_dklen = int(dklen)
+        if (
+            parsed_n != _PASSWORD_HASH_N
+            or parsed_r != _PASSWORD_HASH_R
+            or parsed_p != _PASSWORD_HASH_P
+            or parsed_dklen != _PASSWORD_HASH_DKLEN
+        ):
+            return False
+
+        salt = _base64_urlsafe_decode(salt_payload)
+        expected_digest = _base64_urlsafe_decode(digest_payload)
+        if len(salt) != _PASSWORD_HASH_SALT_BYTES or len(expected_digest) != _PASSWORD_HASH_DKLEN:
+            return False
+
+        actual_digest = _derive_password_key(password=password, salt=salt)
+        return hmac.compare_digest(actual_digest, expected_digest)
+    except (TypeError, ValueError):
         return False
 
 
