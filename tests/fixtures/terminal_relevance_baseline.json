@@ -442,6 +442,99 @@
       ]
     },
     {
+      "id": "brace-wrapper-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "brace-marker",
+          "output": "{error}: aa\n"
+        },
+        {
+          "id": "angle-marker",
+          "output": "<error>: aa\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "{error} aa\n"
+        }
+      ],
+      "expected_order": [
+        "brace-marker",
+        "angle-marker",
+        "plain-exact-tag"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "brace-wrapper-marker-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-brace",
+          "output": "<error>: aa\n{error}: bb\n"
+        },
+        {
+          "id": "later-brace",
+          "output": "<error>: aa\npadding\n{error}: bb\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-brace",
+        "later-brace"
+      ]
+    },
+    {
+      "id": "brace-plain-exact-tag-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-brace",
+          "output": "[error]: aa\n{error} bb\n<error> cc\n"
+        },
+        {
+          "id": "later-brace",
+          "output": "[error]: aa\n<error> bb\n{error} cc\n"
+        },
+        {
+          "id": "tight-wrapper",
+          "output": "<error>cc\nmid error here\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-brace",
+        "later-brace",
+        "tight-wrapper"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "angle-plain-exact-tag-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-angle",
+          "output": "[error]: aa\n<error> bb\npadding\n<error> cc\n"
+        },
+        {
+          "id": "later-angle",
+          "output": "[error]: aa\npadding\n<error> bb\n<error> cc\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-angle",
+        "later-angle",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
