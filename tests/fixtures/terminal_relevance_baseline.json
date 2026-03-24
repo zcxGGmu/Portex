@@ -614,6 +614,78 @@
       ]
     },
     {
+      "id": "brace-wrapper-marker-pairwise",
+      "query": "error",
+      "entries": [
+        {
+          "id": "brace-marker",
+          "output": "{error}: aa\n"
+        },
+        {
+          "id": "angle-marker",
+          "output": "<error>: aa\n"
+        }
+      ],
+      "expected_order": [
+        "brace-marker",
+        "angle-marker"
+      ]
+    },
+    {
+      "id": "brace-plain-exact-tag-pairwise",
+      "query": "error",
+      "entries": [
+        {
+          "id": "brace-exact-tag",
+          "output": "{error} aa\n"
+        },
+        {
+          "id": "angle-exact-tag",
+          "output": "<error> aa\n"
+        }
+      ],
+      "expected_order": [
+        "brace-exact-tag",
+        "angle-exact-tag"
+      ]
+    },
+    {
+      "id": "no-brace-plain-exact-tag-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-no-brace-plain",
+          "output": "[error]: aa\n<error> bb\n"
+        },
+        {
+          "id": "later-no-brace-plain",
+          "output": "padding\n[error]: aa\n<error> bb\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-no-brace-plain",
+        "later-no-brace-plain"
+      ]
+    },
+    {
+      "id": "angle-plain-exact-tag-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-angle",
+          "output": "[error]: aa\n<error> bb\npadding\n<error> cc\n"
+        },
+        {
+          "id": "later-angle",
+          "output": "[error]: aa\npadding\n<error> bb\n<error> cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-angle",
+        "later-angle"
+      ]
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
