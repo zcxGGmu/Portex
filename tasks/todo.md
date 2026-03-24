@@ -1,3 +1,25 @@
+# Session Plan (2026-03-24) - Offline Relevance Baseline Realistic Edge Expansion
+
+## Goal
+- Continue terminal relevance development from the current `M8.5.51` baseline by expanding higher-signal realistic edge coverage in the offline benchmark before considering any new tie-break.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal relevance baseline slices
+- [x] Write the design doc and implementation plan docs for this baseline expansion
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with wrapper-marker family, single-space separator quality, exact-tag punctuation-noise, and `M8.5.49` other-leading whitespace pagination cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md` and `tasks/todo.md` review notes, then commit with a detailed message
+
+## Review
+- Confirmed the next terminal step should remain baseline-first: no new ranking rule was added, and the offline benchmark was expanded from 8 to 12 deterministic cases before any post-`M8.5.51` tie-break discussion.
+- Added `docs/plans/2026-03-24-terminal-relevance-offline-baseline-realistic-edge-expansion-design.md` and `docs/plans/2026-03-24-terminal-relevance-offline-baseline-realistic-edge-expansion.md` to lock scope, case selection, and verification before changing the fixture.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 12-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four new realistic-edge scenarios: non-square wrapper marker family ordering, single-space separator quality ladder, exact-tag punctuation-noise cleanliness, and `M8.5.49` other-leading whitespace pagination.
+- Fresh environment verification exposed a real dependency gap: `pip install -e '.[dev]'` did not install `greenlet`, which broke existing async SQLAlchemy test teardown. Added `greenlet>=3.0.0` to `pyproject.toml` and revalidated from the editable install.
+- Planning commit: `7c1c4c7` (`docs(plans): add offline relevance realistic edge expansion plan`).
+- Feature commit: `ab90bbc` (`feat(terminal): expand offline relevance realistic edge fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=12`, `pass_count=12`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm ci && npm run lint && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-22) - Post-M8.5.39 Continuation
 
 ## Goal
