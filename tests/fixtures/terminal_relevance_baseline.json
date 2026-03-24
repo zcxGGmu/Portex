@@ -284,6 +284,78 @@
       "offset": 1
     },
     {
+      "id": "exact-tag-colon-marker-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-colon",
+          "output": "[error] - aa\n[error]: bb \npadding\n[error] - cc\n"
+        },
+        {
+          "id": "later-colon",
+          "output": "[error] - aa\npadding\n[error]: bb \n[error] - cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-colon",
+        "later-colon"
+      ]
+    },
+    {
+      "id": "square-bracket-dash-marker-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-square-dash",
+          "output": "[error] aa\n[error] - bb\n(error) - cc\n"
+        },
+        {
+          "id": "later-square-dash",
+          "output": "(error) - aa\n[error] bb\n[error] - cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-square-dash",
+        "later-square-dash"
+      ]
+    },
+    {
+      "id": "paren-plain-wrapper-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-paren",
+          "output": "{error} aa\n(error) bb\n"
+        },
+        {
+          "id": "later-paren",
+          "output": "{error} aa\npadding\n(error) bb\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-paren",
+        "later-paren"
+      ]
+    },
+    {
+      "id": "square-bracket-plain-exact-tag-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-square-plain",
+          "output": "[error]: aa\n[error] bb\npadding\n[error] cc\n"
+        },
+        {
+          "id": "later-square-plain",
+          "output": "[error]: aa\npadding\n[error] bb\n[error] cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-square-plain",
+        "later-square-plain"
+      ]
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
