@@ -356,6 +356,92 @@
       ]
     },
     {
+      "id": "non-square-colon-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-non-square-colon",
+          "output": "[error]: aa\n(error): bbb\n(error) - bb\n"
+        },
+        {
+          "id": "later-non-square-colon",
+          "output": "[error]: aa\n(error) - bb\n(error): bbb\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "(error) aa\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-non-square-colon",
+        "later-non-square-colon",
+        "plain-exact-tag"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "non-square-colon-marker-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-non-square-colon",
+          "output": "[error]: aa\n(error): bb\npadding\n(error): cc\n"
+        },
+        {
+          "id": "later-non-square-colon",
+          "output": "[error]: aa\npadding\n(error): bb\n(error): cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-non-square-colon",
+        "later-non-square-colon"
+      ]
+    },
+    {
+      "id": "non-square-dash-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-non-square-dash",
+          "output": "[error] - aa\n(error) - bbb\n(error) bb\n"
+        },
+        {
+          "id": "later-non-square-dash",
+          "output": "[error] - aa\n(error) bb\n(error) - bbb\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "(error) aa\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-non-square-dash",
+        "later-non-square-dash",
+        "plain-exact-tag"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "non-square-dash-marker-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-non-square-dash",
+          "output": "[error] - aa\n(error) - bb\npadding\n(error) - cc\n"
+        },
+        {
+          "id": "later-non-square-dash",
+          "output": "[error] - aa\npadding\n(error) - bb\n(error) - cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-non-square-dash",
+        "later-non-square-dash"
+      ]
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
