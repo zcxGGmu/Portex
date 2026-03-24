@@ -1,3 +1,20 @@
+# Session Plan (2026-03-24) - Restart Context Sync
+
+## Goal
+- Sync the restart-oriented handoff docs so the next Codex session can immediately resume from the current 40-case offline terminal relevance baseline.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, `tasks/todo.md`, and recent commits
+- [x] Rewrite `docs/progress.md` into a concise restart entry centered on the current `M8.5.51` + 40-case offline baseline state
+- [x] Update `AGENTS.md` baseline snapshot, latest hashes, and `/sync` wording to match the 2026-03-24 handoff state
+- [x] Run minimal verification for the doc-only diff (`git diff --check`, `git status --short`)
+- [x] Commit the handoff sync
+
+## Review
+- Rewrote `docs/progress.md` into a short restart-oriented handoff doc focused on the current `M8.5.51` + 40-case offline relevance baseline, the latest planning/feature/handoff commits, the verified command set, and the immediate next baseline-first step.
+- Updated `AGENTS.md` so its baseline snapshot, terminal-quality tooling references, active planning/handoff hashes, and `/sync` guidance now point at the 2026-03-24 brace/angle pairwise handoff state instead of the earlier 8-case baseline snapshot.
+- This batch is doc-only: no fixture, ranking logic, route/API/UI, or RBAC behavior changed.
+
 # Session Plan (2026-03-24) - Offline Relevance Brace And Angle Pairwise Expansion
 
 ## Goal
