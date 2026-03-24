@@ -184,6 +184,106 @@
       ]
     },
     {
+      "id": "exact-tag-colon-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "colon-marker",
+          "output": "[error]: aa \n"
+        },
+        {
+          "id": "dash-marker",
+          "output": "[error] - aa\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "[error] aa\n"
+        }
+      ],
+      "expected_order": [
+        "colon-marker",
+        "dash-marker",
+        "plain-exact-tag"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "square-bracket-dash-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "square-bracket-dash-marker",
+          "output": "prefix error aa\n[error] - bb\n"
+        },
+        {
+          "id": "generic-exact-tag-noise",
+          "output": "(error) - aa\n[error] bb\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "(error) aa\n"
+        }
+      ],
+      "expected_order": [
+        "square-bracket-dash-marker",
+        "generic-exact-tag-noise",
+        "plain-exact-tag"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "square-bracket-exact-tag-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "square-bracket-exact-tag",
+          "output": "[error] aa\n"
+        },
+        {
+          "id": "paren-exact-tag",
+          "output": "(error) aa\n"
+        },
+        {
+          "id": "tight-wrapper",
+          "output": "(error)aa\n"
+        }
+      ],
+      "expected_order": [
+        "square-bracket-exact-tag",
+        "paren-exact-tag",
+        "tight-wrapper"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "paren-plain-wrapper-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "paren-exact-tag",
+          "output": "(error) aa\n"
+        },
+        {
+          "id": "brace-exact-tag",
+          "output": "{error} aa\n"
+        },
+        {
+          "id": "angle-exact-tag",
+          "output": "<error> aa\n"
+        }
+      ],
+      "expected_order": [
+        "paren-exact-tag",
+        "brace-exact-tag",
+        "angle-exact-tag"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
