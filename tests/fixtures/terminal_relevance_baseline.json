@@ -535,6 +535,85 @@
       "offset": 1
     },
     {
+      "id": "brace-plain-exact-tag-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-brace",
+          "output": "[error]: aa\n{error} bb\n<error> cc\n"
+        },
+        {
+          "id": "later-brace",
+          "output": "[error]: aa\n<error> bb\n{error} cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-brace",
+        "later-brace"
+      ]
+    },
+    {
+      "id": "angle-plain-exact-tag-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "brace-exact-tag",
+          "output": "{error} aa\n"
+        },
+        {
+          "id": "angle-exact-tag",
+          "output": "<error> aa\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "brace-exact-tag",
+        "angle-exact-tag",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "no-brace-wrapper-marker-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "paren-marker",
+          "output": "(error): aa\n"
+        },
+        {
+          "id": "angle-marker",
+          "output": "<error>: aa\n"
+        }
+      ],
+      "expected_order": [
+        "paren-marker",
+        "angle-marker"
+      ]
+    },
+    {
+      "id": "no-angle-plain-exact-tag-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-no-angle-plain",
+          "output": "[error]: aa\n{error} bb\n"
+        },
+        {
+          "id": "later-no-angle-plain",
+          "output": "[error]: aa\npadding\n{error} bb\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-no-angle-plain",
+        "later-no-angle-plain"
+      ]
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [

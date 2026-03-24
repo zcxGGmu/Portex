@@ -17,7 +17,7 @@ def test_load_fixture_reads_version_and_cases() -> None:
     )
 
     assert fixture.version == 1
-    assert len(fixture.cases) == 32
+    assert len(fixture.cases) == 36
     assert fixture.cases[0].id == "raw-marker-priority"
     assert {
         "non-square-wrapper-marker-family-ladder",
@@ -44,6 +44,10 @@ def test_load_fixture_reads_version_and_cases() -> None:
         "brace-wrapper-marker-offset-tie-break",
         "brace-plain-exact-tag-pagination",
         "angle-plain-exact-tag-offset-pagination",
+        "brace-plain-exact-tag-offset-tie-break",
+        "angle-plain-exact-tag-pagination",
+        "no-brace-wrapper-marker-fallback",
+        "no-angle-plain-exact-tag-fallback",
     }.issubset({case.id for case in fixture.cases})
 
 
@@ -55,8 +59,8 @@ def test_evaluate_fixture_returns_expected_summary_metrics() -> None:
     )
     report = evaluate_terminal_relevance.evaluate_fixture(fixture)
 
-    assert report.case_count == 32
-    assert report.pass_count == 32
+    assert report.case_count == 36
+    assert report.pass_count == 36
     assert report.pass_rate == 1.0
     assert report.top1_accuracy == 1.0
     assert report.mrr == 1.0
