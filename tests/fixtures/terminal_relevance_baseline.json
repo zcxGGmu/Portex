@@ -97,6 +97,75 @@
       ]
     },
     {
+      "id": "non-square-wrapper-marker-family-ladder",
+      "query": "error",
+      "entries": [
+        {
+          "id": "paren-marker",
+          "output": "(error): aa\n"
+        },
+        {
+          "id": "brace-marker",
+          "output": "{error}: aa\n"
+        },
+        {
+          "id": "angle-marker",
+          "output": "<error>: aa\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "[error] aa\n"
+        }
+      ],
+      "expected_order": [
+        "paren-marker",
+        "brace-marker",
+        "angle-marker",
+        "plain-exact-tag"
+      ]
+    },
+    {
+      "id": "single-space-separator-quality-ladder",
+      "query": "error",
+      "entries": [
+        {
+          "id": "clean-single-space",
+          "output": "[error]: aa\n[error] ok\n[error] zz\n"
+        },
+        {
+          "id": "later-noise",
+          "output": "[error]: aa\n[error] ok\npadding\n[error]\tok\n"
+        },
+        {
+          "id": "earlier-noise",
+          "output": "[error]: aa\n[error] ok\n[error]\tok\n"
+        }
+      ],
+      "expected_order": [
+        "clean-single-space",
+        "later-noise",
+        "earlier-noise"
+      ]
+    },
+    {
+      "id": "exact-tag-punctuation-noise-cleanliness",
+      "query": "error",
+      "entries": [
+        {
+          "id": "clean-exact-tag",
+          "output": "{error} aa\nterror zz\n"
+        },
+        {
+          "id": "noisy-exact-tag",
+          "output": "{error} aa\n{error}aa\n"
+        }
+      ],
+      "expected_order": [
+        "clean-exact-tag",
+        "noisy-exact-tag"
+      ]
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
@@ -116,6 +185,31 @@
       "expected_order": [
         "cleaner",
         "noisier",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "m8-5-49-other-leading-whitespace-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-other",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\npadding\n[error]\u000bcc\n"
+        },
+        {
+          "id": "earlier-other",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\n[error]\u000bcc\npadding\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-other",
+        "earlier-other",
         "lower-rank"
       ],
       "limit": 2,
