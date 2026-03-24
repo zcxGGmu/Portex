@@ -166,6 +166,24 @@
       ]
     },
     {
+      "id": "payloadless-separator-quality",
+      "query": "error",
+      "entries": [
+        {
+          "id": "payloadful-non-single",
+          "output": "[error]: aa\n[error] ok\n[error]\tok\n[error]  bb\n"
+        },
+        {
+          "id": "payloadless-non-single",
+          "output": "[error]: aa\n[error] ok\n[error]\t  \n[error]  bb\n"
+        }
+      ],
+      "expected_order": [
+        "payloadful-non-single",
+        "payloadless-non-single"
+      ]
+    },
+    {
       "id": "m8-5-50-mixed-other-count-pagination",
       "query": "error",
       "entries": [
@@ -185,6 +203,81 @@
       "expected_order": [
         "cleaner",
         "noisier",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "tab-prefixed-payload-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\npadding\n[error]\tcc\n"
+        },
+        {
+          "id": "earlier-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n[error]\tcc\npadding\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-tab-payload",
+        "earlier-tab-payload",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "multi-space-payload-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]\f  xx\npadding\n[error]  bb\n"
+        },
+        {
+          "id": "earlier-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]\f  xx\n[error]  bb\npadding\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-multi-space",
+        "earlier-multi-space",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "space-prefixed-mixed-whitespace-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-space-mixed",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\npadding\n[error] \tcc\n"
+        },
+        {
+          "id": "earlier-space-mixed",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\n[error] \tcc\npadding\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-space-mixed",
+        "earlier-space-mixed",
         "lower-rank"
       ],
       "limit": 2,
