@@ -1,3 +1,25 @@
+# Session Plan (2026-03-24) - Offline Relevance Offset Tie-Break Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by expanding offset-specific marker/plain-wrapper tie-break samples before proposing any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant service-level offset tests
+- [x] Write the design doc and implementation plan docs for this offset tie-break expansion
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with exact-tag colon-marker offset, square-bracket dash-marker offset, paren plain-wrapper offset, and square-bracket plain exact-tag offset cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md` and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+- Confirmed the next terminal step should remain baseline-first: no new ranking rule was added, and the offline benchmark was expanded from 20 to 24 deterministic cases before any post-`M8.5.51` tie-break discussion.
+- Added `docs/plans/2026-03-24-terminal-relevance-offline-baseline-offset-tie-break-expansion-design.md` and `docs/plans/2026-03-24-terminal-relevance-offline-baseline-offset-tie-break-expansion.md` to lock scope, offset tie-break case selection, and verification before changing the fixture.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 24-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four offset-specific tie-break scenarios derived from landed service tests: exact-tag colon-marker offset, square-bracket dash-marker offset, paren plain-wrapper offset, and square-bracket plain exact-tag offset.
+- Parallel exploration confirmed the next uncovered priorities after this batch likely shift to non-square marker pagination/offset samples and a few remaining plain-wrapper branch-specific pagination cases, but did not block this implementation.
+- Planning commit: `ca0be06` (`docs(plans): add offline relevance offset tie-break expansion plan`).
+- Feature commit: `150a412` (`feat(terminal): expand offline relevance offset tie-break fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=24`, `pass_count=24`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
+
 # Session Plan (2026-03-24) - Offline Relevance Marker And Plain Wrapper Expansion
 
 ## Goal
