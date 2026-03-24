@@ -3,9 +3,9 @@
 最后更新: 2026-03-24 (Asia/Shanghai)
 仓库路径: `/home/zcxggmu/workspace/hello-projs/posp/Portex`
 当前分支: `main`
-最新功能提交: `eeb388e` (`feat(terminal): expand offline relevance whitespace family fixtures`)
-最新 planning 提交: `6226cea`（`docs(plans): add offline relevance whitespace family expansion plan`）
-最近一次 handoff 同步: 当前分支以 `docs(handoff): sync offline relevance whitespace family context` 为最新重启同步入口；如需精确 hash，请使用当前分支 `git log --oneline`
+最新功能提交: `841e3e2` (`feat(terminal): expand offline relevance marker and plain wrapper fixtures`)
+最新 planning 提交: `e64f835`（`docs(plans): add offline relevance marker and plain wrapper expansion plan`）
+最近一次 handoff 同步: 当前分支以 `docs(handoff): sync offline relevance marker and plain wrapper context` 为最新重启同步入口；如需精确 hash，请使用当前分支 `git log --oneline`
 
 ---
 
@@ -154,11 +154,18 @@
 - terminal relevance 离线评估 realistic-edge 扩样已完成并已合入当前工作树（`ab90bbc`；`tests/fixtures/terminal_relevance_baseline.json` 从 8 个样本扩到 12 个样本，新增 non-square wrapper marker family ladder、single-space separator quality ladder、exact-tag punctuation-noise cleanliness、`M8.5.49` other-leading whitespace pagination，`tests/scripts/test_evaluate_terminal_relevance.py` 同步 case 数与 case-id 断言）。
 - fresh 安装依赖缺口修复已完成并已合入当前工作树（`ab90bbc` 同提交；`pyproject.toml` 新增 `greenlet>=3.0.0`，修复 fresh `pip install -e '.[dev]'` 后现有 SQLAlchemy async 测试基线因缺 `greenlet` 直接失败的问题）。
 - terminal relevance 离线评估 whitespace-family 扩样已完成并已合入当前工作树（`eeb388e`；`tests/fixtures/terminal_relevance_baseline.json` 从 12 个样本扩到 16 个样本，新增 payloadless separator quality、tab-prefixed payload offset pagination、multi-space payload offset pagination、space-prefixed mixed-whitespace payload offset pagination，`tests/scripts/test_evaluate_terminal_relevance.py` 同步 case 数与 case-id 断言）。
-- 当前起点：当前功能代码基线为 `M8.5.51` + `fd0344a` + terminal relevance offline baseline（`c4efc33` + `0ba9c2d` + `ab90bbc` + `eeb388e`）；terminal 搜索线若继续，优先在当前 16-case 离线基准上继续补充真实/边界样本并观察指标，只有样本或指标暴露稳定缺口时再决定是否继续细分 tie-break；保持 `latest.json`、`/sessions/current/history`、API/UI 与 RBAC 边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
+- terminal relevance 离线评估 marker/plain-wrapper 扩样已完成并已合入当前工作树（`841e3e2`；`tests/fixtures/terminal_relevance_baseline.json` 从 16 个样本扩到 20 个样本，新增 exact-tag colon-marker pagination、square-bracket dash-marker pagination、square-bracket exact-tag pagination、paren plain-wrapper pagination，`tests/scripts/test_evaluate_terminal_relevance.py` 同步 case 数与 case-id 断言）。
+- 当前起点：当前功能代码基线为 `M8.5.51` + `fd0344a` + terminal relevance offline baseline（`c4efc33` + `0ba9c2d` + `ab90bbc` + `eeb388e` + `841e3e2`）；terminal 搜索线若继续，优先在当前 20-case 离线基准上继续补充真实/边界样本并观察指标，只有样本或指标暴露稳定缺口时再决定是否继续细分 tie-break；保持 `latest.json`、`/sessions/current/history`、API/UI 与 RBAC 边界不变。正式 `docs/TODO.md` 仍停在 `M6.5.3`。
 
 ---
 
 ## 2. 最近完成
+
+- terminal relevance offline marker/plain-wrapper expansion（on `main`）：新增 `docs/plans/2026-03-24-terminal-relevance-offline-baseline-marker-and-plain-wrapper-expansion-design.md` 与 `docs/plans/2026-03-24-terminal-relevance-offline-baseline-marker-and-plain-wrapper-expansion.md`，范围固定为“继续扩充离线基准，不改排序逻辑/route/API/UI/RBAC/search contract”。
+- terminal relevance offline marker/plain-wrapper expansion（on `main`）：`tests/fixtures/terminal_relevance_baseline.json` 从 16 case 扩到 20 case，新增 exact-tag colon-marker pagination、square-bracket dash-marker pagination、square-bracket exact-tag pagination、paren plain-wrapper pagination。
+- terminal relevance offline marker/plain-wrapper expansion（on `main`）：`tests/scripts/test_evaluate_terminal_relevance.py` 现断言 `case_count=20` 并校验新增 marker/plain-wrapper case-id 集合，离线脚本继续保持 `pass_rate/top1_accuracy/mrr` 指标与失败返回码契约不变。
+- terminal relevance offline marker/plain-wrapper expansion（on `main`）：fresh 验证已通过 `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`（RED→GREEN）、`.venv/bin/python scripts/evaluate_terminal_relevance.py --format text`（`case_count=20`, `pass_count=20`, `pass_rate/top1_accuracy/mrr = 1.000`）、`.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`、`.venv/bin/pytest -o addopts='' -q`（`740 passed`）、`.venv/bin/ruff check .`、`cd web && npm run lint && npm run build` 与 `git diff --check`。
+- terminal relevance offline marker/plain-wrapper expansion（on `main`）：planning 提交为 `e64f835`（`docs(plans): add offline relevance marker and plain wrapper expansion plan`）；功能提交为 `841e3e2`（`feat(terminal): expand offline relevance marker and plain wrapper fixtures`）。
 
 - terminal relevance offline whitespace-family expansion（on `main`）：新增 `docs/plans/2026-03-24-terminal-relevance-offline-baseline-whitespace-family-expansion-design.md` 与 `docs/plans/2026-03-24-terminal-relevance-offline-baseline-whitespace-family-expansion.md`，范围固定为“继续扩充离线基准，不改排序逻辑/route/API/UI/RBAC/search contract”。
 - terminal relevance offline whitespace-family expansion（on `main`）：`tests/fixtures/terminal_relevance_baseline.json` 从 12 case 扩到 16 case，新增 payloadless separator quality、tab-prefixed payload offset pagination、multi-space payload offset pagination、space-prefixed mixed-whitespace payload offset pagination。
@@ -1106,7 +1113,7 @@
 - refined `M8.5.49` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.48` 基础上显式引入 conditional other-leading-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 residual other-leading-whitespace payload family 出现时，该 family 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.48` 信号。
 - `M8.5.50` 当前已合入工作树：默认 `relevance` 现会在既有 refined `M8.5.49` 基础上显式引入 conditional other-leading mixed-whitespace payload plain exact-tag count tie-break；当 single-space plain exact-tag 已存在时，other-leading + extra-whitespace payload separator 更少的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 refined `M8.5.49` 信号。
 - `M8.5.51` 当前已合入工作树：默认 `relevance` 现会在既有 `M8.5.50` 基础上显式引入 conditional other-leading mixed-whitespace payload plain exact-tag earliest-offset tie-break；当 single-space plain exact-tag 已存在且 mixed-other payload 计数打平时，mixed-other payload separator 更晚出现的结果更好，并在无 single-space plain exact-tag 命中路径稳定回退到既有 `M8.5.50` 信号。
-- terminal relevance 离线评估基准当前已合入工作树：可通过 `scripts/evaluate_terminal_relevance.py` 在固定 fixture 上离线输出 `pass_rate/top1_accuracy/mrr`，当前 baseline 为 `16/16` 全通过，现已覆盖 marker ladders、separator quality、payloadless/tab/multi-space/space-prefixed mixed families、`M8.5.49`/`M8.5.50`/`M8.5.51` whitespace 分支与多种 pagination 切片样本。
+- terminal relevance 离线评估基准当前已合入工作树：可通过 `scripts/evaluate_terminal_relevance.py` 在固定 fixture 上离线输出 `pass_rate/top1_accuracy/mrr`，当前 baseline 为 `20/20` 全通过，现已覆盖 raw/wrapper/plain ladders、marker-family pagination、plain-wrapper-family pagination、separator quality、payloadless/tab/multi-space/space-prefixed mixed families、`M8.5.49`/`M8.5.50`/`M8.5.51` whitespace 分支与多种 pagination 切片样本。
 - README/logo 当前共享资产已升级为横向 mascot + `PORTEX` wordmark lockup，合同是 README `width="560"` + SVG `viewBox="0 0 1800 420"`；后续如果继续动 README 头图，不要无意回退到旧的 `200px` / `512x512` 方形 icon。
 - `M5.2.1` 当前保留了 `infra/im/base.py` 的最小占位协议，尚未统一 Feishu/Telegram 的异步客户端抽象；更广义的 IM 统一契约继续留给 `M5.3` 及后续阶段。
 - `passlib` `DeprecationWarning: crypt` 已在 `fd0344a` 修复（runtime 不再依赖 passlib）。
@@ -1117,8 +1124,8 @@
 ## 4. 下一位 Codex 直接执行
 
 1. 先读：`docs/TODO.md`、`docs/progress.md`、`AGENTS.md`。
-2. 当前功能代码基线已包含 `6226cea` + `eeb388e` 的 terminal relevance offline whitespace-family expansion、`7c1c4c7` + `ab90bbc` 的 realistic-edge expansion、`d94877d` + `0ba9c2d` 的 offline baseline expansion、`1bce130` + `c4efc33` 的 baseline 初版、`684474a` + `d569c75` 的 `M8.5.51` 排序优化，以及 `fd0344a` 的 auth/message warning fix；关键文件是 `scripts/evaluate_terminal_relevance.py`、`tests/fixtures/terminal_relevance_baseline.json`、`tests/scripts/test_evaluate_terminal_relevance.py`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`、`pyproject.toml`、`services/auth.py`、`services/message_service.py`。
-3. 如继续当前 terminal 开发，优先在当前 16-case 离线 baseline 上继续补充真实/边界样本并观察 `pass_rate/top1_accuracy/mrr`；当前已覆盖 raw/wrapper/plain ladder、non-square wrapper marker family、single-space separator quality、exact-tag punctuation-noise、payloadless/tab/multi-space/space-prefixed mixed families、`M8.5.49`/`M8.5.50`/`M8.5.51` whitespace 分支与多种 pagination slice。下一自然入口可优先补 marker-family 与 plain-wrapper-family 仍未进入离线基准的梯度样本，只有样本或指标暴露稳定缺口时再决定是否进入 post-`M8.5.51` 新 tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
+2. 当前功能代码基线已包含 `e64f835` + `841e3e2` 的 terminal relevance offline marker/plain-wrapper expansion、`6226cea` + `eeb388e` 的 whitespace-family expansion、`7c1c4c7` + `ab90bbc` 的 realistic-edge expansion、`d94877d` + `0ba9c2d` 的 offline baseline expansion、`1bce130` + `c4efc33` 的 baseline 初版、`684474a` + `d569c75` 的 `M8.5.51` 排序优化，以及 `fd0344a` 的 auth/message warning fix；关键文件是 `scripts/evaluate_terminal_relevance.py`、`tests/fixtures/terminal_relevance_baseline.json`、`tests/scripts/test_evaluate_terminal_relevance.py`、`services/terminal_sessions.py`、`tests/services/test_terminal_sessions.py`、`pyproject.toml`、`services/auth.py`、`services/message_service.py`。
+3. 如继续当前 terminal 开发，优先在当前 20-case 离线 baseline 上继续补充真实/边界样本并观察 `pass_rate/top1_accuracy/mrr`；当前已覆盖 raw/wrapper/plain ladders、marker-family pagination、plain-wrapper-family pagination、separator quality、payloadless/tab/multi-space/space-prefixed mixed families、`M8.5.49`/`M8.5.50`/`M8.5.51` whitespace 分支与多种 pagination slice。下一自然入口可优先补仍未进入离线基准的 offset-specific marker/plain-wrapper tie-break 样本，只有样本或指标暴露稳定缺口时再决定是否进入 post-`M8.5.51` 新 tie-break；保持 `latest.json` 与 `/sessions/current/history` 兼容、不扩展权限边界、不引入全文索引、不改 frontend 协议。
 4. 复现当前基线建议命令：
    - `fresh setup`：`python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev]'`
    - `offline baseline`：`.venv/bin/python scripts/evaluate_terminal_relevance.py --format text`
@@ -1137,4 +1144,4 @@
 
 ## 5. 一句话版
 
-> 当前工作树已包含 `M8.5.51` terminal relevance 链、`fd0344a` auth/message warning fix、`greenlet` 依赖声明修复，以及 `eeb388e` 的 16-case 离线 relevance whitespace-family baseline 扩样，并已通过全量回归；下一自然入口仍是在该基线上继续补样并用指标驱动是否进入下一轮 tie-break。
+> 当前工作树已包含 `M8.5.51` terminal relevance 链、`fd0344a` auth/message warning fix、`greenlet` 依赖声明修复，以及 `841e3e2` 的 20-case 离线 relevance marker/plain-wrapper baseline 扩样，并已通过全量回归；下一自然入口仍是在该基线上继续补样并用指标驱动是否进入下一轮 tie-break。
