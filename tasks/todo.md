@@ -1,3 +1,19 @@
+# Session Plan (2026-03-25) - Offline Relevance Foundational Ranking Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by fixing the remaining foundational `M8.5.17` relevance semantics into the offline harness before considering any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the foundational `M8.5.17` service-level tests
+- [x] Confirm the current 77-case fixture still lacks the non-duplicate foundational ranking cases for concentrated-vs-sparse ordering, first-match offset tie-break, weak recency, and base pagination
+- [x] Write the design doc and implementation plan docs for this foundational ranking expansion
+- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with the four foundational ranking cases
+- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+
 # Session Plan (2026-03-25) - Offline Relevance Direct Whitespace-Family Expansion
 
 ## Goal
