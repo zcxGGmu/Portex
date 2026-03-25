@@ -1,3 +1,22 @@
+# Session Plan (2026-03-25) - Restart Context Sync
+
+## Goal
+- Refresh `docs/progress.md` and `AGENTS.md` so the restart-oriented handoff matches the latest whitespace-fallback baseline and current branch state, then commit the doc sync.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current branch status
+- [x] Update `docs/progress.md` with the latest restart-oriented status
+- [x] Update `AGENTS.md` with the latest baseline and handoff reference notes
+- [x] Refresh the current `tasks/todo.md` session record for this doc-only sync
+- [x] Check doc consistency and diff hygiene
+- [x] Commit changes with a detailed message
+
+## Review
+- Refreshed `docs/progress.md` so the restart header now points at the latest whitespace-fallback handoff commit on the branch while keeping the current `70`-case offline baseline, verification evidence, and next-step guidance intact.
+- Refreshed `AGENTS.md` so its restart metadata now points at the latest handoff sync commit `8ef608c`, preserving the current `M8.5.51` + `70`-case offline baseline snapshot.
+- This sync is doc-only: no fixture, ranking logic, API, UI, or RBAC behavior changed.
+- Consistency check: `git diff --check` passed before commit.
+
 # Session Plan (2026-03-25) - Offline Relevance Whitespace Fallback Expansion
 
 ## Goal

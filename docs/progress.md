@@ -4,7 +4,7 @@
 当前分支: `main`
 最新 planning 提交: `913a6b1` (`docs(plans): add offline relevance whitespace fallback plan`)
 最新功能提交: `f4ff3fa` (`feat(terminal): expand offline relevance whitespace fallback fixtures`)
-最新 handoff 提交: `0165c8d` (`docs(handoff): sync offline relevance final payload pagination context`)
+最新 handoff 提交: `8ef608c` (`docs(handoff): sync offline relevance whitespace fallback context`)
 
 ---
 
