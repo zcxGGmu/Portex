@@ -1,3 +1,20 @@
+# Session Plan (2026-03-25) - Offline Relevance Whitespace Fallback Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by expanding the remaining whitespace-family no-single-space fallback branches before proposing any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant whitespace-family service-level tests
+- [x] Confirm the current 66-case fixture already covers the last planned pagination gaps, and isolate the actual uncovered branches to the tab-prefixed / multi-space / space-prefixed mixed-whitespace / other-leading whitespace no-single-space fallback cases
+- [ ] Write the design doc and implementation plan docs for this whitespace fallback expansion
+- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with the four whitespace-family no-single-space fallback cases
+- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+- Pending.
+
 # Session Plan (2026-03-25) - Offline Relevance Final Payload Pagination Expansion
 
 ## Goal
