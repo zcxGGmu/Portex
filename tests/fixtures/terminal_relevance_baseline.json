@@ -931,6 +931,78 @@
         "delimited-marker",
         "glued-marker"
       ]
+    },
+    {
+      "id": "whole-word-priority",
+      "query": "error",
+      "entries": [
+        {
+          "id": "exact-word",
+          "output": "zzzz error zzzz error\n"
+        },
+        {
+          "id": "substring-only",
+          "output": "terror terror\n"
+        }
+      ],
+      "expected_order": [
+        "exact-word",
+        "substring-only"
+      ]
+    },
+    {
+      "id": "whole-word-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-whole-word",
+          "output": "aa error bbbbbbbbbbbbbbbb error\n"
+        },
+        {
+          "id": "later-whole-word",
+          "output": "bbbbbbbbbbbbbbbb error error\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-whole-word",
+        "later-whole-word"
+      ]
+    },
+    {
+      "id": "line-start-whole-word-priority",
+      "query": "error",
+      "entries": [
+        {
+          "id": "line-start",
+          "output": "pppppppppppppppppppppppppppppppppppppppp\nerror: alpha\nqqqqqqqqqqqqqqqqqqqq\nerror: beta\n"
+        },
+        {
+          "id": "mid-line-only",
+          "output": "aa error bb error\n"
+        }
+      ],
+      "expected_order": [
+        "line-start",
+        "mid-line-only"
+      ]
+    },
+    {
+      "id": "line-start-whole-word-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-line-start",
+          "output": "pppppppppppppppppp error alpha\nerror beta\n"
+        },
+        {
+          "id": "later-line-start",
+          "output": "aa error alpha xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nerror beta\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-line-start",
+        "later-line-start"
+      ]
     }
   ]
 }
