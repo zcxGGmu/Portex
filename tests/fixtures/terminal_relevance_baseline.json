@@ -1296,6 +1296,106 @@
       ],
       "limit": 2,
       "offset": 1
+    },
+    {
+      "id": "payloadless-plain-exact-tag-separator-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "payloadful-non-single",
+          "output": "[error]: aa\n[error] ok\n[error]\tok\n[error]  bb\n"
+        },
+        {
+          "id": "payloadless-non-single",
+          "output": "[error]: aa\n[error] ok\n[error]\t  \n[error]  bb\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "payloadful-non-single",
+        "payloadless-non-single",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "payloadless-offset-tie-break-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-payloadless",
+          "output": "[error]: aa\n[error] ok\n[error]\to\n[error]\t \n"
+        },
+        {
+          "id": "earlier-payloadless",
+          "output": "[error]: aa\n[error] ok\n[error]\t \n[error]\to\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-payloadless",
+        "earlier-payloadless",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "tab-prefixed-payload-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "without-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n"
+        },
+        {
+          "id": "with-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "without-tab-payload",
+        "with-tab-payload",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "square-bracket-plain-exact-tag-offset-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-square-plain",
+          "output": "[error]: aa\n[error] bb\npadding\n[error] cc\n"
+        },
+        {
+          "id": "later-square-plain",
+          "output": "[error]: aa\npadding\n[error] bb\n[error] cc\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-square-plain",
+        "later-square-plain",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
     }
   ]
 }
