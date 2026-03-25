@@ -6,13 +6,19 @@
 ## Checklist
 - [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant payload/offset pagination service-level tests
 - [x] Write the design doc and implementation plan docs for this payload/offset pagination expansion
-- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
-- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with payloadless-separator, payloadless-offset, tab-prefixed-payload, and square-bracket-plain-offset pagination cases
-- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with payloadless-separator, payloadless-offset, tab-prefixed-payload, and square-bracket-plain-offset pagination cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
 
 ## Review
-- Pending.
+- Confirmed the next terminal step should remain baseline-first: no new ranking rule was added, and the offline benchmark was expanded from 60 to 64 deterministic cases before any post-`M8.5.51` tie-break discussion.
+- Added `docs/plans/2026-03-25-terminal-relevance-offline-baseline-payload-and-offset-pagination-expansion-design.md` and `docs/plans/2026-03-25-terminal-relevance-offline-baseline-payload-and-offset-pagination-expansion.md` to lock scope, case selection, and verification before changing the fixture.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 64-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four service-test-derived scenarios: `M8.5.41` payloadless-separator pagination, `M8.5.42` payloadless-offset pagination, `M8.5.43` tab-prefixed-payload pagination, and square-bracket plain exact-tag offset pagination.
+- This batch keeps the baseline coherent around the payload/offset tail of the exact-tag quality chain, while also clearing the last explicitly-called-out square-bracket plain-offset pagination gap.
+- Planning commit: `85a449b` (`docs(plans): add offline relevance payload and offset pagination plan`).
+- Feature commit: `4276c59` (`feat(terminal): expand offline relevance payload and offset pagination fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=64`, `pass_count=64`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-25) - Offline Relevance Late Quality Pagination Expansion
 
