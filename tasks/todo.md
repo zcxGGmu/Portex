@@ -1,3 +1,19 @@
+# Session Plan (2026-03-25) - Offline Relevance Early Whole Word Positive Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by expanding the remaining early whole-word and line-start-whole-word positive samples before proposing any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant early whole-word service-level tests
+- [x] Write the design doc and implementation plan docs for this early whole-word positive expansion
+- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with whole-word priority, whole-word offset tie-break, line-start whole-word priority, and line-start whole-word offset tie-break cases
+- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+- Pending.
+
 # Session Plan (2026-03-25) - Offline Relevance Early Fallback And Delimiter Quality Expansion
 
 ## Goal
