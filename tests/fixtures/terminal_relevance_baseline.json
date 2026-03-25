@@ -1096,6 +1096,106 @@
       ],
       "limit": 2,
       "offset": 1
+    },
+    {
+      "id": "log-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-marker",
+          "output": "error: aa\nerror bb.\n"
+        },
+        {
+          "id": "later-marker",
+          "output": "error aa.\nerror: bb\n"
+        },
+        {
+          "id": "plain-line-start",
+          "output": "error aa.\nerror bb.\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-marker",
+        "later-marker",
+        "plain-line-start"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "punctuation-wrap-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "marker-style",
+          "output": "error: aa\nterror zz\n"
+        },
+        {
+          "id": "bracketed-line-start",
+          "output": "[error] aa\nterror zz\n"
+        },
+        {
+          "id": "plain-line-start",
+          "output": "error aa.\nterror zz\n"
+        }
+      ],
+      "expected_order": [
+        "marker-style",
+        "bracketed-line-start",
+        "plain-line-start"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "exact-tag-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "exact-tag-wrapper",
+          "output": "[error] aa\nterror zz\n"
+        },
+        {
+          "id": "tight-wrapper",
+          "output": "[error]aa\nterror zz\n"
+        },
+        {
+          "id": "plain-line-start",
+          "output": "error aa.\nterror zz\n"
+        }
+      ],
+      "expected_order": [
+        "exact-tag-wrapper",
+        "tight-wrapper",
+        "plain-line-start"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "exact-tag-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "exact-tag-marker",
+          "output": "[error]: aa\n"
+        },
+        {
+          "id": "plain-exact-tag",
+          "output": "[error] aa\n"
+        },
+        {
+          "id": "tight-wrapper",
+          "output": "[error]aa\n"
+        }
+      ],
+      "expected_order": [
+        "exact-tag-marker",
+        "plain-exact-tag",
+        "tight-wrapper"
+      ],
+      "limit": 2,
+      "offset": 1
     }
   ]
 }
