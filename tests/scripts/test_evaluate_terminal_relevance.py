@@ -17,7 +17,7 @@ def test_load_fixture_reads_version_and_cases() -> None:
     )
 
     assert fixture.version == 1
-    assert len(fixture.cases) == 70
+    assert len(fixture.cases) == 77
     assert fixture.cases[0].id == "raw-marker-priority"
     assert {
         "non-square-wrapper-marker-family-ladder",
@@ -75,13 +75,20 @@ def test_load_fixture_reads_version_and_cases() -> None:
         "payloadless-plain-exact-tag-separator-pagination",
         "payloadless-offset-tie-break-pagination",
         "tab-prefixed-payload-pagination",
+        "tab-prefixed-payload-separator-quality",
+        "tab-prefixed-payload-offset-tie-break",
         "square-bracket-plain-exact-tag-offset-pagination",
         "multi-space-payload-pagination",
+        "multi-space-payload-separator-quality",
+        "multi-space-payload-offset-tie-break",
         "space-prefixed-mixed-whitespace-payload-pagination",
+        "space-prefixed-mixed-whitespace-separator-quality",
+        "space-prefixed-mixed-whitespace-offset-tie-break",
         "tab-prefixed-payload-no-single-space-fallback",
         "multi-space-payload-no-single-space-fallback",
         "space-prefixed-mixed-whitespace-no-single-space-fallback",
         "other-leading-whitespace-no-single-space-fallback",
+        "other-leading-whitespace-offset-tie-break",
     }.issubset({case.id for case in fixture.cases})
 
 
@@ -93,8 +100,8 @@ def test_evaluate_fixture_returns_expected_summary_metrics() -> None:
     )
     report = evaluate_terminal_relevance.evaluate_fixture(fixture)
 
-    assert report.case_count == 70
-    assert report.pass_count == 70
+    assert report.case_count == 77
+    assert report.pass_count == 77
     assert report.pass_rate == 1.0
     assert report.top1_accuracy == 1.0
     assert report.mrr == 1.0

@@ -1518,6 +1518,132 @@
         "earlier-other",
         "later-other"
       ]
+    },
+    {
+      "id": "tab-prefixed-payload-separator-quality",
+      "query": "error",
+      "entries": [
+        {
+          "id": "without-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n"
+        },
+        {
+          "id": "with-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\n"
+        }
+      ],
+      "expected_order": [
+        "without-tab-payload",
+        "with-tab-payload"
+      ]
+    },
+    {
+      "id": "tab-prefixed-payload-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\npadding\n[error]\tcc\n"
+        },
+        {
+          "id": "earlier-tab-payload",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n[error]\tcc\npadding\n"
+        }
+      ],
+      "expected_order": [
+        "later-tab-payload",
+        "earlier-tab-payload"
+      ]
+    },
+    {
+      "id": "multi-space-payload-separator-quality",
+      "query": "error",
+      "entries": [
+        {
+          "id": "fewer-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n[error]\f  cc\n"
+        },
+        {
+          "id": "more-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n[error]   cc\n"
+        }
+      ],
+      "expected_order": [
+        "fewer-multi-space",
+        "more-multi-space"
+      ]
+    },
+    {
+      "id": "multi-space-payload-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]\f  xx\npadding\n[error]  bb\n"
+        },
+        {
+          "id": "earlier-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]\f  xx\n[error]  bb\npadding\n"
+        }
+      ],
+      "expected_order": [
+        "later-multi-space",
+        "earlier-multi-space"
+      ]
+    },
+    {
+      "id": "space-prefixed-mixed-whitespace-separator-quality",
+      "query": "error",
+      "entries": [
+        {
+          "id": "fewer-mixed",
+          "output": "[error]: aa\n[error] ok\n[error] \tbb\n[error]\f cc\n"
+        },
+        {
+          "id": "more-mixed",
+          "output": "[error]: aa\n[error] ok\n[error] \tbb\n[error] \fcc\n"
+        }
+      ],
+      "expected_order": [
+        "fewer-mixed",
+        "more-mixed"
+      ]
+    },
+    {
+      "id": "space-prefixed-mixed-whitespace-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-space-mixed",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\npadding\n[error] \tcc\n"
+        },
+        {
+          "id": "earlier-space-mixed",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\n[error] \tcc\npadding\n"
+        }
+      ],
+      "expected_order": [
+        "later-space-mixed",
+        "earlier-space-mixed"
+      ]
+    },
+    {
+      "id": "other-leading-whitespace-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-other",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\npadding\n[error]\u000bcc\n"
+        },
+        {
+          "id": "earlier-other",
+          "output": "[error]: aa\n[error] ok\n[error]\tbb\n[error]\u000bcc\npadding\n"
+        }
+      ],
+      "expected_order": [
+        "later-other",
+        "earlier-other"
+      ]
     }
   ]
 }
