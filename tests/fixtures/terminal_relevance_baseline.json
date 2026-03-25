@@ -1396,6 +1396,56 @@
       ],
       "limit": 2,
       "offset": 1
+    },
+    {
+      "id": "multi-space-payload-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "fewer-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n[error]\f  cc\n"
+        },
+        {
+          "id": "more-multi-space",
+          "output": "[error]: aa\n[error] ok\n[error]  bb\n[error]   cc\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "fewer-multi-space",
+        "more-multi-space",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "space-prefixed-mixed-whitespace-payload-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "fewer-mixed",
+          "output": "[error]: aa\n[error] ok\n[error] \tbb\n[error]\f cc\n"
+        },
+        {
+          "id": "more-mixed",
+          "output": "[error]: aa\n[error] ok\n[error] \tbb\n[error] \fcc\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "fewer-mixed",
+        "more-mixed",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
     }
   ]
 }
