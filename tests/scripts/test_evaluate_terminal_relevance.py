@@ -17,7 +17,7 @@ def test_load_fixture_reads_version_and_cases() -> None:
     )
 
     assert fixture.version == 1
-    assert len(fixture.cases) == 77
+    assert len(fixture.cases) == 81
     assert fixture.cases[0].id == "raw-marker-priority"
     assert {
         "non-square-wrapper-marker-family-ladder",
@@ -56,6 +56,10 @@ def test_load_fixture_reads_version_and_cases() -> None:
         "no-line-start-whole-word-fallback-to-m8-5-18",
         "exact-tag-wrapper-delimiter-quality",
         "raw-marker-delimiter-quality",
+        "m8-5-17-clustered-match-priority",
+        "m8-5-17-first-match-offset-tie-break",
+        "m8-5-17-weak-recency-tie-break",
+        "m8-5-17-pagination",
         "whole-word-priority",
         "whole-word-offset-tie-break",
         "line-start-whole-word-priority",
@@ -100,8 +104,8 @@ def test_evaluate_fixture_returns_expected_summary_metrics() -> None:
     )
     report = evaluate_terminal_relevance.evaluate_fixture(fixture)
 
-    assert report.case_count == 77
-    assert report.pass_count == 77
+    assert report.case_count == 81
+    assert report.pass_count == 81
     assert report.pass_rate == 1.0
     assert report.top1_accuracy == 1.0
     assert report.mrr == 1.0

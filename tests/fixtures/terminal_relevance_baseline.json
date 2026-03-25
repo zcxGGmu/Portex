@@ -933,6 +933,85 @@
       ]
     },
     {
+      "id": "m8-5-17-clustered-match-priority",
+      "query": "error",
+      "entries": [
+        {
+          "id": "concentrated",
+          "output": "error error trailing text\n"
+        },
+        {
+          "id": "sparse",
+          "output": "error xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx error trailing text\n"
+        }
+      ],
+      "expected_order": [
+        "concentrated",
+        "sparse"
+      ]
+    },
+    {
+      "id": "m8-5-17-first-match-offset-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier",
+          "output": "error--error.....\n"
+        },
+        {
+          "id": "later",
+          "output": ".....error--error\n"
+        }
+      ],
+      "expected_order": [
+        "earlier",
+        "later"
+      ]
+    },
+    {
+      "id": "m8-5-17-weak-recency-tie-break",
+      "query": "error",
+      "entries": [
+        {
+          "id": "older",
+          "output": "error--error\n"
+        },
+        {
+          "id": "newer",
+          "output": "error--error\n"
+        }
+      ],
+      "expected_order": [
+        "newer",
+        "older"
+      ]
+    },
+    {
+      "id": "m8-5-17-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "concentrated",
+          "output": "error error bridge text\n"
+        },
+        {
+          "id": "earlier",
+          "output": "error--error.....\n"
+        },
+        {
+          "id": "sparse",
+          "output": "error xxxxxxxxxxxxxxxxxxxx error\n"
+        }
+      ],
+      "expected_order": [
+        "concentrated",
+        "earlier",
+        "sparse"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
       "id": "whole-word-priority",
       "query": "error",
       "entries": [
