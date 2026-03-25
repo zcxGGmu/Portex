@@ -1003,6 +1003,99 @@
         "earlier-line-start",
         "later-line-start"
       ]
+    },
+    {
+      "id": "no-exact-tag-wrapper-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-tight-wrapper",
+          "output": "[error]aa\nmid error here\n"
+        },
+        {
+          "id": "later-tight-wrapper",
+          "output": "mid error here\n[error]aa\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-tight-wrapper",
+        "later-tight-wrapper"
+      ]
+    },
+    {
+      "id": "whole-word-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "exact-word",
+          "output": "zzzz error zzzz error\n"
+        },
+        {
+          "id": "later-exact-word",
+          "output": "bbbbbbbbbbbbbbbb error error\n"
+        },
+        {
+          "id": "substring-only",
+          "output": "terror terror\n"
+        }
+      ],
+      "expected_order": [
+        "exact-word",
+        "later-exact-word",
+        "substring-only"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "line-boundary-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "line-start-dominant",
+          "output": "pppppppppppppppppppppppppppppppppppppppppppppppppp\nerror one\nqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\nerror two\n"
+        },
+        {
+          "id": "mixed-line-start",
+          "output": "aa error mid xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nerror line\n"
+        },
+        {
+          "id": "mid-line-only",
+          "output": "aa error bb error\n"
+        }
+      ],
+      "expected_order": [
+        "line-start-dominant",
+        "mixed-line-start",
+        "mid-line-only"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "line-start-quality-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "cleaner-line-start",
+          "output": "error start\nterror noise\nterror noise\n"
+        },
+        {
+          "id": "noisier-line-start",
+          "output": "error start\nmid error here\ntail error there\n"
+        },
+        {
+          "id": "no-line-start",
+          "output": "aa error bb error cc\n"
+        }
+      ],
+      "expected_order": [
+        "cleaner-line-start",
+        "noisier-line-start",
+        "no-line-start"
+      ],
+      "limit": 2,
+      "offset": 1
     }
   ]
 }
