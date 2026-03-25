@@ -6,13 +6,18 @@
 ## Checklist
 - [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant early-stage / delimiter-quality service-level tests
 - [x] Write the design doc and implementation plan docs for this early fallback and delimiter-quality expansion
-- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
-- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with no-whole-word fallback, no-line-start-whole-word fallback, exact-tag wrapper delimiter quality, and raw-marker delimiter quality cases
-- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
-- [ ] Update `docs/progress.md` and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with no-whole-word fallback, no-line-start-whole-word fallback, exact-tag wrapper delimiter quality, and raw-marker delimiter quality cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md` and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
 
 ## Review
-- Pending.
+- Confirmed the next terminal step should remain baseline-first: no new ranking rule was added, and the offline benchmark was expanded from 40 to 44 deterministic cases before any post-`M8.5.51` tie-break discussion.
+- Added `docs/plans/2026-03-25-terminal-relevance-offline-baseline-early-fallback-and-delimiter-quality-expansion-design.md` and `docs/plans/2026-03-25-terminal-relevance-offline-baseline-early-fallback-and-delimiter-quality-expansion.md` to lock scope, case selection, and verification before changing the fixture.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 44-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four service-test-derived scenarios: `M8.5.18` no-whole-word fallback, `M8.5.19` no-line-start-whole-word fallback, exact-tag wrapper delimiter quality, and raw-marker delimiter quality.
+- Planning commit: `d926bbb` (`docs(plans): add offline relevance early fallback and delimiter quality plan`).
+- Feature commit: `d0f2b42` (`feat(terminal): expand offline relevance early fallback and delimiter quality fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=44`, `pass_count=44`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-24) - Restart Context Sync
 
