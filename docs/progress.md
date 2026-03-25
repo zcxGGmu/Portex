@@ -2,9 +2,9 @@
 
 最后更新: 2026-03-25 (Asia/Shanghai)
 当前分支: `main`
-最新 planning 提交: `570aff0` (`docs(plans): add offline relevance additive fallback and early pagination plan`)
-最新功能提交: `4769d84` (`feat(terminal): expand offline relevance additive fallback and early pagination fixtures`)
-最新 handoff 提交: `e812f8a` (`docs(handoff): sync offline relevance early whole-word positive context`)
+最新 planning 提交: `afff472` (`docs(plans): add offline relevance mid-chain pagination plan`)
+最新功能提交: `69d39f9` (`feat(terminal): expand offline relevance mid-chain pagination fixtures`)
+最新 handoff 提交: `d98691c` (`docs(handoff): sync offline relevance additive fallback and early pagination context`)
 
 ---
 
@@ -12,16 +12,16 @@
 
 - `docs/TODO.md` 的正式路线仍停在 `M6.5.3`；`M0` ~ `M6` 全部完成，post-`M6` 的 `M7.1` ~ `M7.6.5` parity backlog 也已完成。
 - terminal 搜索排序逻辑主线已完成到 `M8.5.51`；2026-03-25 的最新工作仍然没有继续改 `services/terminal_sessions.py` 排序逻辑，而是继续扩 terminal relevance 的离线基准。
-- 当前活跃工作是 offline relevance baseline expansion：`tests/fixtures/terminal_relevance_baseline.json` 已扩到 `52` 个固定 case，`scripts/evaluate_terminal_relevance.py` 与 `tests/scripts/test_evaluate_terminal_relevance.py` 是当前离线评估入口。
-- 当前 52-case 基线已覆盖：`raw > wrapper > plain` ladders、`M8.5.18` / `M8.5.19` 早期正向与 fallback 分支、whole-word / line-start-whole-word offset tie-break、`M8.5.22` no-exact-tag-wrapper fallback、`M8.5.18` / `M8.5.19` / `M8.5.20` 早期 pagination、marker/plain-wrapper pagination 与 offset tie-break、non-square marker families、brace/angle branch/fallback/pairwise、raw-marker 与 exact-tag wrapper delimiter quality、separator quality、payloadless/tab/multi-space/mixed-whitespace/other-leading whitespace families、punctuation-noise cleanliness。
+- 当前活跃工作是 offline relevance baseline expansion：`tests/fixtures/terminal_relevance_baseline.json` 已扩到 `56` 个固定 case，`scripts/evaluate_terminal_relevance.py` 与 `tests/scripts/test_evaluate_terminal_relevance.py` 是当前离线评估入口。
+- 当前 56-case 基线已覆盖：`raw > wrapper > plain` ladders、`M8.5.18` / `M8.5.19` 早期正向与 fallback 分支、whole-word / line-start-whole-word offset tie-break、`M8.5.22` no-exact-tag-wrapper fallback、`M8.5.18` / `M8.5.19` / `M8.5.20` 早期 pagination、`M8.5.21` / `M8.5.22` / `M8.5.23` / `M8.5.25` 中段 pagination、marker/plain-wrapper pagination 与 offset tie-break、non-square marker families、brace/angle branch/fallback/pairwise、raw-marker 与 exact-tag wrapper delimiter quality、separator quality、payloadless/tab/multi-space/mixed-whitespace/other-leading whitespace families、punctuation-noise cleanliness。
 - `pyproject.toml` 中的 `greenlet>=3.0.0` 不能回退；这是 fresh `pip install -e '.[dev]'` 后 async SQLAlchemy 测试可运行的依赖修复。
 - 当前策略仍是 baseline-first：只有当离线样本或指标暴露稳定缺口时，才考虑继续 post-`M8.5.51` 的新 tie-break。
 
 ## 2. 最新验证证据
 
-最新 additive fallback / early pagination 扩样批次已通过以下验证：
+最新 mid-chain pagination 扩样批次已通过以下验证：
 - `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`
-- `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` -> `case_count=52`, `pass_count=52`, `pass_rate/top1_accuracy/mrr = 1.000`
+- `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` -> `case_count=56`, `pass_count=56`, `pass_rate/top1_accuracy/mrr = 1.000`
 - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
 - `.venv/bin/pytest -o addopts='' -q` -> `740 passed`
 - `.venv/bin/ruff check .`
@@ -56,12 +56,13 @@
 - `d926bbb` / `d0f2b42` early fallback + delimiter quality
 - `88c3e59` / `c4e55a7` early whole-word positive
 - `570aff0` / `4769d84` additive fallback + early pagination
+- `afff472` / `69d39f9` mid-chain pagination
 
 ## 4. 下一位 Codex 直接执行
 
 1. 先读 `docs/TODO.md`、`docs/progress.md`、`AGENTS.md`、`tasks/lessons.md`。
-2. 如继续 terminal 搜索线，先检查 `tests/services/test_terminal_sessions.py` 中仍未进入离线基准的中段 pagination 分支。
-3. 当前最值得补的空位已转为 mid-chain pagination 样本，例如 `log-marker` pagination、`punctuation-wrap` pagination、`exact-tag` pagination、`exact-tag-marker` pagination；已被明确排除的重复项仍然不要重加。
+2. 如继续 terminal 搜索线，先检查 `tests/services/test_terminal_sessions.py` 中仍未进入离线基准的剩余 pagination 分支。
+3. 当前最值得补的空位已转为 remaining pagination 样本，例如 `delimited-log-marker` pagination、`single-space plain exact-tag` pagination，以及其它尚未被现有 family pagination 覆盖的后续分页样本；已被明确排除的重复项仍然不要重加。
 4. 动手前先更新 `tasks/todo.md` 与对应 planning docs；实现时遵循 RED -> 只扩 fixture/test -> 全量验证 -> planning/feature/handoff 三步提交。
 常用命令：
 - `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text`
@@ -74,4 +75,4 @@
 
 ## 5. 一句话版
 
-> 当前主线不是继续加 terminal ranking tie-break，而是站在 `M8.5.51` 之上继续扩 terminal relevance 的 `52`-case 离线基准；最新功能批次为 `4769d84`，下一步仍是 baseline-first 地补中段 pagination 空位。
+> 当前主线不是继续加 terminal ranking tie-break，而是站在 `M8.5.51` 之上继续扩 terminal relevance 的 `56`-case 离线基准；最新功能批次为 `69d39f9`，下一步仍是 baseline-first 地补剩余 pagination 空位。
