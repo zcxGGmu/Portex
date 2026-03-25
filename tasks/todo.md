@@ -6,13 +6,19 @@
 ## Checklist
 - [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant additive fallback / pagination service-level tests
 - [x] Write the design doc and implementation plan docs for this additive fallback and early pagination expansion
-- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
-- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with no-exact-tag-wrapper fallback, whole-word pagination, line-boundary pagination, and line-start-quality pagination cases
-- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with no-exact-tag-wrapper fallback, whole-word pagination, line-boundary pagination, and line-start-quality pagination cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
 
 ## Review
-- Pending.
+- Confirmed the next terminal step should remain baseline-first: no new ranking rule was added, and the offline benchmark was expanded from 48 to 52 deterministic cases before any post-`M8.5.51` tie-break discussion.
+- Added `docs/plans/2026-03-25-terminal-relevance-offline-baseline-additive-fallback-and-early-pagination-expansion-design.md` and `docs/plans/2026-03-25-terminal-relevance-offline-baseline-additive-fallback-and-early-pagination-expansion.md` to lock scope, case selection, and verification before changing the fixture.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 52-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four service-test-derived scenarios: `M8.5.22` no-exact-tag-wrapper fallback, `M8.5.18` whole-word pagination, `M8.5.19` line-boundary pagination, and `M8.5.20` line-start-quality pagination.
+- This batch keeps the baseline non-duplicative: `no delimited log marker` fallback remains intentionally excluded because the existing `exact-tag-wrapper-delimiter-quality` case already captures the same ordering evidence.
+- Planning commit: `570aff0` (`docs(plans): add offline relevance additive fallback and early pagination plan`).
+- Feature commit: `4769d84` (`feat(terminal): expand offline relevance additive fallback and early pagination fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=52`, `pass_count=52`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-25) - Offline Relevance Early Whole Word Positive Expansion
 
