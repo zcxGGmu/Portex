@@ -7,12 +7,19 @@
 - [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the foundational `M8.5.17` service-level tests
 - [x] Confirm the current 77-case fixture still lacks the non-duplicate foundational ranking cases for concentrated-vs-sparse ordering, first-match offset tie-break, weak recency, and base pagination
 - [x] Write the design doc and implementation plan docs for this foundational ranking expansion
-- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
-- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with the four foundational ranking cases
-- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with the four foundational ranking cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
 
 ## Review
+- Confirmed the current 77-case fixture still lacked four non-duplicate foundational `M8.5.17` semantics: concentrated-vs-sparse ordering, first-match offset tie-break, weak recency, and base pagination over the globally ranked result set.
+- Added `docs/plans/2026-03-25-terminal-relevance-offline-baseline-foundational-relevance-expansion-design.md` and `docs/plans/2026-03-25-terminal-relevance-offline-baseline-foundational-relevance-expansion.md` to lock scope before touching fixture data.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 81-case RED expectations, captured the expected failure against the committed 77-case fixture, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four service-test-derived scenarios: clustered-match priority, first-match offset tie-break, weak-recency tie-break, and foundational pagination.
+- This batch intentionally avoided `services/terminal_sessions.py`; it adds offline evidence only, preserving ranking behavior, terminal APIs, RBAC boundaries, `latest.json`, and `/sessions/current/history`.
+- Planning commit: `17b1fc1` (`docs(plans): add offline relevance foundational ranking plan`).
+- Feature commit: `cdf21cb` (`feat(terminal): expand offline relevance foundational ranking fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=81`, `pass_count=81`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-25) - Offline Relevance Direct Whitespace-Family Expansion
 
