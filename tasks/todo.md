@@ -1,3 +1,19 @@
+# Session Plan (2026-03-25) - Offline Relevance Final Payload Pagination Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by closing the final uncovered payload/whitespace-family pagination gaps before proposing any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant remaining payload/whitespace pagination service-level tests
+- [x] Write the design doc and implementation plan docs for this final payload pagination expansion
+- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with multi-space-payload and space-prefixed-mixed-whitespace-payload pagination cases
+- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+- Pending.
+
 # Session Plan (2026-03-25) - Offline Relevance Payload And Offset Pagination Expansion
 
 ## Goal
