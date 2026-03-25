@@ -1,3 +1,19 @@
+# Session Plan (2026-03-25) - Offline Relevance Direct Whitespace-Family Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by exhausting the remaining direct whitespace-family service-test gaps before considering any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant whitespace-family service-level tests
+- [x] Confirm the current 70-case fixture already covers pagination and no-single-space fallback for the whitespace families, and isolate the remaining non-duplicate gaps to the direct count/offset comparisons for `M8.5.43` ~ `M8.5.49`
+- [x] Write the design doc and implementation plan docs for this direct whitespace-family expansion
+- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with the seven remaining direct whitespace-family cases
+- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+
 # Session Plan (2026-03-25) - Restart Context Sync
 
 ## Goal
