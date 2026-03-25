@@ -1446,6 +1446,78 @@
       ],
       "limit": 2,
       "offset": 1
+    },
+    {
+      "id": "tab-prefixed-payload-no-single-space-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-tab-payload",
+          "output": "[error]: aa\n[error]\tbb\npadding\n[error]\tcc\n"
+        },
+        {
+          "id": "later-tab-payload",
+          "output": "[error]: aa\npadding\n[error]\tbb\n[error]\tcc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-tab-payload",
+        "later-tab-payload"
+      ]
+    },
+    {
+      "id": "multi-space-payload-no-single-space-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-multi-space",
+          "output": "[error]: aa\n[error]  bb\npadding\n[error]  cc\n"
+        },
+        {
+          "id": "later-multi-space",
+          "output": "[error]: aa\npadding\n[error]  bb\n[error]  cc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-multi-space",
+        "later-multi-space"
+      ]
+    },
+    {
+      "id": "space-prefixed-mixed-whitespace-no-single-space-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-mixed",
+          "output": "[error]: aa\n[error] \tbb\npadding\n[error] \tcc\n"
+        },
+        {
+          "id": "later-mixed",
+          "output": "[error]: aa\npadding\n[error] \tbb\n[error] \tcc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-mixed",
+        "later-mixed"
+      ]
+    },
+    {
+      "id": "other-leading-whitespace-no-single-space-fallback",
+      "query": "error",
+      "entries": [
+        {
+          "id": "earlier-other",
+          "output": "[error]: aa\n[error]\u000bbb\npadding\n[error]\fcc\n"
+        },
+        {
+          "id": "later-other",
+          "output": "[error]: aa\npadding\n[error]\u000bbb\n[error]\fcc\n"
+        }
+      ],
+      "expected_order": [
+        "earlier-other",
+        "later-other"
+      ]
     }
   ]
 }
