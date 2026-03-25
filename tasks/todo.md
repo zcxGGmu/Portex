@@ -6,13 +6,19 @@
 ## Checklist
 - [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant remaining payload/whitespace pagination service-level tests
 - [x] Write the design doc and implementation plan docs for this final payload pagination expansion
-- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
-- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with multi-space-payload and space-prefixed-mixed-whitespace-payload pagination cases
-- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with multi-space-payload and space-prefixed-mixed-whitespace-payload pagination cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
 
 ## Review
-- Pending.
+- Confirmed the next terminal step should remain baseline-first: no new ranking rule was added, and the offline benchmark was expanded from 64 to 66 deterministic cases before any post-`M8.5.51` tie-break discussion.
+- Added `docs/plans/2026-03-25-terminal-relevance-offline-baseline-final-payload-pagination-expansion-design.md` and `docs/plans/2026-03-25-terminal-relevance-offline-baseline-final-payload-pagination-expansion.md` to lock scope, case selection, and verification before changing the fixture.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 66-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with two service-test-derived scenarios: `M8.5.45` multi-space-payload pagination and `M8.5.47` space-prefixed-mixed-whitespace-payload pagination.
+- This batch is intentionally only two cases because adjacent payload-family pagination samples were already represented in the fixture; forcing a 4-case batch here would only duplicate evidence.
+- Planning commit: `946f202` (`docs(plans): add offline relevance final payload pagination plan`).
+- Feature commit: `91cdb9c` (`feat(terminal): expand offline relevance final payload pagination fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=66`, `pass_count=66`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-25) - Offline Relevance Payload And Offset Pagination Expansion
 
