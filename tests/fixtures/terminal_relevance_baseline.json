@@ -1196,6 +1196,106 @@
       ],
       "limit": 2,
       "offset": 1
+    },
+    {
+      "id": "delimited-log-marker-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "delimited-marker",
+          "output": "error: aa\n"
+        },
+        {
+          "id": "glued-marker",
+          "output": "error:aa\n"
+        },
+        {
+          "id": "exact-tag-wrapper",
+          "output": "[error] aa\n"
+        }
+      ],
+      "expected_order": [
+        "delimited-marker",
+        "glued-marker",
+        "exact-tag-wrapper"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "exact-tag-punctuation-noise-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "clean-exact-tag",
+          "output": "{error} aa\nterror zz\n"
+        },
+        {
+          "id": "noisy-exact-tag",
+          "output": "{error} aa\n{error}aa\n"
+        },
+        {
+          "id": "tight-wrapper",
+          "output": "{error}aa\nmid error here\n"
+        }
+      ],
+      "expected_order": [
+        "clean-exact-tag",
+        "noisy-exact-tag",
+        "tight-wrapper"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "single-space-plain-exact-tag-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "cleaner-separator",
+          "output": "[error]: aa\n[error] bb\n[error] cc\n"
+        },
+        {
+          "id": "noisier-separator",
+          "output": "[error]: aa\n[error]\tbb\n[error] cc\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "cleaner-separator",
+        "noisier-separator",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
+    },
+    {
+      "id": "separator-noise-pagination",
+      "query": "error",
+      "entries": [
+        {
+          "id": "later-noise",
+          "output": "[error]: aa\n[error] ok\npadding\n[error]\tok\n"
+        },
+        {
+          "id": "earlier-noise",
+          "output": "[error]: aa\n[error] ok\n[error]\tok\n"
+        },
+        {
+          "id": "lower-rank",
+          "output": "mid error here\n"
+        }
+      ],
+      "expected_order": [
+        "later-noise",
+        "earlier-noise",
+        "lower-rank"
+      ],
+      "limit": 2,
+      "offset": 1
     }
   ]
 }
