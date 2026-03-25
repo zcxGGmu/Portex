@@ -859,6 +859,78 @@
       ],
       "limit": 2,
       "offset": 1
+    },
+    {
+      "id": "no-whole-word-fallback-to-m8-5-17",
+      "query": "error",
+      "entries": [
+        {
+          "id": "concentrated-substring",
+          "output": "terror terror yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n"
+        },
+        {
+          "id": "sparse-substring",
+          "output": "terror xxxxxxxxxxxxxxxxxxxx terror\n"
+        }
+      ],
+      "expected_order": [
+        "concentrated-substring",
+        "sparse-substring"
+      ]
+    },
+    {
+      "id": "no-line-start-whole-word-fallback-to-m8-5-18",
+      "query": "error",
+      "entries": [
+        {
+          "id": "concentrated-mid-line",
+          "output": "aa error error yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n"
+        },
+        {
+          "id": "sparse-mid-line",
+          "output": "aa error xxxxxxxxxxxxxxxxxxxx error\n"
+        }
+      ],
+      "expected_order": [
+        "concentrated-mid-line",
+        "sparse-mid-line"
+      ]
+    },
+    {
+      "id": "exact-tag-wrapper-delimiter-quality",
+      "query": "error",
+      "entries": [
+        {
+          "id": "delimited-exact-tag",
+          "output": "[error] aa\nterror zz\n"
+        },
+        {
+          "id": "tight-wrapper",
+          "output": "[error]aa\nterror zz\n"
+        }
+      ],
+      "expected_order": [
+        "delimited-exact-tag",
+        "tight-wrapper"
+      ]
+    },
+    {
+      "id": "raw-marker-delimiter-quality",
+      "query": "error",
+      "entries": [
+        {
+          "id": "delimited-marker",
+          "output": "error: aa\n"
+        },
+        {
+          "id": "glued-marker",
+          "output": "error:aa\n"
+        }
+      ],
+      "expected_order": [
+        "delimited-marker",
+        "glued-marker"
+      ]
     }
   ]
 }
