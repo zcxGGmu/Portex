@@ -1,3 +1,19 @@
+# Session Plan (2026-03-25) - Offline Relevance Early Fallback And Delimiter Quality Expansion
+
+## Goal
+- Continue terminal relevance development from the current offline benchmark by expanding early fallback and same-family delimiter-quality samples before proposing any new ranking logic.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant early-stage / delimiter-quality service-level tests
+- [x] Write the design doc and implementation plan docs for this early fallback and delimiter-quality expansion
+- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with no-whole-word fallback, no-line-start-whole-word fallback, exact-tag wrapper delimiter quality, and raw-marker delimiter quality cases
+- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [ ] Update `docs/progress.md` and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+
+## Review
+- Pending.
+
 # Session Plan (2026-03-24) - Restart Context Sync
 
 ## Goal
