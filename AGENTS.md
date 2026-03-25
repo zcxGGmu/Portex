@@ -11,7 +11,7 @@
 - Keep `docs/progress.md` concise and restart-oriented: current phase, latest verification evidence, immediate next task.
 - Never commit secrets; if testing a real provider, pass credentials through environment variables only.
 
-## Current Baseline Snapshot (2026-03-25)
+## Current Baseline Snapshot (2026-03-26)
 - `M2` is complete (`M2.1` ~ `M2.6.1`).
 - `M3` is complete (`M3.1` ~ `M3.6`).
 - `M4` is complete (`M4.1` ~ `M4.5`).
@@ -122,7 +122,7 @@
 - Latest completed web/terminal commits on `main` include `af095cc` (`feat(terminal): complete M8.3 operator overview on main`), `c9c47ec` (`feat(terminal): complete M8.4 light controls`), `901393d` (`feat(terminal): complete M8.5.1 output replay`), `87322e1` (`feat(terminal): complete M8.5.2 resize fidelity`), `010cc40` (`feat(terminal): complete M8.5.3 history read surface`), `0563192` (`feat(terminal): complete M8.5.4 history persistence fallback`), `a799238` (`feat(terminal): complete M8.5.5 active session recovery`), `ffcf571` (`feat(terminal): complete M8.5.6 history inventory overview`), `ef9be5f` (`feat(terminal): complete M8.5.11 search pagination and cross-session navigation`), `a7dc565` (`feat(terminal): complete M8.5.12 snippet offset deep links`), `93f5385` (`feat(terminal): complete M8.5.13 search filter alignment`), `7515207` (`feat(terminal): add M8.5.14 backend time-range filters`), `a628cc9` (`feat(web): add M8.5.14 time-range filter controls`), `b52697f` (`feat(web): add M8.5.15 terminal preset time ranges`), `5761a3a` (`feat(terminal): add M8.5.16 search sort controls`), `244da16` (`feat(terminal): add M8.5.18 word-boundary relevance`), `8a122d2` (`fix(terminal): stabilize M8.5.18 no-whole-word fallback ordering`), `5cbe11d` (`feat(terminal): add M8.5.19 line-boundary relevance`), `ef60f28` (`feat(terminal): add M8.5.20 line-start quality relevance`), and `bf40eca` (`feat(terminal): add M8.5.21 log-marker relevance`).
 - Latest completed web/terminal commit in the current worktree is `cdf21cb` (`feat(terminal): expand offline relevance foundational ranking fixtures`).
 - Latest active planning commit on the current branch is `17b1fc1` (`docs(plans): add offline relevance foundational ranking plan`); the latest planning docs live in the 2026-03-25 foundational ranking files.
-- Latest handoff sync commit on the current branch before this update is `f1e770d` (`docs(handoff): sync offline relevance direct whitespace-family context`); use current-branch `git log` to locate the latest handoff-only sync commit when needed.
+- Latest handoff sync commit on the current branch before this update is `46fcf2e` (`docs(handoff): sync offline relevance foundational ranking context`); use current-branch `git log` to locate the latest handoff-only sync commit when needed.
 - Treat `docs/progress.md` plus the latest functional milestone commits as source of truth for the current `M8.5.51` + 81-case offline relevance baseline and exact commit order.
 - First release tag is `v1.0.0`; package/runtime version intentionally remains `0.1.0` until a later explicit sync decision.
 - The repository-root release-image build path is now fully verified on the current host. Repro path: export `PATH="$HOME/bin:$PATH"` and `DOCKER_HOST=unix:///run/user/1000/docker.sock`, then run `.venv/bin/python scripts/build_docker.py --tag portex:v1.0.0` and `docker image inspect portex:v1.0.0 --format '{{.Id}}'`.

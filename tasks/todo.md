@@ -1,3 +1,23 @@
+# Session Plan (2026-03-26) - Restart Context Sync
+
+## Goal
+- Refresh `docs/progress.md` and `AGENTS.md` so the restart-oriented handoff matches the latest foundational-ranking baseline and current branch state, then commit the doc sync.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current branch status
+- [x] Update `docs/progress.md` with the latest restart-oriented status
+- [x] Update `AGENTS.md` with the latest baseline and handoff reference notes
+- [x] Refresh the current `tasks/todo.md` session record for this doc-only sync
+- [x] Check doc consistency and diff hygiene
+- [x] Commit changes with a detailed message
+
+## Review
+- Refreshed `docs/progress.md` so the restart header now points at the latest foundational-ranking handoff commit on the branch while keeping the current `81`-case offline baseline, verification evidence, and next-step guidance intact.
+- Refreshed `AGENTS.md` so its baseline snapshot date and restart metadata now point at the latest foundational-ranking handoff sync commit `46fcf2e`, while preserving the current `M8.5.51` + `81`-case offline baseline snapshot.
+- Refreshed `tasks/todo.md` with this doc-only sync record so the next session can distinguish restart-context maintenance from fixture/ranking work.
+- This sync is doc-only: no fixture, ranking logic, API, UI, or RBAC behavior changed.
+- Consistency check: `git diff --check` passed before commit.
+
 # Session Plan (2026-03-25) - Offline Relevance Foundational Ranking Expansion
 
 ## Goal

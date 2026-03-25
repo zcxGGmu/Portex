@@ -1,10 +1,10 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-25 (Asia/Shanghai)
+最后更新: 2026-03-26 (Asia/Shanghai)
 当前分支: `main`
 最新 planning 提交: `17b1fc1` (`docs(plans): add offline relevance foundational ranking plan`)
 最新功能提交: `cdf21cb` (`feat(terminal): expand offline relevance foundational ranking fixtures`)
-上一条 handoff 提交: `f1e770d` (`docs(handoff): sync offline relevance direct whitespace-family context`)
+上一条 handoff 提交: `46fcf2e` (`docs(handoff): sync offline relevance foundational ranking context`)
 
 ---
 
