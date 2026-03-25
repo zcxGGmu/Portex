@@ -6,14 +6,20 @@
 ## Checklist
 - [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, the current fixture, and the relevant whitespace-family service-level tests
 - [x] Confirm the current 66-case fixture already covers the last planned pagination gaps, and isolate the actual uncovered branches to the tab-prefixed / multi-space / space-prefixed mixed-whitespace / other-leading whitespace no-single-space fallback cases
-- [ ] Write the design doc and implementation plan docs for this whitespace fallback expansion
-- [ ] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
-- [ ] Expand `tests/fixtures/terminal_relevance_baseline.json` with the four whitespace-family no-single-space fallback cases
-- [ ] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
+- [x] Write the design doc and implementation plan docs for this whitespace fallback expansion
+- [x] Add RED expectations for the expanded fixture size and case set in `tests/scripts/test_evaluate_terminal_relevance.py`
+- [x] Expand `tests/fixtures/terminal_relevance_baseline.json` with the four whitespace-family no-single-space fallback cases
+- [x] Run offline baseline, focused regression, full regression, lint/build, and `git diff --check`
+- [x] Update `docs/progress.md`, `AGENTS.md`, and `tasks/todo.md` review notes, then commit with detailed planning/feature/handoff messages
 
 ## Review
-- Pending.
+- Confirmed the current 66-case fixture had already exhausted the last planned payload/whitespace pagination gaps, so this batch stayed baseline-first and targeted the remaining non-duplicate whitespace-family fallback evidence instead of duplicating pagination cases.
+- Added `docs/plans/2026-03-25-terminal-relevance-offline-baseline-whitespace-fallback-expansion-design.md` and `docs/plans/2026-03-25-terminal-relevance-offline-baseline-whitespace-fallback-expansion.md` to lock the fallback-only scope before changing fixture data.
+- Updated `tests/scripts/test_evaluate_terminal_relevance.py` to 70-case RED expectations, then expanded `tests/fixtures/terminal_relevance_baseline.json` with four service-test-derived scenarios: tab-prefixed payload fallback, multi-space payload fallback, space-prefixed mixed-whitespace fallback, and other-leading whitespace fallback when no single-space plain exact-tag signal exists.
+- This batch intentionally avoided `services/terminal_sessions.py`; it adds offline evidence only, preserving ranking behavior, terminal APIs, RBAC boundaries, `latest.json`, and `/sessions/current/history`.
+- Planning commit: `913a6b1` (`docs(plans): add offline relevance whitespace fallback plan`).
+- Feature commit: `f4ff3fa` (`feat(terminal): expand offline relevance whitespace fallback fixtures`).
+- Fresh verification passed: `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q` (RED->GREEN), `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=70`, `pass_count=70`, `pass_rate/top1_accuracy/mrr = 1.000`), `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`, `.venv/bin/pytest -o addopts='' -q` (`740 passed`), `.venv/bin/ruff check .`, `cd web && npm run lint && npm run build`, and `git diff --check`.
 
 # Session Plan (2026-03-25) - Offline Relevance Final Payload Pagination Expansion
 
