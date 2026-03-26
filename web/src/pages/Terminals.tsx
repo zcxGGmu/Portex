@@ -220,6 +220,11 @@ function buildOutputSegments(output: string, ranges: MatchRange[]): OutputSegmen
   return segments
 }
 
+function buildTerminalHistoryDownloadFileName(groupId: string, sessionId: string): string {
+  const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
+  return `terminal-history-${sanitize(groupId)}-${sanitize(sessionId)}.log`
+}
+
 export function Terminals() {
   const token = useAuthStore((state) => state.token)
   const storedUser = useAuthStore((state) => state.currentUser)
@@ -623,6 +628,32 @@ export function Terminals() {
       setActionNotice(`Force-closed terminal session for ${item.group_id}.`)
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to force-close terminal session.')
+    } finally {
+      setActionKey(null)
+    }
+  }
+
+  async function handleDownloadDetail() {
+    if (!token || !timelineGroupId || !detailSessionId) {
+      return
+    }
+    const key = `download-detail:${timelineGroupId}:${detailSessionId}`
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalHistoryDetail(token, timelineGroupId, detailSessionId)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalHistoryDownloadFileName(timelineGroupId, detailSessionId)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice(`Downloaded terminal history for ${detailSessionId}.`)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to download terminal history detail.')
     } finally {
       setActionKey(null)
     }
@@ -1154,6 +1185,19 @@ export function Terminals() {
                       <strong>Output Bytes</strong>
                       <p>{detailData.output_bytes.toLocaleString()}</p>
                     </div>
+                  </div>
+
+                  <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+                    <PrimaryButton
+                      className="button--ghost"
+                      disabled={actionKey !== null}
+                      onClick={handleDownloadDetail}
+                      type="button"
+                    >
+                      {actionKey === `download-detail:${timelineGroupId}:${detailSessionId}`
+                        ? 'Downloading...'
+                        : 'Download Output'}
+                    </PrimaryButton>
                   </div>
 
                   {normalizedSearchQuery && detailMatchRanges.length > 0 ? (

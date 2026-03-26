@@ -90,6 +90,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     timeline_response = api_client.get("/terminals/project-alpha/sessions/history")
     search_response = api_client.get("/terminals/project-alpha/sessions/history/search?q=error")
     detail_response = api_client.get("/terminals/project-alpha/sessions/history/test-session")
+    download_response = api_client.get("/terminals/project-alpha/sessions/history/test-session/download")
     delete_response = api_client.delete("/terminals/project-alpha/sessions/current")
     force_delete_response = api_client.delete("/terminals/project-alpha/sessions/force")
 
@@ -99,6 +100,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     assert timeline_response.status_code == 401
     assert search_response.status_code == 401
     assert detail_response.status_code == 401
+    assert download_response.status_code == 401
     assert delete_response.status_code == 401
     assert force_delete_response.status_code == 401
 
@@ -1071,6 +1073,66 @@ def test_owner_can_read_terminal_history_detail(api_client: TestClient) -> None:
     assert service.last_call == ("project-alpha", "terminal-session-3")
 
 
+def test_owner_can_download_terminal_history_detail(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            from datetime import datetime, timezone
+
+            self.record = TerminalSessionRecord(
+                session_id="terminal-session-3",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-3",
+                status="closed",
+                created_at=datetime(2026, 3, 16, 11, 0, tzinfo=timezone.utc),
+            )
+            self.last_call: tuple[str, str] | None = None
+
+        async def get_history_snapshot_by_group(self, group_folder: str, session_id: str):
+            from datetime import datetime, timezone
+
+            self.last_call = (group_folder, session_id)
+            return SimpleNamespace(
+                record=self.record,
+                snapshot_at=datetime(2026, 3, 16, 11, 5, tzinfo=timezone.utc),
+                output="pwd\n/home/portex\n",
+                output_bytes=17,
+                history_max_bytes=32768,
+                truncated=False,
+            )
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/terminal-session-3/download",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="terminal-history-project-alpha-terminal-session-3.log"'
+    )
+    assert response.text == "pwd\n/home/portex\n"
+    assert service.last_call == ("project-alpha", "terminal-session-3")
+
+
 def test_terminal_history_detail_route_returns_404_when_session_is_missing(
     api_client: TestClient,
 ) -> None:
@@ -1094,6 +1156,38 @@ def test_terminal_history_detail_route_returns_404_when_session_is_missing(
     try:
         response = api_client.get(
             "/terminals/project-alpha/sessions/history/missing-session",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "terminal session not found"
+
+
+def test_terminal_history_download_route_returns_404_when_session_is_missing(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionNotFoundError
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def get_history_snapshot_by_group(self, group_folder: str, session_id: str):
+            _ = (group_folder, session_id)
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/missing-session/download",
             headers=owner_headers,
         )
     finally:

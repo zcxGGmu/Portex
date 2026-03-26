@@ -702,6 +702,12 @@ export const apiClient = {
       { token },
     )
   },
+  downloadTerminalHistoryDetail(token: string, groupId: string, sessionId: string): Promise<Blob> {
+    return requestBlob(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/${encodeURIComponent(sessionId)}/download`,
+      { token },
+    )
+  },
   getGroupMembers(token: string, groupId: string): Promise<GroupMemberListResponse> {
     return request<GroupMemberListResponse>(`/groups/${encodeURIComponent(groupId)}/members`, { token })
   },

@@ -2307,6 +2307,12 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "detail" in get_terminal_history_detail_operation["summary"].lower()
     assert "404" in get_terminal_history_detail_operation["responses"]
 
+    download_terminal_history_detail_operation = schema["paths"][
+        "/terminals/{group_id}/sessions/history/{session_id}/download"
+    ]["get"]
+    assert "download" in download_terminal_history_detail_operation["summary"].lower()
+    assert "404" in download_terminal_history_detail_operation["responses"]
+
     delete_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions/current"]["delete"]
     assert "close" in delete_terminal_session_operation["summary"].lower()
     assert "409" in delete_terminal_session_operation["responses"]

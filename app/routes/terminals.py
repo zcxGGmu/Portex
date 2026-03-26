@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 import json
+import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import PlainTextResponse
 
 from app.middleware.auth import get_current_user
 from app.openapi import openapi_error_responses
@@ -115,6 +117,14 @@ def _terminal_workspace_sort_key(item: TerminalWorkspaceSummaryResponse) -> tupl
     else:
         bucket = 1
     return (bucket, item.group_name.lower(), item.group_id)
+
+
+def _build_terminal_history_download_filename(group_id: str, session_id: str) -> str:
+    def sanitize(value: str) -> str:
+        sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip())
+        return sanitized.strip("-.") or "snapshot"
+
+    return f"terminal-history-{sanitize(group_id)}-{sanitize(session_id)}.log"
 
 
 def _require_terminal_role(current_user: UserResponse) -> None:
@@ -510,6 +520,42 @@ async def get_terminal_history_detail(
     except Exception as exc:
         raise _map_terminal_error(exc) from exc
     return _to_terminal_history_detail_response(snapshot)
+
+
+@router.get(
+    "/terminals/{group_id}/sessions/history/{session_id}/download",
+    response_class=PlainTextResponse,
+    summary="Download terminal history detail",
+    description="Download one terminal-history snapshot output as a plain-text attachment for an accessible workspace session.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def download_terminal_history_detail(
+    group_id: str,
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> PlainTextResponse:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        snapshot = await service.get_history_snapshot_by_group(workspace.folder, session_id)
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+
+    filename = _build_terminal_history_download_filename(workspace.folder, session_id)
+    return PlainTextResponse(
+        content=snapshot.output,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.delete(
