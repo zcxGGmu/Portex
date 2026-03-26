@@ -1,3 +1,22 @@
+# Session Plan (2026-03-26) - Terminal Relevance Baseline Convergence Audit
+
+## Goal
+- Audit the current `81`-case offline terminal relevance baseline against landed `M8.5.17` ~ `M8.5.51` service semantics, then either document convergence or patch only a real non-duplicate offline gap.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, current terminal relevance fixture/tests, and recent commits
+- [x] Write focused convergence-audit design doc
+- [x] Write focused convergence-audit implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Audit `tests/services/test_terminal_sessions.py` against `tests/fixtures/terminal_relevance_baseline.json` and decide whether any non-duplicate gap remains
+- [ ] If and only if the audit finds a real gap, add the smallest missing fixture/test coverage without touching `services/terminal_sessions.py`
+- [ ] Run the appropriate verification commands for the actual diff
+- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [ ] Commit planning updates and final handoff sync with detailed messages
+
+## Review
+- Pending.
+
 # Session Plan (2026-03-26) - Restart Context Sync
 
 ## Goal
