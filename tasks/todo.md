@@ -1,3 +1,36 @@
+# Session Plan (2026-03-26) - M8.5.53 Terminal History Detail Metadata Export
+
+## Goal
+- Continue post-`M8.5.52` terminal operator development by extending terminal history detail download with an additive JSON metadata export, while keeping raw text download as the default and preserving all existing terminal relevance, detail, and RBAC contracts.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal detail/download slices
+- [x] Confirm the next terminal step should stay on operator surface work instead of returning to the converged relevance baseline
+- [x] Write focused `M8.5.53` design doc
+- [x] Write focused `M8.5.53` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing route/OpenAPI coverage for format-aware terminal history download
+- [x] Implement additive backend `format=text|json` terminal history download behavior
+- [x] Add frontend client wiring and `/terminals` JSON metadata download action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-26-m8-5-53-terminal-history-detail-metadata-export-design.md` and `docs/plans/2026-03-26-m8-5-53-terminal-history-detail-metadata-export.md` to lock the additive operator-surface scope before code changes.
+- Added RED coverage in `tests/app/routes/test_terminal_routes.py` and `tests/app/routes/test_api_routes.py` for `format=json`, invalid-format `422`, JSON-path `404`, and OpenAPI download-parameter exposure while keeping the existing raw text path intact.
+- Extended `GET /terminals/{group_id}/sessions/history/{session_id}/download` in `app/routes/terminals.py` with `format=text|json` support. `text` remains the default raw transcript attachment; `json` returns the existing history detail payload as a downloadable `application/json` attachment.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the history detail panel now exposes both `Download Output` and `Download JSON`, reusing the existing blob-download flow and shared action/error state.
+- `services/terminal_sessions.py`, terminal relevance ordering, the `81`-case offline baseline, `latest.json`, `/sessions/current/history`, and terminal RBAC/search semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `0402678` (`feat(terminal): add M8.5.53 history detail metadata export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.53 history detail metadata export context`.
+
 # Session Plan (2026-03-26) - M8.5.52 Terminal History Detail Download
 
 ## Goal
