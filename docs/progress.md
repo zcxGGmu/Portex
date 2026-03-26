@@ -1,10 +1,10 @@
 # Portex 开发进度上下文（重启续做入口）
 
-最后更新: 2026-03-26 (Asia/Shanghai)
+最后更新: 2026-03-27 (Asia/Shanghai)
 当前分支: `main`
 最新 planning-only 提交: `70cb8dd` (`docs(plans): add offline relevance convergence audit plan`)
 最新功能提交: `0402678` (`feat(terminal): add M8.5.53 history detail metadata export`)
-上一条 handoff 提交: `25300bb` (`docs(handoff): sync M8.5.52 history detail download context`)
+上一条 handoff 提交: `a14ca20` (`docs(handoff): sync M8.5.53 history detail metadata export context`)
 
 ---
 
@@ -12,6 +12,7 @@
 
 - `docs/TODO.md` 的正式路线仍停在 `M6.5.3`；`M0` ~ `M6` 全部完成，post-`M6` 的 `M7.1` ~ `M7.6.5` parity backlog 也已完成。
 - terminal relevance 主线已完成到 `M8.5.51`，且 2026-03-26 的 convergence audit 已确认当前 `81`-case offline baseline 收敛；默认下一步不是继续扩样或继续加 tie-break。
+- 2026-03-27 没有新的功能变更；最新可执行功能状态仍是 `M8.5.53`，本次更新仅同步 restart-oriented handoff 锚点，方便下一次重启直接续做。
 - `M8.5.52` 已完成并保持原始 transcript 下载；`M8.5.53` 已在当前分支完成：同一路径 `GET /terminals/{group_id}/sessions/history/{session_id}/download` 现在支持 `format=text|json`，默认仍是原始 `text/plain` 下载，并新增 metadata-rich `application/json` 附件导出；`/terminals` 的 history detail 面板现在同时提供 `Download Output` 和 `Download JSON`。
 - 本次 `M8.5.53` 明确保持不变的边界：
   - 不改 `services/terminal_sessions.py`

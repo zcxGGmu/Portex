@@ -1,3 +1,24 @@
+# Session Plan (2026-03-27) - Restart Context Sync After M8.5.53
+
+## Goal
+- Refresh `docs/progress.md` and `AGENTS.md` so the restart-oriented handoff points at the latest `M8.5.53` sync state on `main`, then commit the doc-only update.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current branch status
+- [x] Update `docs/progress.md` with the latest restart-oriented anchors
+- [x] Update `AGENTS.md` with the latest handoff reference notes
+- [x] Refresh the current `tasks/todo.md` session record for this doc-only sync
+- [x] Check doc consistency and diff hygiene
+- [x] Commit changes with a detailed message
+
+## Review
+- Refreshed `docs/progress.md` so the restart header now points at the latest `M8.5.53` handoff commit `a14ca20`, while keeping the current functional state and next-step guidance intact.
+- Refreshed `AGENTS.md` so its baseline snapshot date and restart metadata now point at the latest `M8.5.53` handoff sync, without changing milestone content or execution guidance.
+- Refreshed `tasks/todo.md` with this doc-only sync record so the next session can distinguish `M8.5.53` functional work from the follow-up restart-context maintenance.
+- This sync is doc-only: no terminal export behavior, relevance baseline, API contract, UI, or RBAC behavior changed.
+- Consistency check: `git diff --check` passed before commit.
+- Planned commit message for this sync: `docs(handoff): refresh restart context after M8.5.53`.
+
 # Session Plan (2026-03-26) - M8.5.53 Terminal History Detail Metadata Export
 
 ## Goal
