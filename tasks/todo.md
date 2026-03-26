@@ -8,14 +8,22 @@
 - [x] Write focused convergence-audit design doc
 - [x] Write focused convergence-audit implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Audit `tests/services/test_terminal_sessions.py` against `tests/fixtures/terminal_relevance_baseline.json` and decide whether any non-duplicate gap remains
-- [ ] If and only if the audit finds a real gap, add the smallest missing fixture/test coverage without touching `services/terminal_sessions.py`
-- [ ] Run the appropriate verification commands for the actual diff
-- [ ] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
-- [ ] Commit planning updates and final handoff sync with detailed messages
+- [x] Audit `tests/services/test_terminal_sessions.py` against `tests/fixtures/terminal_relevance_baseline.json` and decide whether any non-duplicate gap remains
+- [x] If and only if the audit finds a real gap, add the smallest missing fixture/test coverage without touching `services/terminal_sessions.py`
+- [x] Run the appropriate verification commands for the actual diff
+- [x] Update `docs/progress.md`, `AGENTS.md`, and complete this review section
+- [x] Commit planning updates and final handoff sync with detailed messages
 
 ## Review
-- Pending.
+- Added `docs/plans/2026-03-26-terminal-relevance-offline-baseline-convergence-audit-design.md` and `docs/plans/2026-03-26-terminal-relevance-offline-baseline-convergence-audit.md` to lock the approved scope before deciding whether any more offline relevance expansion is justified.
+- Audited `M8.5.17` ~ `M8.5.51` service semantics against the current `81`-case fixture and confirmed there is no remaining non-duplicate offline gap to add right now. In particular, `M8.5.50` direct count + pagination are already fixed by `m8-5-50-mixed-other-count` and `m8-5-50-mixed-other-count-pagination`; `M8.5.51` direct offset + pagination are already fixed by `m8-5-51-mixed-other-offset` and `m8-5-51-mixed-other-offset-pagination`; mixed-other no-single-space fallback is already fixed by `no-single-space-fallback` and `m8-5-51-no-single-space-fallback-pagination`.
+- This session intentionally does not change `services/terminal_sessions.py`, `tests/fixtures/terminal_relevance_baseline.json`, or `tests/scripts/test_evaluate_terminal_relevance.py`; the baseline is treated as converged until new evidence appears.
+- Verification executed:
+  - `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`
+  - `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` (`case_count=81`, `pass_count=81`, `pass_rate/top1_accuracy/mrr = 1.000`)
+  - `git diff --check`
+- Planning commit: `70cb8dd` (`docs(plans): add offline relevance convergence audit plan`).
+- This session intentionally has no feature commit because the convergence audit found no new fixture or ranking change to land; the closing handoff commit is `docs(handoff): sync offline relevance convergence audit context`.
 
 # Session Plan (2026-03-26) - Restart Context Sync
 
