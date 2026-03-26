@@ -1,3 +1,24 @@
+# Session Plan (2026-03-26) - Restart Context Sync After Convergence Audit
+
+## Goal
+- Refresh `docs/progress.md` and `AGENTS.md` so the restart-oriented handoff points at the latest convergence-audit sync state on `main`, then commit the doc-only update.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, recent commits, and current branch status
+- [x] Update `docs/progress.md` with the latest restart-oriented anchors
+- [x] Update `AGENTS.md` with the latest handoff reference notes
+- [x] Refresh the current `tasks/todo.md` session record for this doc-only sync
+- [x] Check doc consistency and diff hygiene
+- [x] Commit changes with a detailed message
+
+## Review
+- Refreshed `docs/progress.md` so the restart header now points at the latest convergence-audit handoff commit `2ee97f9`, while keeping the current `M8.5.51` + `81`-case baseline, latest functional commit, and next-step guidance intact.
+- Refreshed `AGENTS.md` so its restart metadata now points at the latest handoff sync commit `2ee97f9`, while preserving the approved convergence-audit baseline and restart instructions.
+- Refreshed `tasks/todo.md` with this doc-only sync record so the next session can distinguish baseline convergence work from a follow-up handoff refresh.
+- This sync is doc-only: no terminal ranking logic, offline fixture, API, UI, or RBAC behavior changed.
+- Consistency check: `git diff --check` passed before commit.
+- Planned commit message for this sync: `docs(handoff): refresh restart context after convergence audit`.
+
 # Session Plan (2026-03-26) - Terminal Relevance Baseline Convergence Audit
 
 ## Goal

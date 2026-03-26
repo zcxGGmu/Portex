@@ -4,14 +4,14 @@
 当前分支: `main`
 最新 planning 提交: `70cb8dd` (`docs(plans): add offline relevance convergence audit plan`)
 最新功能提交: `cdf21cb` (`feat(terminal): expand offline relevance foundational ranking fixtures`)
-上一条 handoff 提交: `53906af` (`docs(handoff): refresh restart context sync`)
+上一条 handoff 提交: `2ee97f9` (`docs(handoff): sync offline relevance convergence audit context`)
 
 ---
 
 ## 1. 当前阶段
 
 - `docs/TODO.md` 的正式路线仍停在 `M6.5.3`；`M0` ~ `M6` 全部完成，post-`M6` 的 `M7.1` ~ `M7.6.5` parity backlog 也已完成。
-- terminal 搜索排序逻辑主线已完成到 `M8.5.51`；2026-03-26 的最新工作是 convergence audit，而不是继续改 `services/terminal_sessions.py` 或继续盲目扩 terminal relevance fixture。
+- terminal 搜索排序逻辑主线已完成到 `M8.5.51`；2026-03-26 的最新功能相关工作仍然是 convergence audit，之后只有 docs-only handoff sync，没有新的 `services/terminal_sessions.py`、fixture、API 或 UI 变化。
 - 当前离线评估入口仍是 `tests/fixtures/terminal_relevance_baseline.json`、`scripts/evaluate_terminal_relevance.py` 与 `tests/scripts/test_evaluate_terminal_relevance.py`；当前固定基线仍为 `81` 个 case。
 - 2026-03-26 的收敛审计已确认：当前 81-case 基线已经覆盖 `M8.5.17` foundational ranking chain、whole-word / line-start / wrapper / marker / whitespace-family 主干，以及 `M8.5.50` / `M8.5.51` mixed-other tail 的 direct count、direct offset、pagination 与 no-single-space fallback 语义；本轮没有再发现值得补进离线 fixture 的非重复 service-test 缺口。
 - 当前结论因此从“继续扩样”切换为“暂停扩样”：只有当新增 service test 暴露新的非重复语义、离线指标退化、或真实 operator/production 排序问题无法由现有 81-case 基线表达时，才继续扩 baseline 或进入 post-`M8.5.51` 新 tie-break 设计。
@@ -20,7 +20,7 @@
 
 ## 2. 最新验证证据
 
-最新 convergence audit 已通过以下验证：
+最新功能相关验证证据仍来自 convergence audit：
 - `.venv/bin/pytest tests/scripts/test_evaluate_terminal_relevance.py -q`
 - `.venv/bin/python scripts/evaluate_terminal_relevance.py --format text` -> `case_count=81`, `pass_count=81`, `pass_rate/top1_accuracy/mrr = 1.000`
 - `git diff --check`
@@ -63,6 +63,7 @@
 - `9a35949` / `272b487` direct whitespace-family
 - `17b1fc1` / `cdf21cb` foundational ranking
 - `70cb8dd` planning-only convergence audit
+- `2ee97f9` handoff-only convergence audit sync
 
 当前收敛审计结论：
 - `M8.5.50` direct count 与 pagination 已分别由 `m8-5-50-mixed-other-count`、`m8-5-50-mixed-other-count-pagination` 固化。
