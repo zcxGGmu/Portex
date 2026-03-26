@@ -9,7 +9,7 @@ import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from app.middleware.auth import get_current_user
 from app.openapi import openapi_error_responses
@@ -119,12 +119,17 @@ def _terminal_workspace_sort_key(item: TerminalWorkspaceSummaryResponse) -> tupl
     return (bucket, item.group_name.lower(), item.group_id)
 
 
-def _build_terminal_history_download_filename(group_id: str, session_id: str) -> str:
+def _build_terminal_history_download_filename(
+    group_id: str,
+    session_id: str,
+    *,
+    extension: Literal["log", "json"] = "log",
+) -> str:
     def sanitize(value: str) -> str:
         sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip())
         return sanitized.strip("-.") or "snapshot"
 
-    return f"terminal-history-{sanitize(group_id)}-{sanitize(session_id)}.log"
+    return f"terminal-history-{sanitize(group_id)}-{sanitize(session_id)}.{extension}"
 
 
 def _require_terminal_role(current_user: UserResponse) -> None:
@@ -536,10 +541,11 @@ async def get_terminal_history_detail(
 async def download_terminal_history_detail(
     group_id: str,
     session_id: str,
+    format: Literal["text", "json"] = Query(default="text"),
     current_user: UserResponse = Depends(get_current_user),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
     service: TerminalSessionService = Depends(get_terminal_session_service),
-) -> PlainTextResponse:
+) -> Response:
     _require_terminal_role(current_user)
     workspace = await _require_accessible_workspace(
         group_id=group_id,
@@ -551,7 +557,23 @@ async def download_terminal_history_detail(
     except Exception as exc:
         raise _map_terminal_error(exc) from exc
 
-    filename = _build_terminal_history_download_filename(workspace.folder, session_id)
+    if format == "json":
+        detail = _to_terminal_history_detail_response(snapshot)
+        filename = _build_terminal_history_download_filename(
+            workspace.folder,
+            session_id,
+            extension="json",
+        )
+        return JSONResponse(
+            content=detail.model_dump(mode="json"),
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    filename = _build_terminal_history_download_filename(
+        workspace.folder,
+        session_id,
+        extension="log",
+    )
     return PlainTextResponse(
         content=snapshot.output,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

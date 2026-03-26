@@ -220,9 +220,9 @@ function buildOutputSegments(output: string, ranges: MatchRange[]): OutputSegmen
   return segments
 }
 
-function buildTerminalHistoryDownloadFileName(groupId: string, sessionId: string): string {
+function buildTerminalHistoryDownloadFileName(groupId: string, sessionId: string, extension: 'log' | 'json'): string {
   const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
-  return `terminal-history-${sanitize(groupId)}-${sanitize(sessionId)}.log`
+  return `terminal-history-${sanitize(groupId)}-${sanitize(sessionId)}.${extension}`
 }
 
 export function Terminals() {
@@ -633,27 +633,41 @@ export function Terminals() {
     }
   }
 
-  async function handleDownloadDetail() {
+  async function handleDownloadDetail(format: 'text' | 'json') {
     if (!token || !timelineGroupId || !detailSessionId) {
       return
     }
-    const key = `download-detail:${timelineGroupId}:${detailSessionId}`
+    const key = `download-detail:${format}:${timelineGroupId}:${detailSessionId}`
     try {
       setActionKey(key)
       setActionError(null)
       setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistoryDetail(token, timelineGroupId, detailSessionId)
+      const blob = await apiClient.downloadTerminalHistoryDetail(token, timelineGroupId, detailSessionId, format)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = buildTerminalHistoryDownloadFileName(timelineGroupId, detailSessionId)
+      link.download = buildTerminalHistoryDownloadFileName(
+        timelineGroupId,
+        detailSessionId,
+        format === 'json' ? 'json' : 'log',
+      )
       document.body.appendChild(link)
       link.click()
       link.remove()
       URL.revokeObjectURL(url)
-      setActionNotice(`Downloaded terminal history for ${detailSessionId}.`)
+      setActionNotice(
+        format === 'json'
+          ? `Downloaded terminal history metadata for ${detailSessionId}.`
+          : `Downloaded terminal history for ${detailSessionId}.`,
+      )
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to download terminal history detail.')
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : format === 'json'
+            ? 'Failed to download terminal history metadata.'
+            : 'Failed to download terminal history detail.',
+      )
     } finally {
       setActionKey(null)
     }
@@ -1191,12 +1205,22 @@ export function Terminals() {
                     <PrimaryButton
                       className="button--ghost"
                       disabled={actionKey !== null}
-                      onClick={handleDownloadDetail}
+                      onClick={() => handleDownloadDetail('text')}
                       type="button"
                     >
-                      {actionKey === `download-detail:${timelineGroupId}:${detailSessionId}`
+                      {actionKey === `download-detail:text:${timelineGroupId}:${detailSessionId}`
                         ? 'Downloading...'
                         : 'Download Output'}
+                    </PrimaryButton>
+                    <PrimaryButton
+                      className="button--ghost"
+                      disabled={actionKey !== null}
+                      onClick={() => handleDownloadDetail('json')}
+                      type="button"
+                    >
+                      {actionKey === `download-detail:json:${timelineGroupId}:${detailSessionId}`
+                        ? 'Downloading...'
+                        : 'Download JSON'}
                     </PrimaryButton>
                   </div>
 

@@ -702,9 +702,19 @@ export const apiClient = {
       { token },
     )
   },
-  downloadTerminalHistoryDetail(token: string, groupId: string, sessionId: string): Promise<Blob> {
+  downloadTerminalHistoryDetail(
+    token: string,
+    groupId: string,
+    sessionId: string,
+    format: 'text' | 'json' = 'text',
+  ): Promise<Blob> {
+    const params = new URLSearchParams()
+    if (format !== 'text') {
+      params.set('format', format)
+    }
+    const suffix = params.toString() ? `?${params.toString()}` : ''
     return requestBlob(
-      `/terminals/${encodeURIComponent(groupId)}/sessions/history/${encodeURIComponent(sessionId)}/download`,
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/${encodeURIComponent(sessionId)}/download${suffix}`,
       { token },
     )
   },

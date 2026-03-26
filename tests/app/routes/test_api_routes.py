@@ -2312,6 +2312,8 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     ]["get"]
     assert "download" in download_terminal_history_detail_operation["summary"].lower()
     assert "404" in download_terminal_history_detail_operation["responses"]
+    download_parameter_names = {item["name"] for item in download_terminal_history_detail_operation["parameters"]}
+    assert "format" in download_parameter_names
 
     delete_terminal_session_operation = schema["paths"]["/terminals/{group_id}/sessions/current"]["delete"]
     assert "close" in delete_terminal_session_operation["summary"].lower()
