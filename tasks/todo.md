@@ -1,3 +1,36 @@
+# Session Plan (2026-03-26) - M8.5.52 Terminal History Detail Download
+
+## Goal
+- Continue post-convergence terminal development by adding a raw terminal-history download action on `/terminals`, so operators can export one persisted history snapshot without changing existing timeline/search/detail contracts or ranking behavior.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal detail route/UI slices
+- [x] Inspect the existing terminal history detail service/route/frontend path and choose the smallest additive download contract
+- [x] Write focused `M8.5.52` design doc
+- [x] Write focused `M8.5.52` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing backend route/OpenAPI coverage for terminal history download
+- [x] Implement additive backend terminal history download route
+- [x] Add frontend client wiring and `/terminals` detail download action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-26-m8-5-52-terminal-history-detail-download-design.md` and `docs/plans/2026-03-26-m8-5-52-terminal-history-detail-download.md` to lock the additive operator-surface scope before touching backend or frontend code.
+- Added RED coverage in `tests/app/routes/test_terminal_routes.py` and `tests/app/routes/test_api_routes.py` for the new terminal history download route, including auth, success, missing-session `404`, and OpenAPI exposure.
+- Implemented `GET /terminals/{group_id}/sessions/history/{session_id}/download` in `app/routes/terminals.py`, reusing the existing accessible-workspace and snapshot-lookup path and returning a sanitized `text/plain` attachment filename.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so `/terminals` history detail now exposes a `Download Output` action backed by the existing blob-download browser flow.
+- `services/terminal_sessions.py`, the `81`-case offline relevance baseline, `latest.json`, `/sessions/current/history`, and terminal RBAC/search semantics remain unchanged in this session.
+- Verification executed:
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `b044de6` (`feat(terminal): add M8.5.52 history detail download`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.52 history detail download context`.
+
 # Session Plan (2026-03-26) - Restart Context Sync After Convergence Audit
 
 ## Goal
