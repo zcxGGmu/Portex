@@ -245,6 +245,11 @@ function buildTerminalHistorySearchExportFileName(
   return `terminal-history-search-${sanitize(groupId)}-${sanitize(query)}-offset-${offset}-limit-${limit}.json`
 }
 
+function buildTerminalHistorySearchArchiveFileName(groupId: string, query: string): string {
+  const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
+  return `terminal-history-search-archive-${sanitize(groupId)}-${sanitize(query)}.json`
+}
+
 export function Terminals() {
   const token = useAuthStore((state) => state.token)
   const storedUser = useAuthStore((state) => state.currentUser)
@@ -326,6 +331,18 @@ export function Terminals() {
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     }),
     [normalizedSearchQuery, searchOffset, searchSort, timelineFilters],
+  )
+  const searchArchiveQueryOptions = useMemo(
+    () => ({
+      query: normalizedSearchQuery,
+      sort: searchSort,
+      status: timelineFilters.status || undefined,
+      ownerUserId: timelineFilters.ownerUserId || undefined,
+      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
+      snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
+    }),
+    [normalizedSearchQuery, searchSort, timelineFilters],
   )
   const {
     data: searchData,
@@ -802,6 +819,41 @@ export function Terminals() {
     }
   }
 
+  async function handleExportSearchArchive() {
+    if (!token || !timelineGroupId || normalizedSearchQuery === '') {
+      return
+    }
+    const key = `export-search-archive:${timelineGroupId}:${normalizedSearchQuery}:${searchSort}`
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalHistorySearchArchive(
+        token,
+        timelineGroupId,
+        searchArchiveQueryOptions,
+      )
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalHistorySearchArchiveFileName(
+        timelineGroupId,
+        normalizedSearchQuery,
+      )
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice(
+        `Exported terminal history search archive for ${timelineGroupId}.`,
+      )
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history search archive.')
+    } finally {
+      setActionKey(null)
+    }
+  }
+
   return (
     <AppLayout title="Terminals">
       {!isOperator ? (
@@ -1125,6 +1177,17 @@ export function Terminals() {
                 {normalizedSearchQuery && !isSearchLoading && !isSearchError && searchData ? (
                   <>
                     <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={actionKey !== null || isSearchFetching}
+                        onClick={() => void handleExportSearchArchive()}
+                        type="button"
+                      >
+                        {actionKey ===
+                        `export-search-archive:${timelineGroupId}:${normalizedSearchQuery}:${searchSort}`
+                          ? 'Exporting...'
+                          : 'Export Search Archive JSON'}
+                      </PrimaryButton>
                       <PrimaryButton
                         className="button--ghost"
                         disabled={actionKey !== null || isSearchFetching}

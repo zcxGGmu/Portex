@@ -741,6 +741,17 @@ export const apiClient = {
       { token },
     )
   },
+  downloadTerminalHistorySearchArchive(
+    token: string,
+    groupId: string,
+    options: TerminalHistorySearchOptions,
+  ): Promise<Blob> {
+    const params = buildTerminalHistorySearchParams(options)
+    return requestBlob(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/search/archive?${params.toString()}`,
+      { token },
+    )
+  },
   getTerminalHistoryDetail(
     token: string,
     groupId: string,

@@ -160,6 +160,13 @@ def _build_terminal_history_search_export_filename(
     )
 
 
+def _build_terminal_history_search_archive_filename(group_id: str, query: str) -> str:
+    return (
+        f"terminal-history-search-archive-{_sanitize_terminal_filename_part(group_id)}-"
+        f"{_sanitize_terminal_filename_part(query)}.json"
+    )
+
+
 def _serialize_utc_datetime(value: datetime | None) -> str | None:
     if value is None:
         return None
@@ -734,6 +741,94 @@ async def export_terminal_history_search(
         "total": page.total,
         "has_more": page.has_more,
         "sort": sort,
+        "filters": {
+            "status": status_filter,
+            "owner_user_id": owner_user_id,
+            "session_id_prefix": session_id_prefix,
+            "snapshot_from": _serialize_utc_datetime(snapshot_from),
+            "snapshot_to": _serialize_utc_datetime(snapshot_to),
+        },
+        "items": [
+            _to_terminal_history_search_match_response(item).model_dump(mode="json")
+            for item in page.items
+        ],
+    }
+    return JSONResponse(
+        content=content,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get(
+    "/terminals/{group_id}/sessions/history/search/archive",
+    response_class=JSONResponse,
+    summary="Archive terminal history search",
+    description="Download the full filtered terminal-history search result set as a JSON attachment for an accessible workspace.",
+    responses=openapi_error_responses(
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def archive_terminal_history_search(
+    group_id: str,
+    q: str = Query(min_length=1),
+    sort: Literal["relevance", "newest", "oldest"] = Query(default="relevance"),
+    status_filter: Literal["created", "attached", "detached", "closed", "exited"] | None = Query(
+        default=None,
+        alias="status",
+    ),
+    owner_user_id: str | None = Query(default=None),
+    session_id_prefix: str | None = Query(default=None),
+    snapshot_from: datetime | None = Query(default=None),
+    snapshot_to: datetime | None = Query(default=None),
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> Response:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        first_page = await service.search_history_by_group(
+            workspace.folder,
+            query=q,
+            limit=1,
+            offset=0,
+            sort=sort,
+            status=status_filter,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
+        page = first_page
+        if first_page.total > len(first_page.items):
+            page = await service.search_history_by_group(
+                workspace.folder,
+                query=q,
+                limit=first_page.total,
+                offset=0,
+                sort=sort,
+                status=status_filter,
+                owner_user_id=owner_user_id,
+                session_id_prefix=session_id_prefix,
+                snapshot_from=snapshot_from,
+                snapshot_to=snapshot_to,
+            )
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+
+    filename = _build_terminal_history_search_archive_filename(workspace.folder, page.query)
+    content = {
+        "group_id": workspace.folder,
+        "query": page.query,
+        "sort": sort,
+        "total": page.total,
         "filters": {
             "status": status_filter,
             "owner_user_id": owner_user_id,
