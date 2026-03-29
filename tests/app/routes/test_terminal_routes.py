@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -90,6 +90,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     timeline_response = api_client.get("/terminals/project-alpha/sessions/history")
     export_response = api_client.get("/terminals/project-alpha/sessions/history/export")
     search_response = api_client.get("/terminals/project-alpha/sessions/history/search?q=error")
+    search_export_response = api_client.get("/terminals/project-alpha/sessions/history/search/export?q=error")
     detail_response = api_client.get("/terminals/project-alpha/sessions/history/test-session")
     download_response = api_client.get("/terminals/project-alpha/sessions/history/test-session/download")
     delete_response = api_client.delete("/terminals/project-alpha/sessions/current")
@@ -101,6 +102,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     assert timeline_response.status_code == 401
     assert export_response.status_code == 401
     assert search_response.status_code == 401
+    assert search_export_response.status_code == 401
     assert detail_response.status_code == 401
     assert download_response.status_code == 401
     assert delete_response.status_code == 401
@@ -1185,6 +1187,272 @@ def test_terminal_history_search_route_returns_400_for_invalid_snapshot_time_ran
     try:
         response = api_client.get(
             "/terminals/project-alpha/sessions/history/search?q=error"
+            "&snapshot_from=2026-03-16T11:00:00Z&snapshot_to=2026-03-16T10:00:00Z",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "snapshot_from must be less than or equal to snapshot_to"
+
+
+def test_owner_can_export_terminal_history_search_page(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            from datetime import datetime, timezone
+
+            self.record = TerminalSessionRecord(
+                session_id="terminal-session-search-export",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-search-export",
+                status="closed",
+                created_at=datetime(2026, 3, 17, 10, 0, tzinfo=timezone.utc),
+            )
+            self.last_call: tuple[
+                str,
+                str,
+                int,
+                int,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+            ] | None = None
+
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+            sort: str = "relevance",
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            self.last_call = (
+                group_folder,
+                query,
+                limit,
+                offset,
+                sort,
+                status,
+                owner_user_id,
+                session_id_prefix,
+                None if snapshot_from is None else snapshot_from.isoformat(),
+                None if snapshot_to is None else snapshot_to.isoformat(),
+            )
+            return SimpleNamespace(
+                query=query,
+                limit=limit,
+                offset=offset,
+                total=1,
+                has_more=False,
+                items=[
+                    SimpleNamespace(
+                        record=self.record,
+                        snapshot_at=datetime(2026, 3, 17, 10, 5, tzinfo=timezone.utc),
+                        match_count=2,
+                        snippets=["...ERROR one...", "...error two..."],
+                        snippet_matches=[
+                            SimpleNamespace(
+                                text="...ERROR one...",
+                                match_index=0,
+                                match_offset=120,
+                            ),
+                            SimpleNamespace(
+                                text="...error two...",
+                                match_index=1,
+                                match_offset=256,
+                            ),
+                        ],
+                    )
+                ],
+            )
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search/export?q=error&limit=1&offset=0&sort=oldest"
+            f"&status=closed&owner_user_id={owner_id}&session_id_prefix=terminal-session"
+            "&snapshot_from=2026-03-16T10:00:00Z&snapshot_to=2026-03-16T11:00:00Z",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="terminal-history-search-project-alpha-error-offset-0-limit-1.json"'
+    )
+    payload = response.json()
+    assert payload["group_id"] == "project-alpha"
+    assert payload["query"] == "error"
+    assert payload["limit"] == 1
+    assert payload["offset"] == 0
+    assert payload["total"] == 1
+    assert payload["has_more"] is False
+    assert payload["sort"] == "oldest"
+    assert payload["filters"] == {
+        "status": "closed",
+        "owner_user_id": owner_id,
+        "session_id_prefix": "terminal-session",
+        "snapshot_from": "2026-03-16T10:00:00Z",
+        "snapshot_to": "2026-03-16T11:00:00Z",
+    }
+    assert payload["items"][0]["session"]["session_id"] == "terminal-session-search-export"
+    assert payload["items"][0]["match_count"] == 2
+    assert payload["items"][0]["snippets"] == ["...ERROR one...", "...error two..."]
+    assert payload["items"][0]["snippet_matches"] == [
+        {
+            "text": "...ERROR one...",
+            "match_index": 0,
+            "match_offset": 120,
+        },
+        {
+            "text": "...error two...",
+            "match_index": 1,
+            "match_offset": 256,
+        },
+    ]
+    assert service.last_call == (
+        "project-alpha",
+        "error",
+        1,
+        0,
+        "oldest",
+        "closed",
+        owner_id,
+        "terminal-session",
+        "2026-03-16T10:00:00+00:00",
+        "2026-03-16T11:00:00+00:00",
+    )
+
+
+def test_terminal_history_search_export_route_returns_404_when_workspace_has_no_history(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionNotFoundError
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+            sort: str = "relevance",
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (
+                group_folder,
+                query,
+                limit,
+                offset,
+                sort,
+                status,
+                owner_user_id,
+                session_id_prefix,
+                snapshot_from,
+                snapshot_to,
+            )
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search/export?q=error",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "terminal session not found"
+
+
+def test_terminal_history_search_export_route_returns_400_for_invalid_snapshot_time_range(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def search_history_by_group(
+            self,
+            group_folder: str,
+            *,
+            query: str,
+            limit: int,
+            offset: int,
+            sort: str = "relevance",
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (
+                group_folder,
+                query,
+                limit,
+                offset,
+                sort,
+                status,
+                owner_user_id,
+                session_id_prefix,
+                snapshot_from,
+                snapshot_to,
+            )
+            raise ValueError("snapshot_from must be less than or equal to snapshot_to")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/search/export?q=error"
             "&snapshot_from=2026-03-16T11:00:00Z&snapshot_to=2026-03-16T10:00:00Z",
             headers=owner_headers,
         )

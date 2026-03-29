@@ -195,6 +195,18 @@ export interface TerminalSessionHistorySearchResponse {
   items: TerminalSessionHistorySearchMatch[]
 }
 
+export interface TerminalHistorySearchOptions {
+  query: string
+  limit?: number
+  offset?: number
+  sort?: TerminalHistorySearchSort
+  status?: TerminalSessionStatus
+  ownerUserId?: string
+  sessionIdPrefix?: string
+  snapshotFrom?: string
+  snapshotTo?: string
+}
+
 export interface TerminalWorkspaceSummary {
   group_id: string
   group_name: string
@@ -552,6 +564,40 @@ function buildTerminalHistoryTimelineParams(options: TerminalHistoryTimelineOpti
   return params
 }
 
+function buildTerminalHistorySearchParams(options: TerminalHistorySearchOptions): URLSearchParams {
+  const query = options.query.trim()
+  if (!query) {
+    throw new Error('Search query is required')
+  }
+  const params = new URLSearchParams()
+  params.set('q', query)
+  if (typeof options.limit === 'number') {
+    params.set('limit', String(options.limit))
+  }
+  if (typeof options.offset === 'number') {
+    params.set('offset', String(options.offset))
+  }
+  if (options.sort) {
+    params.set('sort', options.sort)
+  }
+  if (options.status) {
+    params.set('status', options.status)
+  }
+  if (options.ownerUserId) {
+    params.set('owner_user_id', options.ownerUserId)
+  }
+  if (options.sessionIdPrefix) {
+    params.set('session_id_prefix', options.sessionIdPrefix)
+  }
+  if (options.snapshotFrom) {
+    params.set('snapshot_from', options.snapshotFrom)
+  }
+  if (options.snapshotTo) {
+    params.set('snapshot_to', options.snapshotTo)
+  }
+  return params
+}
+
 export const apiClient = {
   login(username: string, password: string): Promise<TokenResponse> {
     return request<TokenResponse>('/auth/login', {
@@ -664,50 +710,22 @@ export const apiClient = {
   getTerminalHistorySearch(
     token: string,
     groupId: string,
-    options: {
-      query: string
-      limit?: number
-      offset?: number
-      sort?: TerminalHistorySearchSort
-      status?: TerminalSessionStatus
-      ownerUserId?: string
-      sessionIdPrefix?: string
-      snapshotFrom?: string
-      snapshotTo?: string
-    },
+    options: TerminalHistorySearchOptions,
   ): Promise<TerminalSessionHistorySearchResponse> {
-    const query = options.query.trim()
-    if (!query) {
-      throw new Error('Search query is required')
-    }
-    const params = new URLSearchParams()
-    params.set('q', query)
-    if (typeof options.limit === 'number') {
-      params.set('limit', String(options.limit))
-    }
-    if (typeof options.offset === 'number') {
-      params.set('offset', String(options.offset))
-    }
-    if (options.sort) {
-      params.set('sort', options.sort)
-    }
-    if (options.status) {
-      params.set('status', options.status)
-    }
-    if (options.ownerUserId) {
-      params.set('owner_user_id', options.ownerUserId)
-    }
-    if (options.sessionIdPrefix) {
-      params.set('session_id_prefix', options.sessionIdPrefix)
-    }
-    if (options.snapshotFrom) {
-      params.set('snapshot_from', options.snapshotFrom)
-    }
-    if (options.snapshotTo) {
-      params.set('snapshot_to', options.snapshotTo)
-    }
+    const params = buildTerminalHistorySearchParams(options)
     return request<TerminalSessionHistorySearchResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history/search?${params.toString()}`,
+      { token },
+    )
+  },
+  downloadTerminalHistorySearch(
+    token: string,
+    groupId: string,
+    options: TerminalHistorySearchOptions,
+  ): Promise<Blob> {
+    const params = buildTerminalHistorySearchParams(options)
+    return requestBlob(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/search/export?${params.toString()}`,
       { token },
     )
   },

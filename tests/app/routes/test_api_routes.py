@@ -2313,6 +2313,24 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "snapshot_to" in search_parameter_names
     assert "sort" in search_parameter_names
 
+    export_terminal_history_search_operation = schema["paths"]["/terminals/{group_id}/sessions/history/search/export"][
+        "get"
+    ]
+    assert "export" in export_terminal_history_search_operation["summary"].lower()
+    assert "404" in export_terminal_history_search_operation["responses"]
+    search_export_parameter_names = {
+        item["name"] for item in export_terminal_history_search_operation["parameters"]
+    }
+    assert "q" in search_export_parameter_names
+    assert "limit" in search_export_parameter_names
+    assert "offset" in search_export_parameter_names
+    assert "status" in search_export_parameter_names
+    assert "owner_user_id" in search_export_parameter_names
+    assert "session_id_prefix" in search_export_parameter_names
+    assert "snapshot_from" in search_export_parameter_names
+    assert "snapshot_to" in search_export_parameter_names
+    assert "sort" in search_export_parameter_names
+
     get_terminal_history_detail_operation = schema["paths"]["/terminals/{group_id}/sessions/history/{session_id}"][
         "get"
     ]

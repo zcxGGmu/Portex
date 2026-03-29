@@ -230,6 +230,16 @@ function buildTerminalHistoryExportFileName(groupId: string, offset: number, lim
   return `terminal-history-export-${sanitize(groupId)}-offset-${offset}-limit-${limit}.json`
 }
 
+function buildTerminalHistorySearchExportFileName(
+  groupId: string,
+  query: string,
+  offset: number,
+  limit: number,
+): string {
+  const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
+  return `terminal-history-search-${sanitize(groupId)}-${sanitize(query)}-offset-${offset}-limit-${limit}.json`
+}
+
 export function Terminals() {
   const token = useAuthStore((state) => state.token)
   const storedUser = useAuthStore((state) => state.currentUser)
@@ -288,15 +298,8 @@ export function Terminals() {
   )
 
   const normalizedSearchQuery = searchQuery.trim()
-  const {
-    data: searchData,
-    isLoading: isSearchLoading,
-    isFetching: isSearchFetching,
-    isError: isSearchError,
-    error: searchError,
-  } = useTerminalHistorySearchQuery(
-    timelineGroupId,
-    {
+  const searchQueryOptions = useMemo(
+    () => ({
       query: normalizedSearchQuery,
       limit: SEARCH_PAGE_SIZE,
       offset: searchOffset,
@@ -306,7 +309,18 @@ export function Terminals() {
       sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
       snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
-    },
+    }),
+    [normalizedSearchQuery, searchOffset, searchSort, timelineFilters],
+  )
+  const {
+    data: searchData,
+    isLoading: isSearchLoading,
+    isFetching: isSearchFetching,
+    isError: isSearchError,
+    error: searchError,
+  } = useTerminalHistorySearchQuery(
+    timelineGroupId,
+    searchQueryOptions,
     isOperator && timelineGroupId !== null && normalizedSearchQuery !== '',
   )
 
@@ -714,6 +728,39 @@ export function Terminals() {
     }
   }
 
+  async function handleExportSearchPage() {
+    if (!token || !timelineGroupId || !searchData || normalizedSearchQuery === '') {
+      return
+    }
+    const key = `export-search:${timelineGroupId}:${normalizedSearchQuery}:${searchData.offset}:${searchData.limit}:${searchSort}`
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalHistorySearch(token, timelineGroupId, searchQueryOptions)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalHistorySearchExportFileName(
+        timelineGroupId,
+        normalizedSearchQuery,
+        searchData.offset,
+        searchData.limit,
+      )
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice(
+        `Exported ${searchData.items.length.toLocaleString()} terminal history search results for ${timelineGroupId}.`,
+      )
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history search.')
+    } finally {
+      setActionKey(null)
+    }
+  }
+
   return (
     <AppLayout title="Terminals">
       {!isOperator ? (
@@ -1036,6 +1083,19 @@ export function Terminals() {
                 ) : null}
                 {normalizedSearchQuery && !isSearchLoading && !isSearchError && searchData ? (
                   <>
+                    <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={actionKey !== null || isSearchFetching}
+                        onClick={() => void handleExportSearchPage()}
+                        type="button"
+                      >
+                        {actionKey ===
+                        `export-search:${timelineGroupId}:${normalizedSearchQuery}:${searchData.offset}:${searchData.limit}:${searchSort}`
+                          ? 'Exporting...'
+                          : 'Export Search Page JSON'}
+                      </PrimaryButton>
+                    </div>
                     {searchData.items.length === 0 ? (
                       <p className="muted">No matched sessions in this workspace for the current query.</p>
                     ) : (
