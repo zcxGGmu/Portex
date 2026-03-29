@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import re
 from typing import Literal
@@ -47,6 +47,11 @@ from services.terminal_sessions import (
 
 router = APIRouter(tags=["terminals"])
 _ACTIVE_TERMINAL_STATUSES = {"created", "attached", "detached"}
+
+
+def _sanitize_terminal_filename_part(value: str) -> str:
+    sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip())
+    return sanitized.strip("-.") or "snapshot"
 
 
 def _to_terminal_session_response(item: TerminalSessionRecord) -> TerminalSessionResponse:
@@ -125,11 +130,24 @@ def _build_terminal_history_download_filename(
     *,
     extension: Literal["log", "json"] = "log",
 ) -> str:
-    def sanitize(value: str) -> str:
-        sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip())
-        return sanitized.strip("-.") or "snapshot"
+    return (
+        f"terminal-history-{_sanitize_terminal_filename_part(group_id)}-"
+        f"{_sanitize_terminal_filename_part(session_id)}.{extension}"
+    )
 
-    return f"terminal-history-{sanitize(group_id)}-{sanitize(session_id)}.{extension}"
+
+def _build_terminal_history_export_filename(group_id: str, *, offset: int, limit: int) -> str:
+    return (
+        f"terminal-history-export-{_sanitize_terminal_filename_part(group_id)}-"
+        f"offset-{offset}-limit-{limit}.json"
+    )
+
+
+def _serialize_utc_datetime(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return normalized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _require_terminal_role(current_user: UserResponse) -> None:
@@ -432,6 +450,78 @@ async def get_terminal_history_timeline(
         offset=page.offset,
         has_more=page.has_more,
         items=[_to_terminal_history_summary_response(item) for item in page.items],
+    )
+
+
+@router.get(
+    "/terminals/{group_id}/sessions/history/export",
+    response_class=JSONResponse,
+    summary="Export terminal history",
+    description="Download one filtered terminal-history page as a JSON attachment for an accessible workspace.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def export_terminal_history(
+    group_id: str,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    status_filter: Literal["created", "attached", "detached", "closed", "exited"] | None = Query(
+        default=None,
+        alias="status",
+    ),
+    owner_user_id: str | None = Query(default=None),
+    session_id_prefix: str | None = Query(default=None),
+    snapshot_from: datetime | None = Query(default=None),
+    snapshot_to: datetime | None = Query(default=None),
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> Response:
+    _require_terminal_role(current_user)
+    workspace = await _require_accessible_workspace(
+        group_id=group_id,
+        current_user=current_user,
+        group_registry=group_registry,
+    )
+    try:
+        page = await service.list_history_snapshot_page_by_group(
+            workspace.folder,
+            limit=limit,
+            offset=offset,
+            status=status_filter,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
+
+    filename = _build_terminal_history_export_filename(workspace.folder, offset=page.offset, limit=page.limit)
+    content = {
+        "group_id": workspace.folder,
+        "limit": page.limit,
+        "offset": page.offset,
+        "total": page.total,
+        "has_more": page.has_more,
+        "filters": {
+            "status": status_filter,
+            "owner_user_id": owner_user_id,
+            "session_id_prefix": session_id_prefix,
+            "snapshot_from": _serialize_utc_datetime(snapshot_from),
+            "snapshot_to": _serialize_utc_datetime(snapshot_to),
+        },
+        "items": [
+            _to_terminal_history_detail_response(item).model_dump(mode="json")
+            for item in page.items
+        ],
+    }
+    return JSONResponse(
+        content=content,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

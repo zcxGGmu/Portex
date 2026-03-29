@@ -225,6 +225,11 @@ function buildTerminalHistoryDownloadFileName(groupId: string, sessionId: string
   return `terminal-history-${sanitize(groupId)}-${sanitize(sessionId)}.${extension}`
 }
 
+function buildTerminalHistoryExportFileName(groupId: string, offset: number, limit: number): string {
+  const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
+  return `terminal-history-export-${sanitize(groupId)}-offset-${offset}-limit-${limit}.json`
+}
+
 export function Terminals() {
   const token = useAuthStore((state) => state.token)
   const storedUser = useAuthStore((state) => state.currentUser)
@@ -256,6 +261,18 @@ export function Terminals() {
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
   const [activeDetailMatchIndex, setActiveDetailMatchIndex] = useState(0)
   const activeMatchRef = useRef<HTMLElement | null>(null)
+  const timelineQueryOptions = useMemo(
+    () => ({
+      limit: TIMELINE_PAGE_SIZE,
+      offset: timelineOffset,
+      status: timelineFilters.status || undefined,
+      ownerUserId: timelineFilters.ownerUserId || undefined,
+      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
+      snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
+    }),
+    [timelineFilters, timelineOffset],
+  )
 
   const {
     data: timelineData,
@@ -266,15 +283,7 @@ export function Terminals() {
     refetch: refetchTimeline,
   } = useTerminalHistoryTimelineQuery(
     timelineGroupId,
-    {
-      limit: TIMELINE_PAGE_SIZE,
-      offset: timelineOffset,
-      status: timelineFilters.status || undefined,
-      ownerUserId: timelineFilters.ownerUserId || undefined,
-      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
-      snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
-      snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
-    },
+    timelineQueryOptions,
     isOperator && timelineGroupId !== null,
   )
 
@@ -668,6 +677,38 @@ export function Terminals() {
             ? 'Failed to download terminal history metadata.'
             : 'Failed to download terminal history detail.',
       )
+    } finally {
+      setActionKey(null)
+    }
+  }
+
+  async function handleExportTimelinePage() {
+    if (!token || !timelineGroupId || !timelineData) {
+      return
+    }
+    const key = `export-timeline:${timelineGroupId}:${timelineData.offset}:${timelineData.limit}`
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalHistoryExport(token, timelineGroupId, timelineQueryOptions)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalHistoryExportFileName(
+        timelineGroupId,
+        timelineData.offset,
+        timelineData.limit,
+      )
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice(
+        `Exported ${timelineData.items.length.toLocaleString()} terminal history snapshots for ${timelineGroupId}.`,
+      )
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history.')
     } finally {
       setActionKey(null)
     }
@@ -1094,6 +1135,18 @@ export function Terminals() {
               ) : null}
               {!isTimelineLoading && !isTimelineError && timelineData ? (
                 <>
+                  <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+                    <PrimaryButton
+                      className="button--ghost"
+                      disabled={actionKey !== null || isTimelineFetching}
+                      onClick={() => void handleExportTimelinePage()}
+                      type="button"
+                    >
+                      {actionKey === `export-timeline:${timelineGroupId}:${timelineData.offset}:${timelineData.limit}`
+                        ? 'Exporting...'
+                        : 'Export Current Page JSON'}
+                    </PrimaryButton>
+                  </div>
                   <div className="monitor-table-wrap">
                     <table className="monitor-table">
                       <thead>

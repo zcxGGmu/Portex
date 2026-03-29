@@ -134,6 +134,15 @@ class TerminalSessionHistoryTimelinePage:
 
 
 @dataclass(frozen=True, slots=True)
+class TerminalSessionHistorySnapshotPage:
+    limit: int
+    offset: int
+    total: int
+    has_more: bool
+    items: list[TerminalSessionHistorySnapshot]
+
+
+@dataclass(frozen=True, slots=True)
 class TerminalSessionHistorySearchMatch:
     record: TerminalSessionRecord
     snapshot_at: datetime
@@ -387,6 +396,45 @@ class TerminalSessionService:
             if snapshot.record.session_id == normalized_session_id:
                 return snapshot
         raise TerminalSessionNotFoundError("terminal session not found")
+
+    async def list_history_snapshot_page_by_group(
+        self,
+        group_folder: str,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+        status: TerminalSessionStatus | None = None,
+        owner_user_id: str | None = None,
+        session_id_prefix: str | None = None,
+        snapshot_from: datetime | None = None,
+        snapshot_to: datetime | None = None,
+    ) -> TerminalSessionHistorySnapshotPage:
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+        snapshots = await self._list_merged_history_snapshots_by_group(group_folder)
+        filtered = self._filter_history_snapshots(
+            snapshots,
+            status=status,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
+        if not filtered:
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+        total = len(filtered)
+        page_items = filtered[offset : offset + limit]
+        has_more = (offset + limit) < total
+        return TerminalSessionHistorySnapshotPage(
+            limit=limit,
+            offset=offset,
+            total=total,
+            has_more=has_more,
+            items=page_items,
+        )
 
     async def search_history_by_group(
         self,
@@ -2659,6 +2707,7 @@ __all__ = [
     "TerminalSessionHistorySearchMatch",
     "TerminalSessionHistorySearchPage",
     "TerminalSessionHistorySnapshot",
+    "TerminalSessionHistorySnapshotPage",
     "TerminalSessionHistorySummary",
     "TerminalSessionHistoryTimelinePage",
     "TerminalSessionNotFoundError",

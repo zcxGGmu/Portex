@@ -162,6 +162,16 @@ export interface TerminalSessionHistoryTimelineResponse {
   items: TerminalSessionHistorySummary[]
 }
 
+export interface TerminalHistoryTimelineOptions {
+  limit?: number
+  offset?: number
+  status?: TerminalSessionStatus
+  ownerUserId?: string
+  sessionIdPrefix?: string
+  snapshotFrom?: string
+  snapshotTo?: string
+}
+
 export interface TerminalSessionHistorySearchMatch {
   session: TerminalSessionResponse
   snapshot_at: string
@@ -516,6 +526,32 @@ function encodePathSegments(path: string): string {
     .join('/')
 }
 
+function buildTerminalHistoryTimelineParams(options: TerminalHistoryTimelineOptions = {}): URLSearchParams {
+  const params = new URLSearchParams()
+  if (typeof options.limit === 'number') {
+    params.set('limit', String(options.limit))
+  }
+  if (typeof options.offset === 'number') {
+    params.set('offset', String(options.offset))
+  }
+  if (options.status) {
+    params.set('status', options.status)
+  }
+  if (options.ownerUserId) {
+    params.set('owner_user_id', options.ownerUserId)
+  }
+  if (options.sessionIdPrefix) {
+    params.set('session_id_prefix', options.sessionIdPrefix)
+  }
+  if (options.snapshotFrom) {
+    params.set('snapshot_from', options.snapshotFrom)
+  }
+  if (options.snapshotTo) {
+    params.set('snapshot_to', options.snapshotTo)
+  }
+  return params
+}
+
 export const apiClient = {
   login(username: string, password: string): Promise<TokenResponse> {
     return request<TokenResponse>('/auth/login', {
@@ -604,41 +640,24 @@ export const apiClient = {
   getTerminalHistoryTimeline(
     token: string,
     groupId: string,
-    options: {
-      limit?: number
-      offset?: number
-      status?: TerminalSessionStatus
-      ownerUserId?: string
-      sessionIdPrefix?: string
-      snapshotFrom?: string
-      snapshotTo?: string
-    } = {},
+    options: TerminalHistoryTimelineOptions = {},
   ): Promise<TerminalSessionHistoryTimelineResponse> {
-    const params = new URLSearchParams()
-    if (typeof options.limit === 'number') {
-      params.set('limit', String(options.limit))
-    }
-    if (typeof options.offset === 'number') {
-      params.set('offset', String(options.offset))
-    }
-    if (options.status) {
-      params.set('status', options.status)
-    }
-    if (options.ownerUserId) {
-      params.set('owner_user_id', options.ownerUserId)
-    }
-    if (options.sessionIdPrefix) {
-      params.set('session_id_prefix', options.sessionIdPrefix)
-    }
-    if (options.snapshotFrom) {
-      params.set('snapshot_from', options.snapshotFrom)
-    }
-    if (options.snapshotTo) {
-      params.set('snapshot_to', options.snapshotTo)
-    }
+    const params = buildTerminalHistoryTimelineParams(options)
     const suffix = params.toString() ? `?${params.toString()}` : ''
     return request<TerminalSessionHistoryTimelineResponse>(
       `/terminals/${encodeURIComponent(groupId)}/sessions/history${suffix}`,
+      { token },
+    )
+  },
+  downloadTerminalHistoryExport(
+    token: string,
+    groupId: string,
+    options: TerminalHistoryTimelineOptions = {},
+  ): Promise<Blob> {
+    const params = buildTerminalHistoryTimelineParams(options)
+    const suffix = params.toString() ? `?${params.toString()}` : ''
+    return requestBlob(
+      `/terminals/${encodeURIComponent(groupId)}/sessions/history/export${suffix}`,
       { token },
     )
   },

@@ -88,6 +88,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     get_response = api_client.get("/terminals/project-alpha/sessions/current")
     history_response = api_client.get("/terminals/project-alpha/sessions/current/history")
     timeline_response = api_client.get("/terminals/project-alpha/sessions/history")
+    export_response = api_client.get("/terminals/project-alpha/sessions/history/export")
     search_response = api_client.get("/terminals/project-alpha/sessions/history/search?q=error")
     detail_response = api_client.get("/terminals/project-alpha/sessions/history/test-session")
     download_response = api_client.get("/terminals/project-alpha/sessions/history/test-session/download")
@@ -98,6 +99,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     assert get_response.status_code == 401
     assert history_response.status_code == 401
     assert timeline_response.status_code == 401
+    assert export_response.status_code == 401
     assert search_response.status_code == 401
     assert detail_response.status_code == 401
     assert download_response.status_code == 401
@@ -618,6 +620,254 @@ def test_terminal_history_timeline_route_returns_400_for_invalid_snapshot_time_r
     try:
         response = api_client.get(
             "/terminals/project-alpha/sessions/history"
+            "?snapshot_from=2026-03-16T11:00:00Z&snapshot_to=2026-03-16T10:00:00Z",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "snapshot_from must be less than or equal to snapshot_to"
+
+
+def test_owner_can_export_terminal_history_page(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            from datetime import datetime, timezone
+
+            self.first_record = TerminalSessionRecord(
+                session_id="terminal-session-10",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-10",
+                status="closed",
+                created_at=datetime(2026, 3, 16, 9, 0, tzinfo=timezone.utc),
+            )
+            self.second_record = TerminalSessionRecord(
+                session_id="terminal-session-11",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-11",
+                status="attached",
+                created_at=datetime(2026, 3, 16, 10, 0, tzinfo=timezone.utc),
+            )
+            self.last_call: tuple[
+                str,
+                int,
+                int,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+            ] | None = None
+
+        async def list_history_snapshot_page_by_group(
+            self,
+            group_folder: str,
+            *,
+            limit: int,
+            offset: int,
+            status: str | None,
+            owner_user_id: str | None,
+            session_id_prefix: str | None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            from datetime import datetime, timezone
+
+            self.last_call = (
+                group_folder,
+                limit,
+                offset,
+                status,
+                owner_user_id,
+                session_id_prefix,
+                None if snapshot_from is None else snapshot_from.isoformat(),
+                None if snapshot_to is None else snapshot_to.isoformat(),
+            )
+            return SimpleNamespace(
+                limit=limit,
+                offset=offset,
+                total=2,
+                has_more=True,
+                items=[
+                    SimpleNamespace(
+                        record=self.first_record,
+                        snapshot_at=datetime(2026, 3, 16, 9, 5, tzinfo=timezone.utc),
+                        output="first\n",
+                        output_bytes=6,
+                        history_max_bytes=32768,
+                        truncated=False,
+                    ),
+                    SimpleNamespace(
+                        record=self.second_record,
+                        snapshot_at=datetime(2026, 3, 16, 10, 5, tzinfo=timezone.utc),
+                        output="second\n",
+                        output_bytes=7,
+                        history_max_bytes=32768,
+                        truncated=False,
+                    ),
+                ],
+            )
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/export?limit=2&offset=1&status=closed&owner_user_id="
+            f"{owner_id}&session_id_prefix=terminal-session&snapshot_from=2026-03-16T09:00:00Z"
+            "&snapshot_to=2026-03-16T11:00:00Z",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="terminal-history-export-project-alpha-offset-1-limit-2.json"'
+    )
+    payload = response.json()
+    assert payload["group_id"] == "project-alpha"
+    assert payload["limit"] == 2
+    assert payload["offset"] == 1
+    assert payload["total"] == 2
+    assert payload["has_more"] is True
+    assert payload["filters"] == {
+        "status": "closed",
+        "owner_user_id": owner_id,
+        "session_id_prefix": "terminal-session",
+        "snapshot_from": "2026-03-16T09:00:00Z",
+        "snapshot_to": "2026-03-16T11:00:00Z",
+    }
+    assert [item["session"]["session_id"] for item in payload["items"]] == [
+        "terminal-session-10",
+        "terminal-session-11",
+    ]
+    assert payload["items"][0]["output"] == "first\n"
+    assert payload["items"][1]["output"] == "second\n"
+    assert service.last_call == (
+        "project-alpha",
+        2,
+        1,
+        "closed",
+        owner_id,
+        "terminal-session",
+        "2026-03-16T09:00:00+00:00",
+        "2026-03-16T11:00:00+00:00",
+    )
+
+
+def test_terminal_history_export_route_returns_404_when_workspace_has_no_history(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionNotFoundError
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def list_history_snapshot_page_by_group(
+            self,
+            group_folder: str,
+            *,
+            limit: int,
+            offset: int,
+            status: str | None,
+            owner_user_id: str | None,
+            session_id_prefix: str | None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (
+                group_folder,
+                limit,
+                offset,
+                status,
+                owner_user_id,
+                session_id_prefix,
+                snapshot_from,
+                snapshot_to,
+            )
+            raise TerminalSessionNotFoundError("terminal session not found")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/export",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "terminal session not found"
+
+
+def test_terminal_history_export_route_returns_400_for_invalid_snapshot_time_range(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        async def list_history_snapshot_page_by_group(
+            self,
+            group_folder: str,
+            *,
+            limit: int,
+            offset: int,
+            status: str | None,
+            owner_user_id: str | None,
+            session_id_prefix: str | None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (
+                group_folder,
+                limit,
+                offset,
+                status,
+                owner_user_id,
+                session_id_prefix,
+                snapshot_from,
+                snapshot_to,
+            )
+            raise ValueError("snapshot_from must be less than or equal to snapshot_to")
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/project-alpha/sessions/history/export"
             "?snapshot_from=2026-03-16T11:00:00Z&snapshot_to=2026-03-16T10:00:00Z",
             headers=owner_headers,
         )

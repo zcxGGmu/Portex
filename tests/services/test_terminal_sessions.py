@@ -796,6 +796,66 @@ async def test_terminal_session_service_lists_history_timeline_with_pagination(
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_lists_history_snapshot_page_with_pagination(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=64,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    first = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _first_attached, first_queue = await service.attach_session(first.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("first\n")
+    await asyncio.wait_for(first_queue.get(), timeout=0.1)
+    await service.close_session(first.session_id, owner_user_id="owner-1")
+
+    second = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _second_attached, second_queue = await service.attach_session(second.session_id, owner_user_id="owner-1")
+    await created_bridges[1].emit_output("second\n")
+    await asyncio.wait_for(second_queue.get(), timeout=0.1)
+
+    first_page = await service.list_history_snapshot_page_by_group("project-alpha", limit=1, offset=0)
+    second_page = await service.list_history_snapshot_page_by_group("project-alpha", limit=1, offset=1)
+
+    assert first_page.limit == 1
+    assert first_page.offset == 0
+    assert first_page.total == 2
+    assert first_page.has_more is True
+    assert len(first_page.items) == 1
+    assert first_page.items[0].record.session_id == second.session_id
+    assert first_page.items[0].output == "second\n"
+
+    assert second_page.limit == 1
+    assert second_page.offset == 1
+    assert second_page.total == 2
+    assert second_page.has_more is False
+    assert len(second_page.items) == 1
+    assert second_page.items[0].record.session_id == first.session_id
+    assert second_page.items[0].output == "first\n"
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_timeline_dedupes_latest_and_archived_snapshots(
     tmp_path: Path,
 ) -> None:
@@ -871,6 +931,16 @@ async def test_terminal_session_service_timeline_raises_for_missing_workspace() 
 
     with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
         await service.list_history_timeline_by_group("missing-workspace", limit=20, offset=0)
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_snapshot_page_raises_for_missing_workspace() -> None:
+    from services.terminal_sessions import TerminalSessionNotFoundError, TerminalSessionService
+
+    service = TerminalSessionService(bridge_factory=lambda **_: FakeBridge())
+
+    with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
+        await service.list_history_snapshot_page_by_group("missing-workspace", limit=20, offset=0)
 
 
 @pytest.mark.asyncio
