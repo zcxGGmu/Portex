@@ -363,6 +363,31 @@ class TerminalSessionService:
         items.sort(key=lambda item: (item.record.group_folder, item.record.session_id))
         return items
 
+    async def list_history_snapshot_archives_by_groups(
+        self,
+        group_folders: list[str],
+    ) -> dict[str, list[TerminalSessionHistorySnapshot]]:
+        async def _load(group_folder: str) -> tuple[str, list[TerminalSessionHistorySnapshot]]:
+            try:
+                items = await self._list_merged_history_snapshots_by_group(group_folder)
+            except TerminalSessionNotFoundError:
+                return group_folder, []
+            return group_folder, items
+
+        normalized_group_folders = sorted(
+            {
+                group_folder.strip()
+                for group_folder in group_folders
+                if group_folder.strip() != ""
+            }
+        )
+        results = await asyncio.gather(*(_load(group_folder) for group_folder in normalized_group_folders))
+        return {
+            group_folder: items
+            for group_folder, items in results
+            if items
+        }
+
     async def list_history_timeline_by_group(
         self,
         group_folder: str,

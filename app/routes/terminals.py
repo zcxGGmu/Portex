@@ -155,6 +155,10 @@ def _build_terminal_latest_histories_export_filename() -> str:
     return "terminal-latest-histories.json"
 
 
+def _build_terminal_history_archive_bundle_filename() -> str:
+    return "terminal-history-archive.json"
+
+
 def _build_terminal_history_search_export_filename(
     group_id: str,
     query: str,
@@ -398,6 +402,87 @@ async def export_terminal_latest_histories(
         },
         headers={
             "Content-Disposition": f'attachment; filename="{_build_terminal_latest_histories_export_filename()}"'
+        },
+    )
+
+
+@router.get(
+    "/terminals/history/archive",
+    response_class=JSONResponse,
+    summary="Export terminal history archive",
+    description="Download all terminal-history snapshots across canonical web workspaces as a grouped JSON archive.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def export_terminal_history_archive(
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> Response:
+    _require_terminal_role(current_user)
+
+    workspaces = [
+        workspace
+        for workspace in await group_registry.list_registered_groups()
+        if _is_web_workspace(workspace)
+    ]
+    archives_by_folder = await service.list_history_snapshot_archives_by_groups(
+        [str(getattr(workspace, "folder", "")).strip() for workspace in workspaces]
+    )
+
+    items: list[dict[str, object]] = []
+    for workspace in workspaces:
+        group_id = str(getattr(workspace, "folder", "")).strip()
+        if group_id == "":
+            continue
+        snapshots = archives_by_folder.get(group_id)
+        if not snapshots:
+            continue
+        group_name = str(getattr(workspace, "name", group_id))
+        chat_accessible = await group_registry.user_can_access_group(
+            user_id=current_user.id,
+            user_role=current_user.role,
+            group=workspace,
+        )
+        items.append(
+            {
+                "group_id": group_id,
+                "group_name": group_name,
+                "chat_accessible": chat_accessible,
+                "total": len(snapshots),
+                "items": [
+                    _to_terminal_history_detail_response(snapshot).model_dump(mode="json")
+                    for snapshot in snapshots
+                ],
+            }
+        )
+
+    if not items:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="terminal session not found",
+        )
+
+    items.sort(
+        key=lambda item: (
+            0
+            if str((item["items"][0]["session"]["status"])) in _ACTIVE_TERMINAL_STATUSES
+            else 1,
+            str(item["group_name"]).lower(),
+            str(item["group_id"]),
+        )
+    )
+    return JSONResponse(
+        content={
+            "total_workspaces": len(items),
+            "total_snapshots": sum(int(item["total"]) for item in items),
+            "items": items,
+        },
+        headers={
+            "Content-Disposition": f'attachment; filename="{_build_terminal_history_archive_bundle_filename()}"'
         },
     )
 
