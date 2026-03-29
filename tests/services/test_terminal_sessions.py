@@ -944,6 +944,61 @@ async def test_terminal_session_service_snapshot_page_raises_for_missing_workspa
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_lists_filtered_history_archive(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        reconnect_timeout_seconds=10.0,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+    first = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    await service.close_session(first.session_id, owner_user_id="owner-1")
+
+    second = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    await service.close_session(second.session_id, owner_user_id="owner-2")
+
+    third = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    await service.close_session(third.session_id, owner_user_id="owner-2")
+
+    items = await service.list_history_snapshots_by_group(
+        "project-alpha",
+        owner_user_id="owner-2",
+        session_id_prefix=third.session_id[:8],
+    )
+
+    assert [item.record.session_id for item in items] == [third.session_id]
+    assert items[0].record.owner_user_id == "owner-2"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_history_archive_raises_for_missing_workspace() -> None:
+    from services.terminal_sessions import TerminalSessionNotFoundError, TerminalSessionService
+
+    service = TerminalSessionService(bridge_factory=lambda **_: FakeBridge())
+
+    with pytest.raises(TerminalSessionNotFoundError, match="terminal session not found"):
+        await service.list_history_snapshots_by_group("missing-workspace")
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_filters_history_timeline_by_status(
     tmp_path: Path,
 ) -> None:

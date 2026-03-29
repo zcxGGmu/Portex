@@ -2299,6 +2299,16 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "snapshot_from" in export_parameter_names
     assert "snapshot_to" in export_parameter_names
 
+    archive_terminal_history_operation = schema["paths"]["/terminals/{group_id}/sessions/history/archive"]["get"]
+    assert "archive" in archive_terminal_history_operation["summary"].lower()
+    assert "404" in archive_terminal_history_operation["responses"]
+    archive_parameter_names = {item["name"] for item in archive_terminal_history_operation["parameters"]}
+    assert "status" in archive_parameter_names
+    assert "owner_user_id" in archive_parameter_names
+    assert "session_id_prefix" in archive_parameter_names
+    assert "snapshot_from" in archive_parameter_names
+    assert "snapshot_to" in archive_parameter_names
+
     get_terminal_history_search_operation = schema["paths"]["/terminals/{group_id}/sessions/history/search"]["get"]
     assert "search" in get_terminal_history_search_operation["summary"].lower()
     assert "404" in get_terminal_history_search_operation["responses"]

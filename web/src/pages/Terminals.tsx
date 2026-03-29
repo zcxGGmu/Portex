@@ -230,6 +230,11 @@ function buildTerminalHistoryExportFileName(groupId: string, offset: number, lim
   return `terminal-history-export-${sanitize(groupId)}-offset-${offset}-limit-${limit}.json`
 }
 
+function buildTerminalHistoryArchiveFileName(groupId: string): string {
+  const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
+  return `terminal-history-archive-${sanitize(groupId)}.json`
+}
+
 function buildTerminalHistorySearchExportFileName(
   groupId: string,
   query: string,
@@ -271,6 +276,16 @@ export function Terminals() {
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
   const [activeDetailMatchIndex, setActiveDetailMatchIndex] = useState(0)
   const activeMatchRef = useRef<HTMLElement | null>(null)
+  const timelineArchiveQueryOptions = useMemo(
+    () => ({
+      status: timelineFilters.status || undefined,
+      ownerUserId: timelineFilters.ownerUserId || undefined,
+      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
+      snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
+    }),
+    [timelineFilters],
+  )
   const timelineQueryOptions = useMemo(
     () => ({
       limit: TIMELINE_PAGE_SIZE,
@@ -723,6 +738,32 @@ export function Terminals() {
       )
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to export terminal history.')
+    } finally {
+      setActionKey(null)
+    }
+  }
+
+  async function handleExportTimelineArchive() {
+    if (!token || !timelineGroupId) {
+      return
+    }
+    const key = `export-archive:${timelineGroupId}`
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalHistoryArchive(token, timelineGroupId, timelineArchiveQueryOptions)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalHistoryArchiveFileName(timelineGroupId)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice(`Exported terminal history archive for ${timelineGroupId}.`)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history archive.')
     } finally {
       setActionKey(null)
     }
@@ -1196,6 +1237,16 @@ export function Terminals() {
               {!isTimelineLoading && !isTimelineError && timelineData ? (
                 <>
                   <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+                    <PrimaryButton
+                      className="button--ghost"
+                      disabled={actionKey !== null || isTimelineFetching}
+                      onClick={() => void handleExportTimelineArchive()}
+                      type="button"
+                    >
+                      {actionKey === `export-archive:${timelineGroupId}`
+                        ? 'Exporting...'
+                        : 'Export Archive JSON'}
+                    </PrimaryButton>
                     <PrimaryButton
                       className="button--ghost"
                       disabled={actionKey !== null || isTimelineFetching}

@@ -436,6 +436,29 @@ class TerminalSessionService:
             items=page_items,
         )
 
+    async def list_history_snapshots_by_group(
+        self,
+        group_folder: str,
+        *,
+        status: TerminalSessionStatus | None = None,
+        owner_user_id: str | None = None,
+        session_id_prefix: str | None = None,
+        snapshot_from: datetime | None = None,
+        snapshot_to: datetime | None = None,
+    ) -> list[TerminalSessionHistorySnapshot]:
+        snapshots = await self._list_merged_history_snapshots_by_group(group_folder)
+        filtered = self._filter_history_snapshots(
+            snapshots,
+            status=status,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
+        if not filtered:
+            raise TerminalSessionNotFoundError("terminal session not found")
+        return filtered
+
     async def search_history_by_group(
         self,
         group_folder: str,
