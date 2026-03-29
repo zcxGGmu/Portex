@@ -740,6 +740,62 @@ async def test_terminal_session_service_lists_history_inventory_with_persisted_f
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_lists_latest_history_snapshots_with_persisted_fallback(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    persist_root = tmp_path / "terminal-history"
+    first_service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=32,
+        history_persist_root=persist_root,
+    )
+    alpha = await first_service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _alpha_attached, alpha_queue = await first_service.attach_session(alpha.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("alpha-output\n")
+    await asyncio.wait_for(alpha_queue.get(), timeout=0.1)
+    await first_service.close_session(alpha.session_id, owner_user_id="owner-1")
+
+    second_service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=32,
+        history_persist_root=persist_root,
+    )
+    beta = await second_service.create_session(
+        group_id="project-beta",
+        group_folder="project-beta",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    _beta_attached, beta_queue = await second_service.attach_session(beta.session_id, owner_user_id="owner-2")
+    await created_bridges[1].emit_output("beta-output\n")
+    await asyncio.wait_for(beta_queue.get(), timeout=0.1)
+
+    items = second_service.list_latest_history_snapshots()
+
+    assert [item.record.group_folder for item in items] == ["project-alpha", "project-beta"]
+    assert items[0].record.status == "closed"
+    assert items[0].output == "alpha-output\n"
+    assert items[1].record.status == "attached"
+    assert items[1].output == "beta-output\n"
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_lists_history_timeline_with_pagination(
     tmp_path: Path,
 ) -> None:

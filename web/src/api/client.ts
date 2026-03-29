@@ -686,6 +686,9 @@ export const apiClient = {
   downloadTerminalOverview(token: string): Promise<Blob> {
     return requestBlob('/terminals/export', { token })
   },
+  downloadTerminalLatestHistories(token: string): Promise<Blob> {
+    return requestBlob('/terminals/history/export', { token })
+  },
   getTerminalHistoryTimeline(
     token: string,
     groupId: string,

@@ -89,6 +89,7 @@ class _RouteFakeBridge:
 def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     overview_response = api_client.get("/terminals")
     overview_export_response = api_client.get("/terminals/export")
+    latest_histories_export_response = api_client.get("/terminals/history/export")
     create_response = api_client.post("/terminals/project-alpha/sessions", json={})
     get_response = api_client.get("/terminals/project-alpha/sessions/current")
     history_response = api_client.get("/terminals/project-alpha/sessions/current/history")
@@ -105,6 +106,7 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
 
     assert overview_response.status_code == 401
     assert overview_export_response.status_code == 401
+    assert latest_histories_export_response.status_code == 401
     assert create_response.status_code == 401
     assert get_response.status_code == 401
     assert history_response.status_code == 401
@@ -154,6 +156,10 @@ def test_member_cannot_create_terminal_session(api_client: TestClient) -> None:
             "/terminals/export",
             headers=member_headers,
         )
+        latest_histories_export_response = api_client.get(
+            "/terminals/history/export",
+            headers=member_headers,
+        )
         force_response = api_client.delete(
             "/terminals/project-alpha/sessions/force",
             headers=member_headers,
@@ -164,6 +170,7 @@ def test_member_cannot_create_terminal_session(api_client: TestClient) -> None:
     assert response.status_code == 403
     assert overview_response.status_code == 403
     assert overview_export_response.status_code == 403
+    assert latest_histories_export_response.status_code == 403
     assert force_response.status_code == 403
 
 
@@ -238,6 +245,126 @@ def test_owner_can_read_and_export_terminal_overview(api_client: TestClient) -> 
     assert [item["group_id"] for item in payload["items"]] == ["project-alpha", "project-beta"]
     assert payload["items"][0]["session"]["session_id"] == "terminal-session-overview"
     assert payload["items"][1]["session"] is None
+
+
+def test_owner_can_export_terminal_latest_histories_bundle(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id),
+            _workspace(jid="web:project-beta", folder="project-beta", name="Project Beta", created_by=owner_id),
+            _workspace(jid="web:project-gamma", folder="project-gamma", name="Project Gamma", created_by=owner_id),
+        ]
+    )
+
+    class FakeTerminalService:
+        def list_sessions(self):
+            return []
+
+        def list_history_summaries(self):
+            return []
+
+        def list_latest_history_snapshots(self):
+            from datetime import datetime, timezone
+
+            return [
+                SimpleNamespace(
+                    record=TerminalSessionRecord(
+                        session_id="terminal-session-alpha",
+                        group_id="project-alpha",
+                        group_folder="project-alpha",
+                        owner_user_id=owner_id,
+                        backend="docker_container",
+                        container_name="portex-terminal-project-alpha",
+                        status="attached",
+                        created_at=datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc),
+                    ),
+                    snapshot_at=datetime(2026, 3, 15, 12, 5, tzinfo=timezone.utc),
+                    output="alpha-output\n",
+                    output_bytes=13,
+                    history_max_bytes=32768,
+                    truncated=False,
+                ),
+                SimpleNamespace(
+                    record=TerminalSessionRecord(
+                        session_id="terminal-session-beta",
+                        group_id="project-beta",
+                        group_folder="project-beta",
+                        owner_user_id=owner_id,
+                        backend="docker_container",
+                        container_name="portex-terminal-project-beta",
+                        status="closed",
+                        created_at=datetime(2026, 3, 15, 11, 0, tzinfo=timezone.utc),
+                    ),
+                    snapshot_at=datetime(2026, 3, 15, 11, 5, tzinfo=timezone.utc),
+                    output="beta-output\n",
+                    output_bytes=12,
+                    history_max_bytes=32768,
+                    truncated=False,
+                ),
+            ]
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/history/export",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["content-disposition"] == 'attachment; filename="terminal-latest-histories.json"'
+    payload = response.json()
+    assert payload["total"] == 2
+    assert [item["group_id"] for item in payload["items"]] == ["project-alpha", "project-beta"]
+    assert payload["items"][0]["group_name"] == "Project Alpha"
+    assert payload["items"][0]["history"]["session"]["session_id"] == "terminal-session-alpha"
+    assert payload["items"][1]["history"]["output"] == "beta-output\n"
+
+
+def test_terminal_latest_histories_bundle_returns_404_when_no_history_exists(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def list_sessions(self):
+            return []
+
+        def list_history_summaries(self):
+            return []
+
+        def list_latest_history_snapshots(self):
+            return []
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/history/export",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "terminal session not found"
 
 
 def test_owner_can_create_read_and_delete_terminal_session(api_client: TestClient) -> None:

@@ -151,6 +151,10 @@ def _build_terminal_overview_export_filename() -> str:
     return "terminal-overview.json"
 
 
+def _build_terminal_latest_histories_export_filename() -> str:
+    return "terminal-latest-histories.json"
+
+
 def _build_terminal_history_search_export_filename(
     group_id: str,
     query: str,
@@ -343,6 +347,58 @@ async def export_terminal_overview(
     return JSONResponse(
         content=payload.model_dump(mode="json"),
         headers={"Content-Disposition": f'attachment; filename="{_build_terminal_overview_export_filename()}"'},
+    )
+
+
+@router.get(
+    "/terminals/history/export",
+    response_class=JSONResponse,
+    summary="Export latest terminal history bundle",
+    description="Download the latest terminal-history snapshot for each canonical web workspace as a JSON bundle.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+        status.HTTP_404_NOT_FOUND,
+    ),
+)
+async def export_terminal_latest_histories(
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> Response:
+    overview = await list_terminal_overview(
+        current_user=current_user,
+        group_registry=group_registry,
+        service=service,
+    )
+    snapshots_by_folder = {
+        item.record.group_folder: item
+        for item in service.list_latest_history_snapshots()
+    }
+    items = [
+        {
+            "group_id": item.group_id,
+            "group_name": item.group_name,
+            "chat_accessible": item.chat_accessible,
+            "history": _to_terminal_history_detail_response(snapshot).model_dump(mode="json"),
+        }
+        for item in overview.items
+        if (snapshot := snapshots_by_folder.get(item.group_id)) is not None
+    ]
+    if not items:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="terminal session not found",
+        )
+
+    return JSONResponse(
+        content={
+            "total": len(items),
+            "items": items,
+        },
+        headers={
+            "Content-Disposition": f'attachment; filename="{_build_terminal_latest_histories_export_filename()}"'
+        },
     )
 
 

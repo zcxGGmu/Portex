@@ -344,6 +344,25 @@ class TerminalSessionService:
         items.sort(key=lambda item: (item.record.group_folder, item.record.session_id))
         return items
 
+    def list_latest_history_snapshots(self) -> list[TerminalSessionHistorySnapshot]:
+        """Return merged latest history snapshots by workspace folder."""
+
+        snapshots_by_folder: dict[str, TerminalSessionHistorySnapshot] = {}
+
+        for managed in self._sessions_by_group.values():
+            snapshot = self._build_history_snapshot(managed)
+            snapshots_by_folder[snapshot.record.group_folder] = snapshot
+
+        for snapshot in self._list_persisted_history_snapshots():
+            group_folder = snapshot.record.group_folder
+            if group_folder in snapshots_by_folder:
+                continue
+            snapshots_by_folder[group_folder] = snapshot
+
+        items = list(snapshots_by_folder.values())
+        items.sort(key=lambda item: (item.record.group_folder, item.record.session_id))
+        return items
+
     async def list_history_timeline_by_group(
         self,
         group_folder: str,

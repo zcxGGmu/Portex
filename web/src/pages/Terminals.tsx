@@ -229,6 +229,10 @@ function buildTerminalOverviewExportFileName(): string {
   return 'terminal-overview.json'
 }
 
+function buildTerminalLatestHistoriesExportFileName(): string {
+  return 'terminal-latest-histories.json'
+}
+
 function buildTerminalHistoryExportFileName(groupId: string, offset: number, limit: number): string {
   const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
   return `terminal-history-export-${sanitize(groupId)}-offset-${offset}-limit-${limit}.json`
@@ -718,6 +722,32 @@ export function Terminals() {
     }
   }
 
+  async function handleExportLatestHistories() {
+    if (!token) {
+      return
+    }
+    const key = 'export-latest-histories'
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalLatestHistories(token)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalLatestHistoriesExportFileName()
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice('Exported latest terminal histories bundle.')
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export latest terminal histories.')
+    } finally {
+      setActionKey(null)
+    }
+  }
+
   async function handleDownloadDetail(format: 'text' | 'json') {
     if (!token || !timelineGroupId || !detailSessionId) {
       return
@@ -929,6 +959,16 @@ export function Terminals() {
           <section className="panel">
             <h2 style={{ marginTop: 0 }}>Session Summary</h2>
             <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+              <PrimaryButton
+                className="button--ghost"
+                disabled={actionKey !== null}
+                onClick={() => void handleExportLatestHistories()}
+                type="button"
+              >
+                {actionKey === 'export-latest-histories'
+                  ? 'Exporting...'
+                  : 'Export Latest Histories JSON'}
+              </PrimaryButton>
               <PrimaryButton
                 className="button--ghost"
                 disabled={actionKey !== null}

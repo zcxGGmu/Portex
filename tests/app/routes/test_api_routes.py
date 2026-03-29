@@ -2387,6 +2387,10 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "export" in export_terminal_overview_operation["summary"].lower()
     assert "403" in export_terminal_overview_operation["responses"]
 
+    export_terminal_latest_histories_operation = schema["paths"]["/terminals/history/export"]["get"]
+    assert "history" in export_terminal_latest_histories_operation["summary"].lower()
+    assert "403" in export_terminal_latest_histories_operation["responses"]
+
     monitor_operation = schema["paths"]["/monitor"]["get"]
     assert "monitor" in monitor_operation["summary"].lower()
     assert "403" in monitor_operation["responses"]
