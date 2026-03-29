@@ -1,3 +1,37 @@
+# Session Plan (2026-03-29) - M8.5.59 Terminal Latest History Bundle Export
+
+## Goal
+- Continue post-`M8.5.58` terminal operator development by adding a cross-workspace downloadable JSON bundle for the latest terminal-history snapshot of each workspace on `/terminals`, bridging the gap between overview-only export and heavier cross-workspace transcript archive work.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal overview/history export slices
+- [x] Confirm the next step should add a cross-workspace latest-history bundle instead of jumping directly to a full transcript archive
+- [x] Write focused `M8.5.59` design doc
+- [x] Write focused `M8.5.59` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing service/route/OpenAPI coverage for latest-history bundle export
+- [x] Implement additive backend latest-history bundle export behavior
+- [x] Add frontend client wiring and `/terminals` latest-history bundle export action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-29-m8-5-59-terminal-latest-history-bundle-export-design.md` and `docs/plans/2026-03-29-m8-5-59-terminal-latest-history-bundle-export.md` to lock the cross-workspace latest-history bundle scope before code changes.
+- Added RED coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for the new latest-history helper, bundle route, auth/role behavior, and OpenAPI exposure.
+- Extended `services/terminal_sessions.py` with `list_latest_history_snapshots()`, mirroring the current merged latest-history summary semantics while keeping full snapshot payloads.
+- Added `GET /terminals/history/export` in `app/routes/terminals.py`, returning a JSON bundle of the latest terminal-history snapshot for each workspace with history, joined with overview workspace metadata.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the overview surface now exposes `Export Latest Histories JSON`, while preserving the existing overview export and all workspace-scoped export actions.
+- Overview export, detail export, timeline/search current-page export, timeline/search archive export, terminal relevance ordering, the `81`-case offline baseline, `latest.json`, `/sessions/current/history`, and RBAC/workspace-access semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `89d696a` (`feat(terminal): add M8.5.59 latest history bundle export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.59 latest history bundle export context`.
+
 # Session Plan (2026-03-29) - M8.5.58 Terminal Overview Export
 
 ## Goal
