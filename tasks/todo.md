@@ -1,3 +1,37 @@
+# Session Plan (2026-03-29) - M8.5.54 Terminal History Bulk JSON Export
+
+## Goal
+- Continue post-`M8.5.53` terminal operator development by adding a bounded downloadable JSON export for the current filtered terminal-history page on `/terminals`, reusing existing timeline filters/pagination while exporting multiple full snapshot detail records and preserving detail/search/relevance/RBAC contracts.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal timeline/detail export slices
+- [x] Confirm the next step should stay on operator-surface export work and remain narrower than workspace-wide archive export
+- [x] Write focused `M8.5.54` design doc
+- [x] Write focused `M8.5.54` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing route/service/OpenAPI coverage for bounded bulk history export
+- [x] Implement additive backend bounded bulk history export behavior
+- [x] Add frontend client wiring and `/terminals` current-page JSON export action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-29-m8-5-54-terminal-history-bulk-json-export-design.md` and `docs/plans/2026-03-29-m8-5-54-terminal-history-bulk-json-export.md` to lock the bounded bulk-export scope before code changes.
+- Added RED coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for the new bounded bulk-detail page helper, export route, auth/error behavior, and OpenAPI parameter exposure.
+- Extended `services/terminal_sessions.py` with `list_history_snapshot_page_by_group(...)`, reusing the existing merged snapshot ordering and filter path while adding only bounded page metadata (`limit`, `offset`, `total`, `has_more`) for full snapshot records.
+- Added `GET /terminals/{group_id}/sessions/history/export` in `app/routes/terminals.py`, returning a JSON attachment that includes current filter metadata plus multiple `TerminalSessionHistoryDetailResponse`-shaped items for the selected page.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the timeline panel now exposes `Export Current Page JSON`, reusing the existing blob-download flow and page-level action/error state.
+- `latest.json`, `/sessions/current/history`, detail download `format=text|json`, terminal relevance ordering, the `81`-case offline baseline, and RBAC/workspace-access semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `302b19f` (`feat(terminal): add M8.5.54 history bulk export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.54 history bulk export context`.
+
 # Session Plan (2026-03-27) - Restart Context Sync After M8.5.53
 
 ## Goal
