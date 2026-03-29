@@ -1,3 +1,37 @@
+# Session Plan (2026-03-30) - M8.5.60 Terminal Cross-Workspace History Archive Export
+
+## Goal
+- Continue post-`M8.5.59` terminal operator development by adding a cross-workspace downloadable JSON archive for all terminal-history snapshots across canonical web workspaces on `/terminals`, extending the current latest-history bundle into a full transcript archive without changing existing workspace-scoped export contracts.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal top-level export/archive slices
+- [x] Confirm the next step should broaden from latest-history bundle to full cross-workspace archive instead of only doing UX polish
+- [x] Write focused `M8.5.60` design doc
+- [x] Write focused `M8.5.60` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing service/route/OpenAPI coverage for cross-workspace history archive export
+- [x] Implement additive backend cross-workspace history archive behavior
+- [x] Add frontend client wiring and `/terminals` cross-workspace archive action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-30-m8-5-60-terminal-cross-workspace-history-archive-export-design.md` and `docs/plans/2026-03-30-m8-5-60-terminal-cross-workspace-history-archive-export.md` to lock the cross-workspace grouped archive scope before code changes.
+- Added RED coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for the new grouped archive helper, top-level archive route, auth/role behavior, and OpenAPI exposure.
+- Extended `services/terminal_sessions.py` with `list_history_snapshot_archives_by_groups(...)`, reusing the existing per-workspace merged snapshot semantics while grouping full snapshot lists by workspace folder.
+- Added `GET /terminals/history/archive` in `app/routes/terminals.py`, returning a grouped JSON archive across canonical web workspaces with workspace metadata, per-workspace totals, and full `TerminalSessionHistoryDetailResponse`-shaped items.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the overview surface now exposes `Export History Archive JSON`, while preserving the existing overview export, latest-history bundle export, and all workspace-scoped export actions.
+- Overview export, latest-history bundle export, detail export, timeline/search current-page export, timeline/search archive export, terminal relevance ordering, the `81`-case offline baseline, `latest.json`, `/sessions/current/history`, and RBAC/workspace-access semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `086fbe0` (`feat(terminal): add M8.5.60 cross-workspace history archive export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.60 cross-workspace history archive export context`.
+
 # Session Plan (2026-03-29) - M8.5.59 Terminal Latest History Bundle Export
 
 ## Goal
