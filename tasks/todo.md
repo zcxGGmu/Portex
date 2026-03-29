@@ -1,3 +1,36 @@
+# Session Plan (2026-03-29) - M8.5.55 Terminal History Search Export
+
+## Goal
+- Continue post-`M8.5.54` terminal operator development by adding a bounded downloadable JSON export for the current terminal-history search result page on `/terminals`, reusing existing search query/filter/pagination semantics while preserving timeline/detail/relevance/RBAC contracts.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal search/export slices
+- [x] Confirm the next step should stay on operator-surface export work and remain narrower than workspace-wide archive export
+- [x] Write focused `M8.5.55` design doc
+- [x] Write focused `M8.5.55` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing route/OpenAPI coverage for bounded search-result export
+- [x] Implement additive backend bounded search-result export behavior
+- [x] Add frontend client wiring and `/terminals` current search-page JSON export action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-29-m8-5-55-terminal-history-search-export-design.md` and `docs/plans/2026-03-29-m8-5-55-terminal-history-search-export.md` to lock the bounded search-export scope before code changes.
+- Added RED coverage in `tests/app/routes/test_terminal_routes.py` and `tests/app/routes/test_api_routes.py` for the new search export route, auth/error behavior, and OpenAPI parameter exposure.
+- Added `GET /terminals/{group_id}/sessions/history/search/export` in `app/routes/terminals.py`, reusing `search_history_by_group(...)` and returning the current search page as a JSON attachment with query, sort, filters, pagination metadata, and existing match/snippet payloads.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the search panel now exposes `Export Search Page JSON`, reusing the existing blob-download flow and page-level action/error state.
+- `M8.5.54` timeline bulk export, detail download `format=text|json`, terminal relevance ordering, the `81`-case offline baseline, `latest.json`, `/sessions/current/history`, and RBAC/workspace-access semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `5b034c1` (`feat(terminal): add M8.5.55 history search export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.55 history search export context`.
+
 # Session Plan (2026-03-29) - M8.5.54 Terminal History Bulk JSON Export
 
 ## Goal
