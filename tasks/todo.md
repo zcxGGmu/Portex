@@ -1,3 +1,37 @@
+# Session Plan (2026-03-29) - M8.5.56 Terminal History Archive Export
+
+## Goal
+- Continue post-`M8.5.55` terminal operator development by adding an all-pages downloadable JSON archive for the current filtered terminal-history timeline on `/terminals`, reusing existing timeline filter semantics while preserving current-page export, detail export, relevance, and RBAC contracts.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal export/archive slices
+- [x] Confirm the next step should cross the current-page boundary and stay on the timeline operator surface
+- [x] Write focused `M8.5.56` design doc
+- [x] Write focused `M8.5.56` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing service/route/OpenAPI coverage for filtered all-pages archive export
+- [x] Implement additive backend filtered archive export behavior
+- [x] Add frontend client wiring and `/terminals` archive JSON export action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-29-m8-5-56-terminal-history-archive-export-design.md` and `docs/plans/2026-03-29-m8-5-56-terminal-history-archive-export.md` to lock the all-pages timeline archive scope before code changes.
+- Added RED coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for the new full filtered snapshot helper, archive route, auth/error behavior, and OpenAPI parameter exposure.
+- Extended `services/terminal_sessions.py` with `list_history_snapshots_by_group(...)`, reusing the existing merged snapshot ordering and filter path to return the full filtered timeline slice for one workspace.
+- Added `GET /terminals/{group_id}/sessions/history/archive` in `app/routes/terminals.py`, returning a JSON attachment with full filter metadata, total count, and all matching `TerminalSessionHistoryDetailResponse`-shaped items.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the timeline panel now exposes `Export Archive JSON`, while preserving the existing current-page export button and shared action/error state.
+- Current-page timeline export, search current-page export, detail download `format=text|json`, terminal relevance ordering, the `81`-case offline baseline, `latest.json`, `/sessions/current/history`, and RBAC/workspace-access semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `b549d6a` (`feat(terminal): add M8.5.56 history archive export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.56 history archive export context`.
+
 # Session Plan (2026-03-29) - M8.5.55 Terminal History Search Export
 
 ## Goal
