@@ -1,3 +1,36 @@
+# Session Plan (2026-03-29) - M8.5.58 Terminal Overview Export
+
+## Goal
+- Continue post-`M8.5.57` terminal operator development by adding a downloadable JSON export for the top-level `/terminals` overview surface, so operators can preserve the current cross-workspace session/history inventory without changing existing timeline/search/detail/archive contracts.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current terminal overview/export slices
+- [x] Confirm the next step should fill the remaining top-level overview export gap before larger cross-workspace transcript archive work
+- [x] Write focused `M8.5.58` design doc
+- [x] Write focused `M8.5.58` implementation plan doc
+- [x] Add this session checklist before implementation
+- [x] Add failing route/OpenAPI coverage for overview export
+- [x] Implement additive backend overview export behavior
+- [x] Add frontend client wiring and `/terminals` overview JSON export action
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
+
+## Review
+- Added `docs/plans/2026-03-29-m8-5-58-terminal-overview-export-design.md` and `docs/plans/2026-03-29-m8-5-58-terminal-overview-export.md` to lock the top-level overview export scope before code changes.
+- Added RED coverage in `tests/app/routes/test_terminal_routes.py` and `tests/app/routes/test_api_routes.py` for the new overview export route, auth/role behavior, and OpenAPI exposure.
+- Added `GET /terminals/export` in `app/routes/terminals.py`, reusing the existing overview payload construction and returning the current `TerminalWorkspaceListResponse` as a JSON attachment.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the overview surface now exposes `Export Overview JSON`, reusing the existing blob-download flow and page-level action/error state.
+- Timeline/search/detail/archive export behavior, terminal relevance ordering, the `81`-case offline baseline, `latest.json`, `/sessions/current/history`, and RBAC/workspace-access semantics remain unchanged.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit completed in this session: `c710a74` (`feat(terminal): add M8.5.58 overview export`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.58 overview export context`.
+
 # Session Plan (2026-03-29) - M8.5.57 Terminal History Search Archive Export
 
 ## Goal
