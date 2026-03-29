@@ -225,6 +225,10 @@ function buildTerminalHistoryDownloadFileName(groupId: string, sessionId: string
   return `terminal-history-${sanitize(groupId)}-${sanitize(sessionId)}.${extension}`
 }
 
+function buildTerminalOverviewExportFileName(): string {
+  return 'terminal-overview.json'
+}
+
 function buildTerminalHistoryExportFileName(groupId: string, offset: number, limit: number): string {
   const sanitize = (value: string) => value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'snapshot'
   return `terminal-history-export-${sanitize(groupId)}-offset-${offset}-limit-${limit}.json`
@@ -688,6 +692,32 @@ export function Terminals() {
     }
   }
 
+  async function handleExportOverview() {
+    if (!token) {
+      return
+    }
+    const key = 'export-overview'
+    try {
+      setActionKey(key)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await apiClient.downloadTerminalOverview(token)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildTerminalOverviewExportFileName()
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setActionNotice(`Exported terminal overview for ${items.length.toLocaleString()} workspaces.`)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export terminal overview.')
+    } finally {
+      setActionKey(null)
+    }
+  }
+
   async function handleDownloadDetail(format: 'text' | 'json') {
     if (!token || !timelineGroupId || !detailSessionId) {
       return
@@ -898,6 +928,16 @@ export function Terminals() {
           ) : null}
           <section className="panel">
             <h2 style={{ marginTop: 0 }}>Session Summary</h2>
+            <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+              <PrimaryButton
+                className="button--ghost"
+                disabled={actionKey !== null}
+                onClick={() => void handleExportOverview()}
+                type="button"
+              >
+                {actionKey === 'export-overview' ? 'Exporting...' : 'Export Overview JSON'}
+              </PrimaryButton>
+            </div>
             <div className="settings-grid">
               <div className="stat-card">
                 <strong>Workspaces</strong>

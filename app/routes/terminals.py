@@ -147,6 +147,10 @@ def _build_terminal_history_archive_filename(group_id: str) -> str:
     return f"terminal-history-archive-{_sanitize_terminal_filename_part(group_id)}.json"
 
 
+def _build_terminal_overview_export_filename() -> str:
+    return "terminal-overview.json"
+
+
 def _build_terminal_history_search_export_filename(
     group_id: str,
     query: str,
@@ -314,6 +318,32 @@ async def list_terminal_overview(
 
     items.sort(key=_terminal_workspace_sort_key)
     return TerminalWorkspaceListResponse(items=items)
+
+
+@router.get(
+    "/terminals/export",
+    response_class=JSONResponse,
+    summary="Export terminal overview",
+    description="Download the current terminal overview across canonical web workspaces as a JSON attachment.",
+    responses=openapi_error_responses(
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    ),
+)
+async def export_terminal_overview(
+    current_user: UserResponse = Depends(get_current_user),
+    group_registry: GroupRegistryService = Depends(get_group_registry_service),
+    service: TerminalSessionService = Depends(get_terminal_session_service),
+) -> Response:
+    payload = await list_terminal_overview(
+        current_user=current_user,
+        group_registry=group_registry,
+        service=service,
+    )
+    return JSONResponse(
+        content=payload.model_dump(mode="json"),
+        headers={"Content-Disposition": f'attachment; filename="{_build_terminal_overview_export_filename()}"'},
+    )
 
 
 @router.post(

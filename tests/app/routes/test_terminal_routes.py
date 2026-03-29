@@ -55,6 +55,9 @@ class FakeGroupRegistry:
     def __init__(self, groups) -> None:
         self.groups = list(groups)
 
+    async def list_registered_groups(self):
+        return list(self.groups)
+
     async def get_web_workspace_by_folder(self, folder: str):
         for group in self.groups:
             if group.folder == folder:
@@ -84,6 +87,8 @@ class _RouteFakeBridge:
 
 
 def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
+    overview_response = api_client.get("/terminals")
+    overview_export_response = api_client.get("/terminals/export")
     create_response = api_client.post("/terminals/project-alpha/sessions", json={})
     get_response = api_client.get("/terminals/project-alpha/sessions/current")
     history_response = api_client.get("/terminals/project-alpha/sessions/current/history")
@@ -98,6 +103,8 @@ def test_terminal_routes_require_authentication(api_client: TestClient) -> None:
     delete_response = api_client.delete("/terminals/project-alpha/sessions/current")
     force_delete_response = api_client.delete("/terminals/project-alpha/sessions/force")
 
+    assert overview_response.status_code == 401
+    assert overview_export_response.status_code == 401
     assert create_response.status_code == 401
     assert get_response.status_code == 401
     assert history_response.status_code == 401
@@ -139,6 +146,14 @@ def test_member_cannot_create_terminal_session(api_client: TestClient) -> None:
             headers=member_headers,
             json={},
         )
+        overview_response = api_client.get(
+            "/terminals",
+            headers=member_headers,
+        )
+        overview_export_response = api_client.get(
+            "/terminals/export",
+            headers=member_headers,
+        )
         force_response = api_client.delete(
             "/terminals/project-alpha/sessions/force",
             headers=member_headers,
@@ -147,7 +162,82 @@ def test_member_cannot_create_terminal_session(api_client: TestClient) -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 403
+    assert overview_response.status_code == 403
+    assert overview_export_response.status_code == 403
     assert force_response.status_code == 403
+
+
+def test_owner_can_read_and_export_terminal_overview(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id),
+            _workspace(jid="web:project-beta", folder="project-beta", name="Project Beta", created_by=owner_id),
+        ]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            from datetime import datetime, timezone
+
+            self.record = TerminalSessionRecord(
+                session_id="terminal-session-overview",
+                group_id="project-alpha",
+                group_folder="project-alpha",
+                owner_user_id=owner_id,
+                backend="docker_container",
+                container_name="portex-terminal-project-alpha-overview",
+                status="attached",
+                created_at=datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc),
+            )
+
+        def list_sessions(self):
+            return [self.record]
+
+        def list_history_summaries(self):
+            from datetime import datetime, timezone
+
+            return [
+                SimpleNamespace(
+                    record=self.record,
+                    snapshot_at=datetime(2026, 3, 15, 12, 5, tzinfo=timezone.utc),
+                    output_bytes=128,
+                    history_max_bytes=32768,
+                    truncated=False,
+                )
+            ]
+
+    service = FakeTerminalService()
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        overview_response = api_client.get(
+            "/terminals",
+            headers=owner_headers,
+        )
+        export_response = api_client.get(
+            "/terminals/export",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert overview_response.status_code == 200
+    assert overview_response.json()["items"][0]["group_id"] == "project-alpha"
+
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"].startswith("application/json")
+    assert export_response.headers["content-disposition"] == 'attachment; filename="terminal-overview.json"'
+    payload = export_response.json()
+    assert [item["group_id"] for item in payload["items"]] == ["project-alpha", "project-beta"]
+    assert payload["items"][0]["session"]["session_id"] == "terminal-session-overview"
+    assert payload["items"][1]["session"] is None
 
 
 def test_owner_can_create_read_and_delete_terminal_session(api_client: TestClient) -> None:

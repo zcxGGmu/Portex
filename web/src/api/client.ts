@@ -683,6 +683,9 @@ export const apiClient = {
   getTerminalOverview(token: string): Promise<TerminalWorkspaceListResponse> {
     return request<TerminalWorkspaceListResponse>('/terminals', { token })
   },
+  downloadTerminalOverview(token: string): Promise<Blob> {
+    return requestBlob('/terminals/export', { token })
+  },
   getTerminalHistoryTimeline(
     token: string,
     groupId: string,
