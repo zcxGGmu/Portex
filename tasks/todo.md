@@ -1,3 +1,23 @@
+# Session Plan (2026-04-06) - M8.5.61 Terminal Export UX Consistency
+
+## Goal
+- Continue post-`M8.5.60` terminal operator development by making the existing `/terminals` export/download actions more consistent in wording, ordering, and local implementation shape without changing backend contracts, filenames, RBAC, or terminal-history behavior.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` export slices
+- [x] Confirm the next step should stay on operator-surface UX consistency instead of adding another export capability
+- [x] Write focused `M8.5.61` design doc
+- [x] Write focused `M8.5.61` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add a small RED signal for the shared frontend download helper refactor
+- [ ] Implement the `/terminals` export/download UX consistency pass
+- [ ] Run focused regression plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- In progress.
+
 # Session Plan (2026-03-30) - M8.5.60 Terminal Cross-Workspace History Archive Export
 
 ## Goal
