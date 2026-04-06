@@ -1,3 +1,24 @@
+# Session Plan (2026-04-06) - M8.5.62 Terminal Cross-Workspace History Archive Filters
+
+## Goal
+- Continue post-`M8.5.61` terminal operator development by adding minimal owner/session/time filters to the top-level cross-workspace history archive export on `/terminals`, with a matching small top-level UI, without changing overview export, latest-history export, workspace-scoped history surfaces, or terminal-history semantics.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current top-level archive implementation
+- [x] Confirm the next step should stay on the top-level cross-workspace archive path
+- [x] Write focused `M8.5.62` design doc
+- [x] Write focused `M8.5.62` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing service/route/OpenAPI coverage for top-level archive filters
+- [ ] Implement filtered top-level archive backend behavior
+- [ ] Add `/terminals` top-level archive filter UI and client wiring
+- [ ] Run focused regression plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- In progress.
+
 # Session Plan (2026-04-06) - M8.5.61 Terminal Export UX Consistency
 
 ## Goal
