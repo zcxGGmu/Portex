@@ -262,6 +262,17 @@ function buildTerminalHistorySearchArchiveFileName(groupId: string, query: strin
   return `terminal-history-search-archive-${sanitize(groupId)}-${sanitize(query)}.json`
 }
 
+function triggerBrowserDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 export function Terminals() {
   const token = useAuthStore((state) => state.token)
   const storedUser = useAuthStore((state) => state.currentUser)
@@ -700,30 +711,45 @@ export function Terminals() {
     }
   }
 
+  async function runTerminalDownloadAction({
+    actionKeyValue,
+    request,
+    fileName,
+    successMessage,
+    failureMessage,
+  }: {
+    actionKeyValue: string
+    request: () => Promise<Blob>
+    fileName: string
+    successMessage: string
+    failureMessage: string
+  }) {
+    try {
+      setActionKey(actionKeyValue)
+      setActionError(null)
+      setActionNotice(null)
+      const blob = await request()
+      triggerBrowserDownload(blob, fileName)
+      setActionNotice(successMessage)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : failureMessage)
+    } finally {
+      setActionKey(null)
+    }
+  }
+
   async function handleExportOverview() {
     if (!token) {
       return
     }
     const key = 'export-overview'
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalOverview(token)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalOverviewExportFileName()
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice(`Exported terminal overview for ${items.length.toLocaleString()} workspaces.`)
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export terminal overview.')
-    } finally {
-      setActionKey(null)
-    }
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalOverviewExportFileName(),
+      request: () => apiClient.downloadTerminalOverview(token),
+      successMessage: `Exported terminal overview for ${items.length.toLocaleString()} workspaces.`,
+      failureMessage: 'Failed to export terminal overview.',
+    })
   }
 
   async function handleExportLatestHistories() {
@@ -731,25 +757,13 @@ export function Terminals() {
       return
     }
     const key = 'export-latest-histories'
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalLatestHistories(token)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalLatestHistoriesExportFileName()
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice('Exported latest terminal histories bundle.')
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export latest terminal histories.')
-    } finally {
-      setActionKey(null)
-    }
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalLatestHistoriesExportFileName(),
+      request: () => apiClient.downloadTerminalLatestHistories(token),
+      successMessage: 'Exported latest terminal histories.',
+      failureMessage: 'Failed to export latest terminal histories.',
+    })
   }
 
   async function handleExportHistoryArchive() {
@@ -757,25 +771,13 @@ export function Terminals() {
       return
     }
     const key = 'export-history-archive'
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistoryArchiveBundle(token)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalHistoryArchiveBundleFileName()
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice('Exported terminal history archive bundle.')
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history archive.')
-    } finally {
-      setActionKey(null)
-    }
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalHistoryArchiveBundleFileName(),
+      request: () => apiClient.downloadTerminalHistoryArchiveBundle(token),
+      successMessage: 'Exported terminal history archive bundle.',
+      failureMessage: 'Failed to export terminal history archive bundle.',
+    })
   }
 
   async function handleDownloadDetail(format: 'text' | 'json') {
@@ -783,39 +785,23 @@ export function Terminals() {
       return
     }
     const key = `download-detail:${format}:${timelineGroupId}:${detailSessionId}`
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistoryDetail(token, timelineGroupId, detailSessionId, format)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalHistoryDownloadFileName(
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalHistoryDownloadFileName(
         timelineGroupId,
         detailSessionId,
         format === 'json' ? 'json' : 'log',
-      )
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice(
+      ),
+      request: () => apiClient.downloadTerminalHistoryDetail(token, timelineGroupId, detailSessionId, format),
+      successMessage:
         format === 'json'
-          ? `Downloaded terminal history metadata for ${detailSessionId}.`
-          : `Downloaded terminal history for ${detailSessionId}.`,
-      )
-    } catch (error) {
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : format === 'json'
-            ? 'Failed to download terminal history metadata.'
-            : 'Failed to download terminal history detail.',
-      )
-    } finally {
-      setActionKey(null)
-    }
+          ? `Downloaded terminal history JSON for ${detailSessionId}.`
+          : `Downloaded terminal history output for ${detailSessionId}.`,
+      failureMessage:
+        format === 'json'
+          ? 'Failed to download terminal history JSON.'
+          : 'Failed to download terminal history output.',
+    })
   }
 
   async function handleExportTimelinePage() {
@@ -823,31 +809,17 @@ export function Terminals() {
       return
     }
     const key = `export-timeline:${timelineGroupId}:${timelineData.offset}:${timelineData.limit}`
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistoryExport(token, timelineGroupId, timelineQueryOptions)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalHistoryExportFileName(
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalHistoryExportFileName(
         timelineGroupId,
         timelineData.offset,
         timelineData.limit,
-      )
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice(
-        `Exported ${timelineData.items.length.toLocaleString()} terminal history snapshots for ${timelineGroupId}.`,
-      )
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history.')
-    } finally {
-      setActionKey(null)
-    }
+      ),
+      request: () => apiClient.downloadTerminalHistoryExport(token, timelineGroupId, timelineQueryOptions),
+      successMessage: `Exported ${timelineData.items.length.toLocaleString()} terminal history snapshots for ${timelineGroupId}.`,
+      failureMessage: 'Failed to export the current terminal history page.',
+    })
   }
 
   async function handleExportTimelineArchive() {
@@ -855,25 +827,13 @@ export function Terminals() {
       return
     }
     const key = `export-archive:${timelineGroupId}`
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistoryArchive(token, timelineGroupId, timelineArchiveQueryOptions)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalHistoryArchiveFileName(timelineGroupId)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice(`Exported terminal history archive for ${timelineGroupId}.`)
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history archive.')
-    } finally {
-      setActionKey(null)
-    }
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalHistoryArchiveFileName(timelineGroupId),
+      request: () => apiClient.downloadTerminalHistoryArchive(token, timelineGroupId, timelineArchiveQueryOptions),
+      successMessage: `Exported terminal history archive for ${timelineGroupId}.`,
+      failureMessage: 'Failed to export the terminal history archive.',
+    })
   }
 
   async function handleExportSearchPage() {
@@ -881,32 +841,18 @@ export function Terminals() {
       return
     }
     const key = `export-search:${timelineGroupId}:${normalizedSearchQuery}:${searchData.offset}:${searchData.limit}:${searchSort}`
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistorySearch(token, timelineGroupId, searchQueryOptions)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalHistorySearchExportFileName(
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalHistorySearchExportFileName(
         timelineGroupId,
         normalizedSearchQuery,
         searchData.offset,
         searchData.limit,
-      )
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice(
-        `Exported ${searchData.items.length.toLocaleString()} terminal history search results for ${timelineGroupId}.`,
-      )
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history search.')
-    } finally {
-      setActionKey(null)
-    }
+      ),
+      request: () => apiClient.downloadTerminalHistorySearch(token, timelineGroupId, searchQueryOptions),
+      successMessage: `Exported ${searchData.items.length.toLocaleString()} terminal history search results for ${timelineGroupId}.`,
+      failureMessage: 'Failed to export the current terminal history search page.',
+    })
   }
 
   async function handleExportSearchArchive() {
@@ -914,34 +860,20 @@ export function Terminals() {
       return
     }
     const key = `export-search-archive:${timelineGroupId}:${normalizedSearchQuery}:${searchSort}`
-    try {
-      setActionKey(key)
-      setActionError(null)
-      setActionNotice(null)
-      const blob = await apiClient.downloadTerminalHistorySearchArchive(
+    await runTerminalDownloadAction({
+      actionKeyValue: key,
+      fileName: buildTerminalHistorySearchArchiveFileName(
+        timelineGroupId,
+        normalizedSearchQuery,
+      ),
+      request: () => apiClient.downloadTerminalHistorySearchArchive(
         token,
         timelineGroupId,
         searchArchiveQueryOptions,
-      )
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = buildTerminalHistorySearchArchiveFileName(
-        timelineGroupId,
-        normalizedSearchQuery,
-      )
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setActionNotice(
-        `Exported terminal history search archive for ${timelineGroupId}.`,
-      )
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export terminal history search archive.')
-    } finally {
-      setActionKey(null)
-    }
+      ),
+      successMessage: `Exported terminal history search archive for ${timelineGroupId}.`,
+      failureMessage: 'Failed to export the terminal history search archive.',
+    })
   }
 
   return (
@@ -992,12 +924,10 @@ export function Terminals() {
               <PrimaryButton
                 className="button--ghost"
                 disabled={actionKey !== null}
-                onClick={() => void handleExportHistoryArchive()}
+                onClick={() => void handleExportOverview()}
                 type="button"
               >
-                {actionKey === 'export-history-archive'
-                  ? 'Exporting...'
-                  : 'Export History Archive JSON'}
+                {actionKey === 'export-overview' ? 'Exporting...' : 'Export Overview JSON'}
               </PrimaryButton>
               <PrimaryButton
                 className="button--ghost"
@@ -1012,10 +942,12 @@ export function Terminals() {
               <PrimaryButton
                 className="button--ghost"
                 disabled={actionKey !== null}
-                onClick={() => void handleExportOverview()}
+                onClick={() => void handleExportHistoryArchive()}
                 type="button"
               >
-                {actionKey === 'export-overview' ? 'Exporting...' : 'Export Overview JSON'}
+                {actionKey === 'export-history-archive'
+                  ? 'Exporting...'
+                  : 'Export History Archive JSON'}
               </PrimaryButton>
             </div>
             <div className="settings-grid">
@@ -1300,17 +1232,6 @@ export function Terminals() {
                       <PrimaryButton
                         className="button--ghost"
                         disabled={actionKey !== null || isSearchFetching}
-                        onClick={() => void handleExportSearchArchive()}
-                        type="button"
-                      >
-                        {actionKey ===
-                        `export-search-archive:${timelineGroupId}:${normalizedSearchQuery}:${searchSort}`
-                          ? 'Exporting...'
-                          : 'Export Search Archive JSON'}
-                      </PrimaryButton>
-                      <PrimaryButton
-                        className="button--ghost"
-                        disabled={actionKey !== null || isSearchFetching}
                         onClick={() => void handleExportSearchPage()}
                         type="button"
                       >
@@ -1318,6 +1239,17 @@ export function Terminals() {
                         `export-search:${timelineGroupId}:${normalizedSearchQuery}:${searchData.offset}:${searchData.limit}:${searchSort}`
                           ? 'Exporting...'
                           : 'Export Search Page JSON'}
+                      </PrimaryButton>
+                      <PrimaryButton
+                        className="button--ghost"
+                        disabled={actionKey !== null || isSearchFetching}
+                        onClick={() => void handleExportSearchArchive()}
+                        type="button"
+                      >
+                        {actionKey ===
+                        `export-search-archive:${timelineGroupId}:${normalizedSearchQuery}:${searchSort}`
+                          ? 'Exporting...'
+                          : 'Export Search Archive JSON'}
                       </PrimaryButton>
                     </div>
                     {searchData.items.length === 0 ? (
@@ -1423,22 +1355,22 @@ export function Terminals() {
                     <PrimaryButton
                       className="button--ghost"
                       disabled={actionKey !== null || isTimelineFetching}
-                      onClick={() => void handleExportTimelineArchive()}
-                      type="button"
-                    >
-                      {actionKey === `export-archive:${timelineGroupId}`
-                        ? 'Exporting...'
-                        : 'Export Archive JSON'}
-                    </PrimaryButton>
-                    <PrimaryButton
-                      className="button--ghost"
-                      disabled={actionKey !== null || isTimelineFetching}
                       onClick={() => void handleExportTimelinePage()}
                       type="button"
                     >
                       {actionKey === `export-timeline:${timelineGroupId}:${timelineData.offset}:${timelineData.limit}`
                         ? 'Exporting...'
                         : 'Export Current Page JSON'}
+                    </PrimaryButton>
+                    <PrimaryButton
+                      className="button--ghost"
+                      disabled={actionKey !== null || isTimelineFetching}
+                      onClick={() => void handleExportTimelineArchive()}
+                      type="button"
+                    >
+                      {actionKey === `export-archive:${timelineGroupId}`
+                        ? 'Exporting...'
+                        : 'Export Archive JSON'}
                     </PrimaryButton>
                   </div>
                   <div className="monitor-table-wrap">
@@ -1552,7 +1484,7 @@ export function Terminals() {
                     <PrimaryButton
                       className="button--ghost"
                       disabled={actionKey !== null}
-                      onClick={() => handleDownloadDetail('text')}
+                      onClick={() => void handleDownloadDetail('text')}
                       type="button"
                     >
                       {actionKey === `download-detail:text:${timelineGroupId}:${detailSessionId}`
@@ -1562,7 +1494,7 @@ export function Terminals() {
                     <PrimaryButton
                       className="button--ghost"
                       disabled={actionKey !== null}
-                      onClick={() => handleDownloadDetail('json')}
+                      onClick={() => void handleDownloadDetail('json')}
                       type="button"
                     >
                       {actionKey === `download-detail:json:${timelineGroupId}:${detailSessionId}`
