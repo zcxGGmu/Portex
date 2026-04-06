@@ -9,14 +9,27 @@
 - [x] Write focused `M8.5.61` design doc
 - [x] Write focused `M8.5.61` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add a small RED signal for the shared frontend download helper refactor
-- [ ] Implement the `/terminals` export/download UX consistency pass
-- [ ] Run focused regression plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add a small RED signal for the shared frontend download helper refactor
+- [x] Implement the `/terminals` export/download UX consistency pass
+- [x] Run focused regression plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- In progress.
+- Added `docs/plans/2026-04-06-m8-5-61-terminal-export-ux-consistency-design.md` and `docs/plans/2026-04-06-m8-5-61-terminal-export-ux-consistency.md` to lock the frontend-only UX consistency scope before touching code.
+- Created the RED signal by switching one `/terminals` export handler to a not-yet-defined shared helper, then verified `cd web && npm run build` failed with `TS2304: Cannot find name 'runTerminalDownloadAction'`.
+- Refactored `web/src/pages/Terminals.tsx` so overview, latest-history, cross-workspace archive, timeline current-page/archive, search current-page/archive, and detail output/JSON actions now reuse one shared browser download flow plus one shared action-state wrapper.
+- Reordered `/terminals` export buttons into consistent bounded-to-broader scope order: overview -> latest histories -> history archive at the top level, current page -> archive for timeline, and search page -> search archive for search results.
+- Normalized detail download copy to `Download Output` / `Download JSON` backed by consistent success/failure notice wording, without changing any FastAPI route, response payload, filename builder, RBAC boundary, or page-level action-state model.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `9a3d2ad` (`docs(plans): add M8.5.61 terminal export UX consistency plan`).
+- Feature commit completed in this session: `b870f70` (`feat(web): add M8.5.61 terminal export UX consistency`).
+- Planned handoff sync commit for this doc update: `docs(handoff): sync M8.5.61 terminal export UX consistency context`.
 
 # Session Plan (2026-03-30) - M8.5.60 Terminal Cross-Workspace History Archive Export
 
