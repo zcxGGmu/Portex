@@ -366,13 +366,36 @@ class TerminalSessionService:
     async def list_history_snapshot_archives_by_groups(
         self,
         group_folders: list[str],
+        *,
+        owner_user_id: str | None = None,
+        session_id_prefix: str | None = None,
+        snapshot_from: datetime | None = None,
+        snapshot_to: datetime | None = None,
     ) -> dict[str, list[TerminalSessionHistorySnapshot]]:
+        # Validate shared filter semantics even when no workspace yields snapshots.
+        self._filter_history_snapshots(
+            [],
+            status=None,
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
+
         async def _load(group_folder: str) -> tuple[str, list[TerminalSessionHistorySnapshot]]:
             try:
                 items = await self._list_merged_history_snapshots_by_group(group_folder)
             except TerminalSessionNotFoundError:
                 return group_folder, []
-            return group_folder, items
+            filtered = self._filter_history_snapshots(
+                items,
+                status=None,
+                owner_user_id=owner_user_id,
+                session_id_prefix=session_id_prefix,
+                snapshot_from=snapshot_from,
+                snapshot_to=snapshot_to,
+            )
+            return group_folder, filtered
 
         normalized_group_folders = sorted(
             {

@@ -35,6 +35,12 @@ const DEFAULT_TIMELINE_FILTERS = {
   snapshotFromLocal: '',
   snapshotToLocal: '',
 }
+const DEFAULT_ARCHIVE_FILTERS = {
+  ownerUserId: '',
+  sessionIdPrefix: '',
+  snapshotFromLocal: '',
+  snapshotToLocal: '',
+}
 type TerminalTimeRangePresetId = '1h' | '6h' | '24h' | '7d' | '30d'
 const TERMINAL_TIME_RANGE_PRESETS: Array<{
   id: TerminalTimeRangePresetId
@@ -294,6 +300,12 @@ export function Terminals() {
     snapshotFromLocal: string
     snapshotToLocal: string
   }>(DEFAULT_TIMELINE_FILTERS)
+  const [archiveFilters, setArchiveFilters] = useState<{
+    ownerUserId: string
+    sessionIdPrefix: string
+    snapshotFromLocal: string
+    snapshotToLocal: string
+  }>(DEFAULT_ARCHIVE_FILTERS)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOffset, setSearchOffset] = useState(0)
@@ -313,6 +325,15 @@ export function Terminals() {
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     }),
     [timelineFilters],
+  )
+  const archiveQueryOptions = useMemo(
+    () => ({
+      ownerUserId: archiveFilters.ownerUserId || undefined,
+      sessionIdPrefix: archiveFilters.sessionIdPrefix || undefined,
+      snapshotFrom: localDateTimeToUtcIso(archiveFilters.snapshotFromLocal),
+      snapshotTo: localDateTimeToUtcIso(archiveFilters.snapshotToLocal),
+    }),
+    [archiveFilters],
   )
   const timelineQueryOptions = useMemo(
     () => ({
@@ -567,6 +588,20 @@ export function Terminals() {
     setPendingMatchTarget(null)
   }
 
+  function updateArchiveFilters(
+    patch: Partial<{
+      ownerUserId: string
+      sessionIdPrefix: string
+      snapshotFromLocal: string
+      snapshotToLocal: string
+    }>,
+  ) {
+    setArchiveFilters((current) => ({
+      ...current,
+      ...patch,
+    }))
+  }
+
   function handlePresetTimeRange(presetId: TerminalTimeRangePresetId) {
     updateTimelineFilters(buildPresetLocalRange(presetId), { activePresetId: presetId })
   }
@@ -774,7 +809,7 @@ export function Terminals() {
     await runTerminalDownloadAction({
       actionKeyValue: key,
       fileName: buildTerminalHistoryArchiveBundleFileName(),
-      request: () => apiClient.downloadTerminalHistoryArchiveBundle(token),
+      request: () => apiClient.downloadTerminalHistoryArchiveBundle(token, archiveQueryOptions),
       successMessage: 'Exported terminal history archive bundle.',
       failureMessage: 'Failed to export terminal history archive bundle.',
     })
@@ -920,6 +955,49 @@ export function Terminals() {
           ) : null}
           <section className="panel">
             <h2 style={{ marginTop: 0 }}>Session Summary</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Archive filters apply only to <strong>Export History Archive JSON</strong>.
+            </p>
+            <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
+              <label>
+                <span className="muted">Owner User ID</span>
+                <input
+                  onChange={(event) => updateArchiveFilters({ ownerUserId: event.target.value })}
+                  placeholder="owner-1"
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  type="text"
+                  value={archiveFilters.ownerUserId}
+                />
+              </label>
+              <label>
+                <span className="muted">Session ID Prefix</span>
+                <input
+                  onChange={(event) => updateArchiveFilters({ sessionIdPrefix: event.target.value })}
+                  placeholder="terminal-session"
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  type="text"
+                  value={archiveFilters.sessionIdPrefix}
+                />
+              </label>
+              <label>
+                <span className="muted">Snapshot From</span>
+                <input
+                  onChange={(event) => updateArchiveFilters({ snapshotFromLocal: event.target.value })}
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  type="datetime-local"
+                  value={archiveFilters.snapshotFromLocal}
+                />
+              </label>
+              <label>
+                <span className="muted">Snapshot To</span>
+                <input
+                  onChange={(event) => updateArchiveFilters({ snapshotToLocal: event.target.value })}
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  type="datetime-local"
+                  value={archiveFilters.snapshotToLocal}
+                />
+              </label>
+            </div>
             <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
               <PrimaryButton
                 className="button--ghost"

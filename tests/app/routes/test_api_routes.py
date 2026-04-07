@@ -2394,6 +2394,13 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     export_terminal_history_archive_bundle_operation = schema["paths"]["/terminals/history/archive"]["get"]
     assert "archive" in export_terminal_history_archive_bundle_operation["summary"].lower()
     assert "403" in export_terminal_history_archive_bundle_operation["responses"]
+    export_terminal_history_archive_bundle_parameter_names = {
+        item["name"] for item in export_terminal_history_archive_bundle_operation["parameters"]
+    }
+    assert "owner_user_id" in export_terminal_history_archive_bundle_parameter_names
+    assert "session_id_prefix" in export_terminal_history_archive_bundle_parameter_names
+    assert "snapshot_from" in export_terminal_history_archive_bundle_parameter_names
+    assert "snapshot_to" in export_terminal_history_archive_bundle_parameter_names
 
     monitor_operation = schema["paths"]["/monitor"]["get"]
     assert "monitor" in monitor_operation["summary"].lower()

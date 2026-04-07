@@ -419,6 +419,10 @@ async def export_terminal_latest_histories(
 )
 async def export_terminal_history_archive(
     current_user: UserResponse = Depends(get_current_user),
+    owner_user_id: str | None = Query(default=None),
+    session_id_prefix: str | None = Query(default=None),
+    snapshot_from: datetime | None = Query(default=None),
+    snapshot_to: datetime | None = Query(default=None),
     group_registry: GroupRegistryService = Depends(get_group_registry_service),
     service: TerminalSessionService = Depends(get_terminal_session_service),
 ) -> Response:
@@ -429,9 +433,16 @@ async def export_terminal_history_archive(
         for workspace in await group_registry.list_registered_groups()
         if _is_web_workspace(workspace)
     ]
-    archives_by_folder = await service.list_history_snapshot_archives_by_groups(
-        [str(getattr(workspace, "folder", "")).strip() for workspace in workspaces]
-    )
+    try:
+        archives_by_folder = await service.list_history_snapshot_archives_by_groups(
+            [str(getattr(workspace, "folder", "")).strip() for workspace in workspaces],
+            owner_user_id=owner_user_id,
+            session_id_prefix=session_id_prefix,
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
+    except Exception as exc:
+        raise _map_terminal_error(exc) from exc
 
     items: list[dict[str, object]] = []
     for workspace in workspaces:
@@ -477,6 +488,12 @@ async def export_terminal_history_archive(
     )
     return JSONResponse(
         content={
+            "filters": {
+                "owner_user_id": owner_user_id,
+                "session_id_prefix": session_id_prefix,
+                "snapshot_from": _serialize_utc_datetime(snapshot_from),
+                "snapshot_to": _serialize_utc_datetime(snapshot_to),
+            },
             "total_workspaces": len(items),
             "total_snapshots": sum(int(item["total"]) for item in items),
             "items": items,

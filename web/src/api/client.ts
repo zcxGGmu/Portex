@@ -207,6 +207,13 @@ export interface TerminalHistorySearchOptions {
   snapshotTo?: string
 }
 
+export interface TerminalHistoryArchiveBundleOptions {
+  ownerUserId?: string
+  sessionIdPrefix?: string
+  snapshotFrom?: string
+  snapshotTo?: string
+}
+
 export interface TerminalWorkspaceSummary {
   group_id: string
   group_name: string
@@ -598,6 +605,25 @@ function buildTerminalHistorySearchParams(options: TerminalHistorySearchOptions)
   return params
 }
 
+function buildTerminalHistoryArchiveBundleParams(
+  options: TerminalHistoryArchiveBundleOptions = {},
+): URLSearchParams {
+  const params = new URLSearchParams()
+  if (options.ownerUserId) {
+    params.set('owner_user_id', options.ownerUserId)
+  }
+  if (options.sessionIdPrefix) {
+    params.set('session_id_prefix', options.sessionIdPrefix)
+  }
+  if (options.snapshotFrom) {
+    params.set('snapshot_from', options.snapshotFrom)
+  }
+  if (options.snapshotTo) {
+    params.set('snapshot_to', options.snapshotTo)
+  }
+  return params
+}
+
 export const apiClient = {
   login(username: string, password: string): Promise<TokenResponse> {
     return request<TokenResponse>('/auth/login', {
@@ -689,8 +715,13 @@ export const apiClient = {
   downloadTerminalLatestHistories(token: string): Promise<Blob> {
     return requestBlob('/terminals/history/export', { token })
   },
-  downloadTerminalHistoryArchiveBundle(token: string): Promise<Blob> {
-    return requestBlob('/terminals/history/archive', { token })
+  downloadTerminalHistoryArchiveBundle(
+    token: string,
+    options: TerminalHistoryArchiveBundleOptions = {},
+  ): Promise<Blob> {
+    const params = buildTerminalHistoryArchiveBundleParams(options)
+    const suffix = params.toString() ? `?${params.toString()}` : ''
+    return requestBlob(`/terminals/history/archive${suffix}`, { token })
   },
   getTerminalHistoryTimeline(
     token: string,

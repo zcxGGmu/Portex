@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 
@@ -849,6 +849,87 @@ async def test_terminal_session_service_lists_history_snapshot_archives_by_group
     assert list(archives) == ["project-alpha", "project-beta"]
     assert archives["project-alpha"][0].output == "alpha-output\n"
     assert archives["project-beta"][0].output == "beta-output\n"
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_filters_history_snapshot_archives_by_groups(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=64,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    alpha = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _alpha_attached, alpha_queue = await service.attach_session(alpha.session_id, owner_user_id="owner-1")
+    await created_bridges[0].emit_output("alpha-output\n")
+    await asyncio.wait_for(alpha_queue.get(), timeout=0.1)
+    await service.close_session(alpha.session_id, owner_user_id="owner-1")
+
+    beta = await service.create_session(
+        group_id="project-beta",
+        group_folder="project-beta",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    _beta_attached, beta_queue = await service.attach_session(beta.session_id, owner_user_id="owner-2")
+    await created_bridges[1].emit_output("beta-output\n")
+    await asyncio.wait_for(beta_queue.get(), timeout=0.1)
+    await service.close_session(beta.session_id, owner_user_id="owner-2")
+
+    baseline_archives = await service.list_history_snapshot_archives_by_groups(
+        ["project-alpha", "project-beta"]
+    )
+    beta_snapshot = baseline_archives["project-beta"][0]
+
+    filtered_archives = await service.list_history_snapshot_archives_by_groups(
+        ["project-alpha", "project-beta"],
+        owner_user_id="owner-2",
+        session_id_prefix=beta.session_id[:12],
+        snapshot_from=beta_snapshot.snapshot_at - timedelta(seconds=1),
+        snapshot_to=beta_snapshot.snapshot_at + timedelta(seconds=1),
+    )
+
+    assert list(filtered_archives) == ["project-beta"]
+    assert [item.record.session_id for item in filtered_archives["project-beta"]] == [beta.session_id]
+
+
+@pytest.mark.asyncio
+async def test_terminal_session_service_rejects_invalid_history_archive_group_filters(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    service = TerminalSessionService(
+        bridge_factory=lambda **_: FakeBridge(),
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    snapshot_from = datetime(2026, 4, 6, 12, 5, tzinfo=timezone.utc)
+    snapshot_to = datetime(2026, 4, 6, 12, 0, tzinfo=timezone.utc)
+
+    with pytest.raises(ValueError, match="snapshot_from must be less than or equal to snapshot_to"):
+        await service.list_history_snapshot_archives_by_groups(
+            ["project-alpha"],
+            snapshot_from=snapshot_from,
+            snapshot_to=snapshot_to,
+        )
 
 
 @pytest.mark.asyncio

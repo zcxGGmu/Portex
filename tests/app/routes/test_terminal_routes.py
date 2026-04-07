@@ -398,10 +398,22 @@ def test_owner_can_export_terminal_history_archive_bundle(api_client: TestClient
         def list_latest_history_snapshots(self):
             return []
 
-        async def list_history_snapshot_archives_by_groups(self, group_folders: list[str]):
+        async def list_history_snapshot_archives_by_groups(
+            self,
+            group_folders: list[str],
+            *,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
             from datetime import datetime, timezone
 
             assert group_folders == ["project-alpha", "project-beta", "project-gamma"]
+            assert owner_user_id is None
+            assert session_id_prefix is None
+            assert snapshot_from is None
+            assert snapshot_to is None
             return {
                 "project-alpha": [
                     SimpleNamespace(
@@ -484,6 +496,148 @@ def test_owner_can_export_terminal_history_archive_bundle(api_client: TestClient
     assert payload["items"][1]["total"] == 2
 
 
+def test_owner_can_export_filtered_terminal_history_archive_bundle(api_client: TestClient) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id),
+            _workspace(jid="web:project-beta", folder="project-beta", name="Project Beta", created_by=owner_id),
+        ]
+    )
+    snapshot_from = "2026-03-15T11:00:00Z"
+    snapshot_to = "2026-03-15T12:00:00Z"
+
+    class FakeTerminalService:
+        def list_sessions(self):
+            return []
+
+        def list_history_summaries(self):
+            return []
+
+        def list_latest_history_snapshots(self):
+            return []
+
+        async def list_history_snapshot_archives_by_groups(
+            self,
+            group_folders: list[str],
+            *,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            assert group_folders == ["project-alpha", "project-beta"]
+            assert owner_user_id == "owner-2"
+            assert session_id_prefix == "beta-prefix"
+            assert snapshot_from == datetime(2026, 3, 15, 11, 0, tzinfo=timezone.utc)
+            assert snapshot_to == datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc)
+            return {
+                "project-beta": [
+                    SimpleNamespace(
+                        record=TerminalSessionRecord(
+                            session_id="beta-prefix-session",
+                            group_id="project-beta",
+                            group_folder="project-beta",
+                            owner_user_id="owner-2",
+                            backend="docker_container",
+                            container_name="portex-terminal-project-beta-1",
+                            status="closed",
+                            created_at=datetime(2026, 3, 15, 11, 0, tzinfo=timezone.utc),
+                        ),
+                        snapshot_at=datetime(2026, 3, 15, 11, 5, tzinfo=timezone.utc),
+                        output="beta-output\n",
+                        output_bytes=12,
+                        history_max_bytes=32768,
+                        truncated=False,
+                    ),
+                ]
+            }
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            (
+                "/terminals/history/archive"
+                "?owner_user_id=owner-2"
+                "&session_id_prefix=beta-prefix"
+                f"&snapshot_from={snapshot_from}"
+                f"&snapshot_to={snapshot_to}"
+            ),
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["filters"] == {
+        "owner_user_id": "owner-2",
+        "session_id_prefix": "beta-prefix",
+        "snapshot_from": snapshot_from,
+        "snapshot_to": snapshot_to,
+    }
+    assert payload["total_workspaces"] == 1
+    assert payload["total_snapshots"] == 1
+    assert [item["group_id"] for item in payload["items"]] == ["project-beta"]
+
+
+def test_terminal_history_archive_bundle_rejects_invalid_time_bounds(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [_workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id)]
+    )
+
+    class FakeTerminalService:
+        def list_sessions(self):
+            return []
+
+        def list_history_summaries(self):
+            return []
+
+        def list_latest_history_snapshots(self):
+            return []
+
+        async def list_history_snapshot_archives_by_groups(
+            self,
+            group_folders: list[str],
+            *,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (group_folders, owner_user_id, session_id_prefix)
+            if snapshot_from is not None and snapshot_to is not None and snapshot_from > snapshot_to:
+                raise ValueError("snapshot_from must be less than or equal to snapshot_to")
+            return {}
+
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: FakeTerminalService()
+
+    try:
+        response = api_client.get(
+            "/terminals/history/archive?snapshot_from=2026-03-15T12:00:00Z&snapshot_to=2026-03-15T11:00:00Z",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "snapshot_from must be less than or equal to snapshot_to"
+
+
 def test_terminal_history_archive_bundle_returns_404_when_no_history_exists(
     api_client: TestClient,
 ) -> None:
@@ -505,8 +659,16 @@ def test_terminal_history_archive_bundle_returns_404_when_no_history_exists(
         def list_latest_history_snapshots(self):
             return []
 
-        async def list_history_snapshot_archives_by_groups(self, group_folders: list[str]):
-            _ = group_folders
+        async def list_history_snapshot_archives_by_groups(
+            self,
+            group_folders: list[str],
+            *,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            _ = (group_folders, owner_user_id, session_id_prefix, snapshot_from, snapshot_to)
             return {}
 
     app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry

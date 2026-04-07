@@ -9,15 +9,25 @@
 - [x] Write focused `M8.5.62` design doc
 - [x] Write focused `M8.5.62` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing service/route/OpenAPI coverage for top-level archive filters
-- [ ] Implement filtered top-level archive backend behavior
-- [ ] Add `/terminals` top-level archive filter UI and client wiring
-- [ ] Run focused regression plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing service/route/OpenAPI coverage for top-level archive filters
+- [x] Implement filtered top-level archive backend behavior
+- [x] Add `/terminals` top-level archive filter UI and client wiring
+- [x] Run focused regression plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- In progress.
+- Added RED coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for grouped archive filter forwarding, empty-group omission, invalid time bounds, response `filters` metadata, and OpenAPI query parameter exposure.
+- Extended `services/terminal_sessions.py` so `list_history_snapshot_archives_by_groups(...)` now validates and applies `owner_user_id`, `session_id_prefix`, `snapshot_from`, and `snapshot_to` with the same helper semantics already used by workspace-scoped timeline/search/export surfaces.
+- Extended `app/routes/terminals.py` so `GET /terminals/history/archive` accepts the same four optional query parameters, maps invalid bounds through the existing terminal error boundary, and echoes applied filter values in a top-level `filters` object without changing the grouped archive payload, filename, RBAC, or `404` empty-result behavior.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` with an archive-only filter state slice and compact top-level UI inputs for owner, session prefix, and local datetime bounds; only `Export History Archive JSON` consumes these filters, while overview and latest-history exports remain unfiltered.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Feature commit for this session: `feat(terminal): add M8.5.62 cross-workspace history archive filters`
 
 # Session Plan (2026-04-06) - M8.5.61 Terminal Export UX Consistency
 
