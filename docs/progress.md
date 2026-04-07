@@ -4,7 +4,7 @@
 当前分支: `main`
 最新 planning-only 提交: `6aad15e` (`docs(plans): add M8.5.63 terminal history archive status filter plan`)
 最新功能状态: 当前工作树已完成 `M8.5.63` terminal cross-workspace history archive status filter
-上一条 handoff 提交: `de603f8` (`docs(handoff): sync M8.5.63 archive status filter context`)
+上一条 handoff 提交: `57fb786` (`docs(handoff): finalize M8.5.63 terminal status filter context`)
 
 ---
 
