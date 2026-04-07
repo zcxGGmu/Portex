@@ -1,3 +1,25 @@
+# Session Plan (2026-04-07) - M8.5.63 Terminal Cross-Workspace History Archive Status Filter
+
+## Goal
+- Continue post-`M8.5.62` terminal operator development by adding the missing `status` filter to the top-level cross-workspace history archive export on `/terminals`, with a matching archive-only status control in the summary area, while keeping all existing archive/item contracts unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current top-level archive implementation
+- [x] Confirm the next step should stay on the top-level cross-workspace archive path
+- [x] Validate the `status` scope choice: reuse the existing five workspace-scoped statuses rather than introducing archive-only special cases
+- [x] Write focused `M8.5.63` design doc
+- [x] Write focused `M8.5.63` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing service/route/OpenAPI coverage for top-level archive `status`
+- [ ] Implement filtered top-level archive backend behavior for `status`
+- [ ] Add `/terminals` top-level archive `status` UI and client wiring
+- [ ] Run focused regression plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- In progress.
+
 # Session Plan (2026-04-06) - M8.5.62 Terminal Cross-Workspace History Archive Filters
 
 ## Goal
