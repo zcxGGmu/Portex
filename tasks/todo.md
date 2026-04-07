@@ -29,7 +29,8 @@
   - `cd web && npm run build`
   - `git diff --check`
 - Backend task commit completed in this session: `68104e9` (`feat(terminal): add M8.5.63 archive status filter backend`).
-- Remaining feature commit for this session: `feat(terminal): add M8.5.63 cross-workspace history archive status filter`
+- Frontend task commit completed in this session: `a7ee33d` (`feat(web): add M8.5.63 archive status filter UI`).
+- Handoff sync commit completed in this session: `de603f8` (`docs(handoff): sync M8.5.63 archive status filter context`).
 
 # Session Plan (2026-04-06) - M8.5.62 Terminal Cross-Workspace History Archive Filters
 

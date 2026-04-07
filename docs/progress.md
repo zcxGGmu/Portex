@@ -2,9 +2,9 @@
 
 最后更新: 2026-04-07 (Asia/Shanghai)
 当前分支: `main`
-最新 planning-only 提交: `9a3d2ad` (`docs(plans): add M8.5.61 terminal export UX consistency plan`)
+最新 planning-only 提交: `6aad15e` (`docs(plans): add M8.5.63 terminal history archive status filter plan`)
 最新功能状态: 当前工作树已完成 `M8.5.63` terminal cross-workspace history archive status filter
-上一条 handoff 提交: `5129a4a` (`docs(handoff): sync M8.5.60 cross-workspace history archive export context`)
+上一条 handoff 提交: `de603f8` (`docs(handoff): sync M8.5.63 archive status filter context`)
 
 ---
 
@@ -12,7 +12,7 @@
 
 - `docs/TODO.md` 的正式路线仍停在 `M6.5.3`；`M0` ~ `M6` 全部完成，post-`M6` 的 `M7.1` ~ `M7.6.5` parity backlog 也已完成。
 - terminal relevance 主线已完成到 `M8.5.51`，且 2026-03-26 的 convergence audit 已确认当前 `81`-case offline baseline 收敛；默认下一步不是继续扩样或继续加 tie-break。
-- 最新可执行功能状态已推进到 `M8.5.63`：在 `M8.5.62` 顶层 owner/session/time 过滤基础上，`GET /terminals/history/archive` 现已补齐缺失的 `status` 过滤；`/terminals` summary 区的 archive-only 过滤输入也新增了同一套五态 `Status` 下拉，并继续仅作用于 `Export History Archive JSON`。
+- 最新可执行功能状态已推进到 `M8.5.63`：后端提交 `68104e9` 为 `GET /terminals/history/archive` 补齐缺失的 `status` 过滤，前端提交 `a7ee33d` 则在 `/terminals` summary 区的 archive-only 过滤输入中新增了同一套五态 `Status` 下拉，并继续仅作用于 `Export History Archive JSON`。
 - `M8.5.63` 继续保持 additive 边界：
   - 不改 `GET /terminals/export`
   - 不改 `GET /terminals/history/export`
