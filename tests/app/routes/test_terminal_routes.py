@@ -402,6 +402,7 @@ def test_owner_can_export_terminal_history_archive_bundle(api_client: TestClient
             self,
             group_folders: list[str],
             *,
+            status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
             snapshot_from: datetime | None = None,
@@ -410,6 +411,7 @@ def test_owner_can_export_terminal_history_archive_bundle(api_client: TestClient
             from datetime import datetime, timezone
 
             assert group_folders == ["project-alpha", "project-beta", "project-gamma"]
+            assert status is None
             assert owner_user_id is None
             assert session_id_prefix is None
             assert snapshot_from is None
@@ -525,12 +527,14 @@ def test_owner_can_export_filtered_terminal_history_archive_bundle(api_client: T
             self,
             group_folders: list[str],
             *,
+            status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
             snapshot_from: datetime | None = None,
             snapshot_to: datetime | None = None,
         ):
             assert group_folders == ["project-alpha", "project-beta"]
+            assert status == "closed"
             assert owner_user_id == "owner-2"
             assert session_id_prefix == "beta-prefix"
             assert snapshot_from == datetime(2026, 3, 15, 11, 0, tzinfo=timezone.utc)
@@ -565,7 +569,8 @@ def test_owner_can_export_filtered_terminal_history_archive_bundle(api_client: T
         response = api_client.get(
             (
                 "/terminals/history/archive"
-                "?owner_user_id=owner-2"
+                "?status=closed"
+                "&owner_user_id=owner-2"
                 "&session_id_prefix=beta-prefix"
                 f"&snapshot_from={snapshot_from}"
                 f"&snapshot_to={snapshot_to}"
@@ -578,6 +583,7 @@ def test_owner_can_export_filtered_terminal_history_archive_bundle(api_client: T
     assert response.status_code == 200
     payload = response.json()
     assert payload["filters"] == {
+        "status": "closed",
         "owner_user_id": "owner-2",
         "session_id_prefix": "beta-prefix",
         "snapshot_from": snapshot_from,
@@ -613,12 +619,13 @@ def test_terminal_history_archive_bundle_rejects_invalid_time_bounds(
             self,
             group_folders: list[str],
             *,
+            status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
             snapshot_from: datetime | None = None,
             snapshot_to: datetime | None = None,
         ):
-            _ = (group_folders, owner_user_id, session_id_prefix)
+            _ = (group_folders, status, owner_user_id, session_id_prefix)
             if snapshot_from is not None and snapshot_to is not None and snapshot_from > snapshot_to:
                 raise ValueError("snapshot_from must be less than or equal to snapshot_to")
             return {}
@@ -663,12 +670,13 @@ def test_terminal_history_archive_bundle_returns_404_when_no_history_exists(
             self,
             group_folders: list[str],
             *,
+            status: str | None = None,
             owner_user_id: str | None = None,
             session_id_prefix: str | None = None,
             snapshot_from: datetime | None = None,
             snapshot_to: datetime | None = None,
         ):
-            _ = (group_folders, owner_user_id, session_id_prefix, snapshot_from, snapshot_to)
+            _ = (group_folders, status, owner_user_id, session_id_prefix, snapshot_from, snapshot_to)
             return {}
 
     app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry

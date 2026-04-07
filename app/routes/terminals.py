@@ -419,6 +419,10 @@ async def export_terminal_latest_histories(
 )
 async def export_terminal_history_archive(
     current_user: UserResponse = Depends(get_current_user),
+    status_filter: Literal["created", "attached", "detached", "closed", "exited"] | None = Query(
+        default=None,
+        alias="status",
+    ),
     owner_user_id: str | None = Query(default=None),
     session_id_prefix: str | None = Query(default=None),
     snapshot_from: datetime | None = Query(default=None),
@@ -436,6 +440,7 @@ async def export_terminal_history_archive(
     try:
         archives_by_folder = await service.list_history_snapshot_archives_by_groups(
             [str(getattr(workspace, "folder", "")).strip() for workspace in workspaces],
+            status=status_filter,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
             snapshot_from=snapshot_from,
@@ -489,6 +494,7 @@ async def export_terminal_history_archive(
     return JSONResponse(
         content={
             "filters": {
+                "status": status_filter,
                 "owner_user_id": owner_user_id,
                 "session_id_prefix": session_id_prefix,
                 "snapshot_from": _serialize_utc_datetime(snapshot_from),

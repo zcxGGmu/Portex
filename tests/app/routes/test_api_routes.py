@@ -2401,6 +2401,7 @@ def test_openapi_schema_documents_route_and_schema_details(api_client: TestClien
     assert "session_id_prefix" in export_terminal_history_archive_bundle_parameter_names
     assert "snapshot_from" in export_terminal_history_archive_bundle_parameter_names
     assert "snapshot_to" in export_terminal_history_archive_bundle_parameter_names
+    assert "status" in export_terminal_history_archive_bundle_parameter_names
 
     monitor_operation = schema["paths"]["/monitor"]["get"]
     assert "monitor" in monitor_operation["summary"].lower()

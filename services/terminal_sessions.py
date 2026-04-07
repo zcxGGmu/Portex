@@ -367,6 +367,7 @@ class TerminalSessionService:
         self,
         group_folders: list[str],
         *,
+        status: TerminalSessionStatus | None = None,
         owner_user_id: str | None = None,
         session_id_prefix: str | None = None,
         snapshot_from: datetime | None = None,
@@ -375,7 +376,7 @@ class TerminalSessionService:
         # Validate shared filter semantics even when no workspace yields snapshots.
         self._filter_history_snapshots(
             [],
-            status=None,
+            status=status,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
             snapshot_from=snapshot_from,
@@ -389,7 +390,7 @@ class TerminalSessionService:
                 return group_folder, []
             filtered = self._filter_history_snapshots(
                 items,
-                status=None,
+                status=status,
                 owner_user_id=owner_user_id,
                 session_id_prefix=session_id_prefix,
                 snapshot_from=snapshot_from,

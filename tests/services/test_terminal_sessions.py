@@ -911,6 +911,62 @@ async def test_terminal_session_service_filters_history_snapshot_archives_by_gro
 
 
 @pytest.mark.asyncio
+async def test_terminal_session_service_filters_history_snapshot_archives_by_status(
+    tmp_path: Path,
+) -> None:
+    from services.terminal_sessions import TerminalSessionService
+
+    created_bridges: list[FakeBridge] = []
+
+    def bridge_factory(**_: object) -> FakeBridge:
+        bridge = FakeBridge()
+        created_bridges.append(bridge)
+        return bridge
+
+    service = TerminalSessionService(
+        bridge_factory=bridge_factory,
+        reconnect_timeout_seconds=10.0,
+        history_max_bytes=64,
+        history_persist_root=tmp_path / "terminal-history",
+    )
+
+    attached_session = await service.create_session(
+        group_id="project-alpha",
+        group_folder="project-alpha",
+        owner_user_id="owner-1",
+        requested_mode="container",
+    )
+    _attached_record, attached_queue = await service.attach_session(
+        attached_session.session_id,
+        owner_user_id="owner-1",
+    )
+    await created_bridges[0].emit_output("attached-output\n")
+    await asyncio.wait_for(attached_queue.get(), timeout=0.1)
+
+    closed_session = await service.create_session(
+        group_id="project-beta",
+        group_folder="project-beta",
+        owner_user_id="owner-2",
+        requested_mode="container",
+    )
+    _closed_record, closed_queue = await service.attach_session(
+        closed_session.session_id,
+        owner_user_id="owner-2",
+    )
+    await created_bridges[1].emit_output("closed-output\n")
+    await asyncio.wait_for(closed_queue.get(), timeout=0.1)
+    await service.close_session(closed_session.session_id, owner_user_id="owner-2")
+
+    archives = await service.list_history_snapshot_archives_by_groups(
+        ["project-alpha", "project-beta"],
+        status="closed",
+    )
+
+    assert list(archives) == ["project-beta"]
+    assert [item.record.session_id for item in archives["project-beta"]] == [closed_session.session_id]
+
+
+@pytest.mark.asyncio
 async def test_terminal_session_service_rejects_invalid_history_archive_group_filters(
     tmp_path: Path,
 ) -> None:
