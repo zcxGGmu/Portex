@@ -10,15 +10,26 @@
 - [x] Write focused `M8.5.63` design doc
 - [x] Write focused `M8.5.63` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing service/route/OpenAPI coverage for top-level archive `status`
-- [ ] Implement filtered top-level archive backend behavior for `status`
-- [ ] Add `/terminals` top-level archive `status` UI and client wiring
-- [ ] Run focused regression plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing service/route/OpenAPI coverage for top-level archive `status`
+- [x] Implement filtered top-level archive backend behavior for `status`
+- [x] Add `/terminals` top-level archive `status` UI and client wiring
+- [x] Run focused regression plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- In progress.
+- Added RED coverage in `tests/services/test_terminal_sessions.py`, `tests/app/routes/test_terminal_routes.py`, and `tests/app/routes/test_api_routes.py` for grouped archive `status` filtering, grouped route forwarding, `filters.status` response metadata, and OpenAPI parameter exposure.
+- Extended `services/terminal_sessions.py` so `list_history_snapshot_archives_by_groups(...)` now accepts `status` and reuses the existing `_filter_history_snapshots(...)` semantics already used by workspace-scoped history routes.
+- Extended `app/routes/terminals.py` so `GET /terminals/history/archive` accepts the same five-value `status` filter as workspace-scoped history surfaces, forwards it to the grouped archive helper, and echoes it in `filters.status` without changing payload shape, filename, RBAC, or `404` empty-result behavior.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the archive-only filter state and top-level summary controls now include a `Status` dropdown; only `Export History Archive JSON` uses it, while overview and latest-history exports remain unfiltered.
+- Verification executed:
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Backend task commit completed in this session: `68104e9` (`feat(terminal): add M8.5.63 archive status filter backend`).
+- Remaining feature commit for this session: `feat(terminal): add M8.5.63 cross-workspace history archive status filter`
 
 # Session Plan (2026-04-06) - M8.5.62 Terminal Cross-Workspace History Archive Filters
 
