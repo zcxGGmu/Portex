@@ -36,6 +36,7 @@ const DEFAULT_TIMELINE_FILTERS = {
   snapshotToLocal: '',
 }
 const DEFAULT_ARCHIVE_FILTERS = {
+  status: '' as TerminalSessionStatus | '',
   ownerUserId: '',
   sessionIdPrefix: '',
   snapshotFromLocal: '',
@@ -301,6 +302,7 @@ export function Terminals() {
     snapshotToLocal: string
   }>(DEFAULT_TIMELINE_FILTERS)
   const [archiveFilters, setArchiveFilters] = useState<{
+    status: TerminalSessionStatus | ''
     ownerUserId: string
     sessionIdPrefix: string
     snapshotFromLocal: string
@@ -328,6 +330,7 @@ export function Terminals() {
   )
   const archiveQueryOptions = useMemo(
     () => ({
+      status: archiveFilters.status || undefined,
       ownerUserId: archiveFilters.ownerUserId || undefined,
       sessionIdPrefix: archiveFilters.sessionIdPrefix || undefined,
       snapshotFrom: localDateTimeToUtcIso(archiveFilters.snapshotFromLocal),
@@ -590,6 +593,7 @@ export function Terminals() {
 
   function updateArchiveFilters(
     patch: Partial<{
+      status: TerminalSessionStatus | ''
       ownerUserId: string
       sessionIdPrefix: string
       snapshotFromLocal: string
@@ -959,6 +963,25 @@ export function Terminals() {
               Archive filters apply only to <strong>Export History Archive JSON</strong>.
             </p>
             <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
+              <label>
+                <span className="muted">Status</span>
+                <select
+                  onChange={(event) =>
+                    updateArchiveFilters({
+                      status: (event.target.value as TerminalSessionStatus | '') || '',
+                    })
+                  }
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  value={archiveFilters.status}
+                >
+                  <option value="">All statuses</option>
+                  {TERMINAL_HISTORY_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label>
                 <span className="muted">Owner User ID</span>
                 <input

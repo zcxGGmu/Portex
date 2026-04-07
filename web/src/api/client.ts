@@ -208,6 +208,7 @@ export interface TerminalHistorySearchOptions {
 }
 
 export interface TerminalHistoryArchiveBundleOptions {
+  status?: TerminalSessionStatus
   ownerUserId?: string
   sessionIdPrefix?: string
   snapshotFrom?: string
@@ -609,6 +610,9 @@ function buildTerminalHistoryArchiveBundleParams(
   options: TerminalHistoryArchiveBundleOptions = {},
 ): URLSearchParams {
   const params = new URLSearchParams()
+  if (options.status) {
+    params.set('status', options.status)
+  }
   if (options.ownerUserId) {
     params.set('owner_user_id', options.ownerUserId)
   }
