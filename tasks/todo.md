@@ -1,3 +1,25 @@
+# Session Plan (2026-04-12) - M8.5.64 Terminal Cross-Workspace History Archive Chat-Access Filter
+
+## Goal
+- Continue post-`M8.5.63` terminal operator development by adding an optional `chat_accessible` filter to the top-level cross-workspace history archive export on `/terminals`, with a matching archive-only control in the summary area, while keeping grouped archive items, workspace-scoped history routes, and terminal-history semantics unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current top-level archive implementation
+- [x] Confirm the next step should stay on the top-level cross-workspace archive path
+- [x] Validate the next filter choice: `chat_accessible` has real operator value here while `backend` is still single-valued for terminal sessions
+- [x] Write focused `M8.5.64` design doc
+- [x] Write focused `M8.5.64` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing route/OpenAPI coverage for top-level archive `chat_accessible`
+- [ ] Implement filtered top-level archive route behavior for `chat_accessible`
+- [ ] Add `/terminals` top-level archive `chat_accessible` UI and client wiring
+- [ ] Run focused regression plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-07) - M8.5.63 Terminal Cross-Workspace History Archive Status Filter
 
 ## Goal
