@@ -77,6 +77,21 @@ type PendingMatchTarget =
       matchOffset: number
     }
 
+type ArchiveFilterChipKey =
+  | 'groupNamePrefix'
+  | 'groupIdPrefix'
+  | 'chatAccessible'
+  | 'status'
+  | 'ownerUserId'
+  | 'sessionIdPrefix'
+  | 'snapshotFromLocal'
+  | 'snapshotToLocal'
+
+type ArchiveFilterChip = {
+  key: ArchiveFilterChipKey
+  label: string
+}
+
 function normalizeSnippetMatches(entry: TerminalSessionHistorySearchMatch) {
   if (entry.snippet_matches.length > 0) {
     return entry.snippet_matches
@@ -176,6 +191,10 @@ function summarize(items: TerminalWorkspaceSummary[]) {
   }
 
   return { activeCount, detachedCount, closedCount, emptyCount }
+}
+
+function getTerminalStatusLabel(value: TerminalSessionStatus): string {
+  return TERMINAL_HISTORY_STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value
 }
 
 function findCaseInsensitiveMatches(text: string, query: string): MatchRange[] {
@@ -350,34 +369,70 @@ export function Terminals() {
     }),
     [archiveFilters],
   )
-  const archiveActiveFilterCount = useMemo(() => {
-    let count = 0
-    if (archiveFilters.groupNamePrefix.trim() !== '') {
-      count += 1
+  const archiveFilterChips = useMemo<ArchiveFilterChip[]>(() => {
+    const chips: ArchiveFilterChip[] = []
+    const groupNamePrefix = archiveFilters.groupNamePrefix.trim()
+    if (groupNamePrefix !== '') {
+      chips.push({
+        key: 'groupNamePrefix',
+        label: `Workspace Name: ${groupNamePrefix}`,
+      })
     }
-    if (archiveFilters.groupIdPrefix.trim() !== '') {
-      count += 1
+    const groupIdPrefix = archiveFilters.groupIdPrefix.trim()
+    if (groupIdPrefix !== '') {
+      chips.push({
+        key: 'groupIdPrefix',
+        label: `Workspace ID: ${groupIdPrefix}`,
+      })
     }
-    if (archiveFilters.chatAccessible !== '') {
-      count += 1
+    if (archiveFilters.chatAccessible === 'true') {
+      chips.push({
+        key: 'chatAccessible',
+        label: 'Chat Access: Yes',
+      })
+    } else if (archiveFilters.chatAccessible === 'false') {
+      chips.push({
+        key: 'chatAccessible',
+        label: 'Chat Access: No',
+      })
     }
     if (archiveFilters.status !== '') {
-      count += 1
+      chips.push({
+        key: 'status',
+        label: `Status: ${getTerminalStatusLabel(archiveFilters.status)}`,
+      })
     }
-    if (archiveFilters.ownerUserId.trim() !== '') {
-      count += 1
+    const ownerUserId = archiveFilters.ownerUserId.trim()
+    if (ownerUserId !== '') {
+      chips.push({
+        key: 'ownerUserId',
+        label: `Owner: ${ownerUserId}`,
+      })
     }
-    if (archiveFilters.sessionIdPrefix.trim() !== '') {
-      count += 1
+    const sessionIdPrefix = archiveFilters.sessionIdPrefix.trim()
+    if (sessionIdPrefix !== '') {
+      chips.push({
+        key: 'sessionIdPrefix',
+        label: `Session: ${sessionIdPrefix}`,
+      })
     }
-    if (archiveFilters.snapshotFromLocal.trim() !== '') {
-      count += 1
+    const snapshotFromLocal = archiveFilters.snapshotFromLocal.trim()
+    if (snapshotFromLocal !== '') {
+      chips.push({
+        key: 'snapshotFromLocal',
+        label: `From: ${snapshotFromLocal}`,
+      })
     }
-    if (archiveFilters.snapshotToLocal.trim() !== '') {
-      count += 1
+    const snapshotToLocal = archiveFilters.snapshotToLocal.trim()
+    if (snapshotToLocal !== '') {
+      chips.push({
+        key: 'snapshotToLocal',
+        label: `To: ${snapshotToLocal}`,
+      })
     }
-    return count
+    return chips
   }, [archiveFilters])
+  const archiveActiveFilterCount = archiveFilterChips.length
   const hasActiveArchiveFilters = archiveActiveFilterCount > 0
   const archiveFilterSummary = hasActiveArchiveFilters
     ? `Archive export is filtered by ${archiveActiveFilterCount} field${
@@ -657,6 +712,35 @@ export function Terminals() {
 
   function resetArchiveFilters() {
     setArchiveFilters({ ...DEFAULT_ARCHIVE_FILTERS })
+  }
+
+  function clearArchiveFilter(key: ArchiveFilterChipKey) {
+    switch (key) {
+      case 'groupNamePrefix':
+        updateArchiveFilters({ groupNamePrefix: '' })
+        return
+      case 'groupIdPrefix':
+        updateArchiveFilters({ groupIdPrefix: '' })
+        return
+      case 'chatAccessible':
+        updateArchiveFilters({ chatAccessible: '' })
+        return
+      case 'status':
+        updateArchiveFilters({ status: '' })
+        return
+      case 'ownerUserId':
+        updateArchiveFilters({ ownerUserId: '' })
+        return
+      case 'sessionIdPrefix':
+        updateArchiveFilters({ sessionIdPrefix: '' })
+        return
+      case 'snapshotFromLocal':
+        updateArchiveFilters({ snapshotFromLocal: '' })
+        return
+      case 'snapshotToLocal':
+        updateArchiveFilters({ snapshotToLocal: '' })
+        return
+    }
   }
 
   function handlePresetTimeRange(presetId: TerminalTimeRangePresetId) {
@@ -1016,6 +1100,43 @@ export function Terminals() {
               Archive filters apply only to <strong>Export History Archive JSON</strong>.
             </p>
             <p className="muted">{archiveFilterSummary}</p>
+            {archiveFilterChips.length > 0 ? (
+              <div className="terminal-actions" style={{ marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                {archiveFilterChips.map((chip) => (
+                  <span
+                    key={chip.key}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      padding: '0.3rem 0.55rem',
+                      borderRadius: '999px',
+                      background: '#eef2f7',
+                      color: '#1f2937',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    <span>{chip.label}</span>
+                    <button
+                      aria-label={`Clear ${chip.label}`}
+                      onClick={() => clearArchiveFilter(chip.key)}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#4b5563',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                      type="button"
+                    >
+                      x
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
               <label>
                 <span className="muted">Workspace Name Prefix</span>

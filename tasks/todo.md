@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.68` design doc
 - [x] Write focused `M8.5.68` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the new archive active-filter chips
-- [ ] Implement `/terminals` archive active-filter chips and per-chip clear actions
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the new archive active-filter chips
+- [x] Implement `/terminals` archive active-filter chips and per-chip clear actions
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by referencing a not-yet-defined `archiveFilterChips`, then verified `cd web && npm run build` failed with `TS2552: Cannot find name 'archiveFilterChips'`.
+- Extended `web/src/pages/Terminals.tsx` so the `/terminals` summary area now derives explicit archive filter chips from the existing archive-only state, renders readable labels/values for each active filter, and wires each chip to clear only its own archive field.
+- Kept backend routes, API-client contracts, archive query wiring, the existing active-filter summary text, the existing bulk `Clear Archive Filters` action, timeline/search/detail state, and the page-level action/notice model unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `1714183` (`docs(plans): add M8.5.68 terminal archive filter chips UX plan`).
 
 # Session Plan (2026-04-12) - M8.5.67 Terminal Archive Filter Reset UX
 
