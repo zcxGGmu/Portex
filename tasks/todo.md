@@ -1,3 +1,24 @@
+# Session Plan (2026-04-12) - M8.5.67 Terminal Archive Filter Reset UX
+
+## Goal
+- Continue post-`M8.5.66` terminal operator development by adding a small archive-only reset UX on `/terminals`, so operators can quickly see when top-level archive filters are active and clear them in one action without changing backend contracts or export semantics.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` summary filter UI
+- [x] Confirm the next step should stay on operator-surface UX rather than adding another top-level archive filter
+- [x] Validate the UX gap: archive-only filter state now spans workspace name/id, chat access, status, owner, session, and time bounds, but still lacks one-click reset and active-filter feedback
+- [x] Write focused `M8.5.67` design doc
+- [x] Write focused `M8.5.67` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the new archive-filter reset UX
+- [ ] Implement `/terminals` archive filter reset and active-filter hint UI
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-12) - M8.5.66 Terminal Cross-Workspace History Archive Group-Name Prefix Filter
 
 ## Goal
