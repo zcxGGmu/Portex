@@ -4,7 +4,7 @@
 当前分支: `main`
 最新 planning-only 提交: `1714183` (`docs(plans): add M8.5.68 terminal archive filter chips UX plan`)
 最新功能状态: 当前工作树已完成 `M8.5.68` terminal archive filter chips UX
-上一条 handoff 提交: `57fb786` (`docs(handoff): finalize M8.5.63 terminal status filter context`)
+上一条 handoff 提交: `757c192` (`docs(handoff): refresh latest main progress context`)
 
 ---
 
@@ -12,7 +12,7 @@
 
 - `docs/TODO.md` 的正式路线仍停在 `M6.5.3`；`M0` ~ `M6` 全部完成，post-`M6` 的 `M7.1` ~ `M7.6.5` parity backlog 也已完成。
 - terminal relevance 主线已完成到 `M8.5.51`，且 2026-03-26 的 convergence audit 已确认当前 `81`-case offline baseline 收敛；默认下一步不是继续扩样或继续加 tie-break。
-- 最新可执行功能状态已推进到 `M8.5.68`：`/terminals` summary 区现在会把 top-level archive 当前生效的过滤条件直接展示成 chips，并支持逐项清除；同时保留 `Clear Archive Filters` 的整体验证/重置路径。仍然只影响 `Export History Archive JSON`，不改变任何 backend contract。
+- 最新可执行功能状态已推进到 `M8.5.68`：前端提交 `437cdf7` 为 `/terminals` summary 区补上 top-level archive 当前生效过滤条件的 chips 展示与逐项清除，同时保留上一轮 `23e35bd` 带来的 `Clear Archive Filters` 整体验证/重置路径。两者仍然只影响 `Export History Archive JSON`，不改变任何 backend contract。
 - `M8.5.68` 继续保持 additive 边界：
   - 不改 `GET /terminals/export`
   - 不改 `GET /terminals/history/export`
@@ -51,6 +51,7 @@
 - chips 只清除对应的 archive-only 字段，不触碰其它 archive filters，也不会触发任何网络请求
 - workspace-scoped timeline/search/export/archive 既有过滤契约和前端 preset/range 逻辑保持不变；顶层 archive 仅复用相同的 local-datetime -> UTC ISO 转换语义
 - relevance baseline 仍是 source of truth；只有出现新的真实证据时才重新进入 post-`M8.5.51` 排序 refinement
+- 顶层 archive 这条线当前更适合只响应明确的 operator 反馈；如果没有新的真实使用痛点，默认不要继续堆新的 archive 参数或细碎 UX。
 
 ## 4. 下一位 Codex 直接执行
 

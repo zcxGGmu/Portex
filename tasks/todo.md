@@ -1,3 +1,22 @@
+# Session Plan (2026-04-12) - Handoff Sync For M8.5.68
+
+## Goal
+- Refresh restart-oriented docs so the next Codex restart lands directly on the current `M8.5.68` baseline without re-discovering stale handoff pointers.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `AGENTS.md`, `tasks/todo.md`, and recent commits
+- [x] Identify stale restart-oriented entries, especially old handoff pointers
+- [x] Update `docs/progress.md` with the latest M8.5.68 functional context
+- [x] Update `AGENTS.md` with the latest M8.5.68 functional and handoff context
+- [x] Record this sync pass in `tasks/todo.md`
+- [x] Run minimal doc hygiene checks
+- [x] Commit the handoff sync
+
+## Review
+- Refreshed `docs/progress.md` so the top-level restart entry now points at the correct previous handoff sync commit (`757c192`) and more explicitly ties the current `M8.5.68` archive UX state to feature commits `23e35bd` and `437cdf7`.
+- Refreshed `AGENTS.md` with the same current-branch handoff pointer, attached `437cdf7` directly to the `M8.5.68` milestone note, and clarified that the current archive surface should now be treated as evidence-driven rather than a place to keep adding knobs by default.
+- Verification for this docs-only sync stayed minimal: `git diff --check`.
+
 # Session Plan (2026-04-12) - M8.5.68 Terminal Archive Filter Chips UX
 
 ## Goal
