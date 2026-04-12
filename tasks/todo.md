@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.67` design doc
 - [x] Write focused `M8.5.67` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the new archive-filter reset UX
-- [ ] Implement `/terminals` archive filter reset and active-filter hint UI
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the new archive-filter reset UX
+- [x] Implement `/terminals` archive filter reset and active-filter hint UI
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by referencing a not-yet-defined `archiveFilterSummary`, then verified `cd web && npm run build` failed with `TS2552: Cannot find name 'archiveFilterSummary'`.
+- Extended `web/src/pages/Terminals.tsx` so the `/terminals` summary area now derives archive-only active-filter count from the existing state, shows `Archive export is unfiltered.` vs `Archive export is filtered by N fields.`, and exposes a `Clear Archive Filters` action that resets only `archiveFilters` to defaults.
+- Kept backend routes, API-client contracts, archive query wiring, timeline/search/detail state, and the existing page-level action/notice model unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `f2bdf11` (`docs(plans): add M8.5.67 terminal archive filter reset UX plan`).
 
 # Session Plan (2026-04-12) - M8.5.66 Terminal Cross-Workspace History Archive Group-Name Prefix Filter
 

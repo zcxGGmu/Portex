@@ -350,6 +350,40 @@ export function Terminals() {
     }),
     [archiveFilters],
   )
+  const archiveActiveFilterCount = useMemo(() => {
+    let count = 0
+    if (archiveFilters.groupNamePrefix.trim() !== '') {
+      count += 1
+    }
+    if (archiveFilters.groupIdPrefix.trim() !== '') {
+      count += 1
+    }
+    if (archiveFilters.chatAccessible !== '') {
+      count += 1
+    }
+    if (archiveFilters.status !== '') {
+      count += 1
+    }
+    if (archiveFilters.ownerUserId.trim() !== '') {
+      count += 1
+    }
+    if (archiveFilters.sessionIdPrefix.trim() !== '') {
+      count += 1
+    }
+    if (archiveFilters.snapshotFromLocal.trim() !== '') {
+      count += 1
+    }
+    if (archiveFilters.snapshotToLocal.trim() !== '') {
+      count += 1
+    }
+    return count
+  }, [archiveFilters])
+  const hasActiveArchiveFilters = archiveActiveFilterCount > 0
+  const archiveFilterSummary = hasActiveArchiveFilters
+    ? `Archive export is filtered by ${archiveActiveFilterCount} field${
+        archiveActiveFilterCount === 1 ? '' : 's'
+      }.`
+    : 'Archive export is unfiltered.'
   const timelineQueryOptions = useMemo(
     () => ({
       limit: TIMELINE_PAGE_SIZE,
@@ -619,6 +653,10 @@ export function Terminals() {
       ...current,
       ...patch,
     }))
+  }
+
+  function resetArchiveFilters() {
+    setArchiveFilters({ ...DEFAULT_ARCHIVE_FILTERS })
   }
 
   function handlePresetTimeRange(presetId: TerminalTimeRangePresetId) {
@@ -977,6 +1015,7 @@ export function Terminals() {
             <p className="muted" style={{ marginTop: 0 }}>
               Archive filters apply only to <strong>Export History Archive JSON</strong>.
             </p>
+            <p className="muted">{archiveFilterSummary}</p>
             <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
               <label>
                 <span className="muted">Workspace Name Prefix</span>
@@ -1073,6 +1112,14 @@ export function Terminals() {
               </label>
             </div>
             <div className="terminal-actions" style={{ marginBottom: '0.75rem' }}>
+              <PrimaryButton
+                className="button--ghost"
+                disabled={actionKey !== null || !hasActiveArchiveFilters}
+                onClick={resetArchiveFilters}
+                type="button"
+              >
+                Clear Archive Filters
+              </PrimaryButton>
               <PrimaryButton
                 className="button--ghost"
                 disabled={actionKey !== null}
