@@ -1,3 +1,24 @@
+# Session Plan (2026-04-12) - M8.5.68 Terminal Archive Filter Chips UX
+
+## Goal
+- Continue post-`M8.5.67` terminal operator development by adding archive-only active-filter chips on `/terminals`, so operators can see exactly which top-level archive filters are currently narrowing `Export History Archive JSON` and clear them individually without changing backend contracts or export semantics.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` summary filter UI
+- [x] Confirm the next step should stay on operator-surface UX rather than adding another top-level archive filter
+- [x] Validate the UX gap: archive filter summary now reports filtered/unfiltered state and supports full reset, but still hides which specific archive filters are active
+- [x] Write focused `M8.5.68` design doc
+- [x] Write focused `M8.5.68` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the new archive active-filter chips
+- [ ] Implement `/terminals` archive active-filter chips and per-chip clear actions
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-12) - M8.5.67 Terminal Archive Filter Reset UX
 
 ## Goal
