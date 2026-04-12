@@ -423,6 +423,7 @@ async def export_terminal_history_archive(
         default=None,
         alias="status",
     ),
+    group_id_prefix: str | None = Query(default=None),
     chat_accessible_filter: bool | None = Query(default=None, alias="chat_accessible"),
     owner_user_id: str | None = Query(default=None),
     session_id_prefix: str | None = Query(default=None),
@@ -433,12 +434,18 @@ async def export_terminal_history_archive(
 ) -> Response:
     _require_terminal_role(current_user)
 
+    normalized_group_id_prefix = group_id_prefix.strip() if group_id_prefix is not None else None
+    if normalized_group_id_prefix == "":
+        normalized_group_id_prefix = None
+
     workspace_entries: list[tuple[object, str, str, bool]] = []
     for workspace in await group_registry.list_registered_groups():
         if not _is_web_workspace(workspace):
             continue
         group_id = str(getattr(workspace, "folder", "")).strip()
         if group_id == "":
+            continue
+        if normalized_group_id_prefix is not None and not group_id.startswith(normalized_group_id_prefix):
             continue
         group_name = str(getattr(workspace, "name", group_id))
         chat_accessible = await group_registry.user_can_access_group(
@@ -498,6 +505,7 @@ async def export_terminal_history_archive(
     return JSONResponse(
         content={
             "filters": {
+                "group_id_prefix": normalized_group_id_prefix,
                 "chat_accessible": chat_accessible_filter,
                 "status": status_filter,
                 "owner_user_id": owner_user_id,
