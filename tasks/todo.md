@@ -10,15 +10,26 @@
 - [x] Write focused `M8.5.64` design doc
 - [x] Write focused `M8.5.64` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing route/OpenAPI coverage for top-level archive `chat_accessible`
-- [ ] Implement filtered top-level archive route behavior for `chat_accessible`
-- [ ] Add `/terminals` top-level archive `chat_accessible` UI and client wiring
-- [ ] Run focused regression plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing route/OpenAPI coverage for top-level archive `chat_accessible`
+- [x] Implement filtered top-level archive route behavior for `chat_accessible`
+- [x] Add `/terminals` top-level archive `chat_accessible` UI and client wiring
+- [x] Run focused regression plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Added RED coverage in `tests/app/routes/test_terminal_routes.py` and `tests/app/routes/test_api_routes.py` for grouped archive `chat_accessible=true|false` filtering, route-level workspace selection, `filters.chat_accessible` response metadata, and OpenAPI parameter exposure.
+- Extended `app/routes/terminals.py` so `GET /terminals/history/archive` accepts optional `chat_accessible`, computes `user_can_access_group(...)` once per canonical web workspace for the current operator, filters candidate workspaces before grouped archive loading, and echoes `filters.chat_accessible` without changing grouped item shape, filename, RBAC, or `404` empty-result behavior.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the archive-only filter state and top-level summary controls now include a `Chat Access` dropdown; only `Export History Archive JSON` uses it, while overview and latest-history exports remain unfiltered.
+- Kept `services/terminal_sessions.py` unchanged so snapshot-derived filtering remains owned by the service and `chat_accessible` stays a route-only user-context boundary.
+- Verification executed:
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Planning commit completed in this session: `e00c2e8` (`docs(plans): add M8.5.64 terminal history archive chat-access filter plan`).
 
 # Session Plan (2026-04-07) - M8.5.63 Terminal Cross-Workspace History Archive Status Filter
 

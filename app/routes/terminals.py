@@ -423,6 +423,7 @@ async def export_terminal_history_archive(
         default=None,
         alias="status",
     ),
+    chat_accessible_filter: bool | None = Query(default=None, alias="chat_accessible"),
     owner_user_id: str | None = Query(default=None),
     session_id_prefix: str | None = Query(default=None),
     snapshot_from: datetime | None = Query(default=None),
@@ -432,14 +433,26 @@ async def export_terminal_history_archive(
 ) -> Response:
     _require_terminal_role(current_user)
 
-    workspaces = [
-        workspace
-        for workspace in await group_registry.list_registered_groups()
-        if _is_web_workspace(workspace)
-    ]
+    workspace_entries: list[tuple[object, str, str, bool]] = []
+    for workspace in await group_registry.list_registered_groups():
+        if not _is_web_workspace(workspace):
+            continue
+        group_id = str(getattr(workspace, "folder", "")).strip()
+        if group_id == "":
+            continue
+        group_name = str(getattr(workspace, "name", group_id))
+        chat_accessible = await group_registry.user_can_access_group(
+            user_id=current_user.id,
+            user_role=current_user.role,
+            group=workspace,
+        )
+        if chat_accessible_filter is not None and chat_accessible != chat_accessible_filter:
+            continue
+        workspace_entries.append((workspace, group_id, group_name, chat_accessible))
+
     try:
         archives_by_folder = await service.list_history_snapshot_archives_by_groups(
-            [str(getattr(workspace, "folder", "")).strip() for workspace in workspaces],
+            [group_id for _workspace, group_id, _group_name, _chat_accessible in workspace_entries],
             status=status_filter,
             owner_user_id=owner_user_id,
             session_id_prefix=session_id_prefix,
@@ -450,19 +463,10 @@ async def export_terminal_history_archive(
         raise _map_terminal_error(exc) from exc
 
     items: list[dict[str, object]] = []
-    for workspace in workspaces:
-        group_id = str(getattr(workspace, "folder", "")).strip()
-        if group_id == "":
-            continue
+    for _workspace, group_id, group_name, chat_accessible in workspace_entries:
         snapshots = archives_by_folder.get(group_id)
         if not snapshots:
             continue
-        group_name = str(getattr(workspace, "name", group_id))
-        chat_accessible = await group_registry.user_can_access_group(
-            user_id=current_user.id,
-            user_role=current_user.role,
-            group=workspace,
-        )
         items.append(
             {
                 "group_id": group_id,
@@ -494,6 +498,7 @@ async def export_terminal_history_archive(
     return JSONResponse(
         content={
             "filters": {
+                "chat_accessible": chat_accessible_filter,
                 "status": status_filter,
                 "owner_user_id": owner_user_id,
                 "session_id_prefix": session_id_prefix,

@@ -36,6 +36,7 @@ const DEFAULT_TIMELINE_FILTERS = {
   snapshotToLocal: '',
 }
 const DEFAULT_ARCHIVE_FILTERS = {
+  chatAccessible: '' as '' | 'true' | 'false',
   status: '' as TerminalSessionStatus | '',
   ownerUserId: '',
   sessionIdPrefix: '',
@@ -302,6 +303,7 @@ export function Terminals() {
     snapshotToLocal: string
   }>(DEFAULT_TIMELINE_FILTERS)
   const [archiveFilters, setArchiveFilters] = useState<{
+    chatAccessible: '' | 'true' | 'false'
     status: TerminalSessionStatus | ''
     ownerUserId: string
     sessionIdPrefix: string
@@ -330,6 +332,10 @@ export function Terminals() {
   )
   const archiveQueryOptions = useMemo(
     () => ({
+      chatAccessible:
+        archiveFilters.chatAccessible === ''
+          ? undefined
+          : archiveFilters.chatAccessible === 'true',
       status: archiveFilters.status || undefined,
       ownerUserId: archiveFilters.ownerUserId || undefined,
       sessionIdPrefix: archiveFilters.sessionIdPrefix || undefined,
@@ -593,6 +599,7 @@ export function Terminals() {
 
   function updateArchiveFilters(
     patch: Partial<{
+      chatAccessible: '' | 'true' | 'false'
       status: TerminalSessionStatus | ''
       ownerUserId: string
       sessionIdPrefix: string
@@ -963,6 +970,22 @@ export function Terminals() {
               Archive filters apply only to <strong>Export History Archive JSON</strong>.
             </p>
             <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
+              <label>
+                <span className="muted">Chat Access</span>
+                <select
+                  onChange={(event) =>
+                    updateArchiveFilters({
+                      chatAccessible: (event.target.value as '' | 'true' | 'false') || '',
+                    })
+                  }
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  value={archiveFilters.chatAccessible}
+                >
+                  <option value="">All workspaces</option>
+                  <option value="true">Chat accessible only</option>
+                  <option value="false">No chat access</option>
+                </select>
+              </label>
               <label>
                 <span className="muted">Status</span>
                 <select

@@ -208,6 +208,7 @@ export interface TerminalHistorySearchOptions {
 }
 
 export interface TerminalHistoryArchiveBundleOptions {
+  chatAccessible?: boolean
   status?: TerminalSessionStatus
   ownerUserId?: string
   sessionIdPrefix?: string
@@ -610,6 +611,9 @@ function buildTerminalHistoryArchiveBundleParams(
   options: TerminalHistoryArchiveBundleOptions = {},
 ): URLSearchParams {
   const params = new URLSearchParams()
+  if (typeof options.chatAccessible === 'boolean') {
+    params.set('chat_accessible', String(options.chatAccessible))
+  }
   if (options.status) {
     params.set('status', options.status)
   }
