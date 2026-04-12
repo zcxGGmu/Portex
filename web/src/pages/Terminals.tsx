@@ -36,6 +36,7 @@ const DEFAULT_TIMELINE_FILTERS = {
   snapshotToLocal: '',
 }
 const DEFAULT_ARCHIVE_FILTERS = {
+  groupNamePrefix: '',
   groupIdPrefix: '',
   chatAccessible: '' as '' | 'true' | 'false',
   status: '' as TerminalSessionStatus | '',
@@ -304,6 +305,7 @@ export function Terminals() {
     snapshotToLocal: string
   }>(DEFAULT_TIMELINE_FILTERS)
   const [archiveFilters, setArchiveFilters] = useState<{
+    groupNamePrefix: string
     groupIdPrefix: string
     chatAccessible: '' | 'true' | 'false'
     status: TerminalSessionStatus | ''
@@ -334,6 +336,7 @@ export function Terminals() {
   )
   const archiveQueryOptions = useMemo(
     () => ({
+      groupNamePrefix: archiveFilters.groupNamePrefix.trim() || undefined,
       groupIdPrefix: archiveFilters.groupIdPrefix.trim() || undefined,
       chatAccessible:
         archiveFilters.chatAccessible === ''
@@ -602,6 +605,7 @@ export function Terminals() {
 
   function updateArchiveFilters(
     patch: Partial<{
+      groupNamePrefix: string
       groupIdPrefix: string
       chatAccessible: '' | 'true' | 'false'
       status: TerminalSessionStatus | ''
@@ -974,6 +978,16 @@ export function Terminals() {
               Archive filters apply only to <strong>Export History Archive JSON</strong>.
             </p>
             <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
+              <label>
+                <span className="muted">Workspace Name Prefix</span>
+                <input
+                  onChange={(event) => updateArchiveFilters({ groupNamePrefix: event.target.value })}
+                  placeholder="Project"
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  type="text"
+                  value={archiveFilters.groupNamePrefix}
+                />
+              </label>
               <label>
                 <span className="muted">Workspace Prefix</span>
                 <input

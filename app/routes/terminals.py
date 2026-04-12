@@ -423,6 +423,7 @@ async def export_terminal_history_archive(
         default=None,
         alias="status",
     ),
+    group_name_prefix: str | None = Query(default=None),
     group_id_prefix: str | None = Query(default=None),
     chat_accessible_filter: bool | None = Query(default=None, alias="chat_accessible"),
     owner_user_id: str | None = Query(default=None),
@@ -434,6 +435,9 @@ async def export_terminal_history_archive(
 ) -> Response:
     _require_terminal_role(current_user)
 
+    normalized_group_name_prefix = group_name_prefix.strip() if group_name_prefix is not None else None
+    if normalized_group_name_prefix == "":
+        normalized_group_name_prefix = None
     normalized_group_id_prefix = group_id_prefix.strip() if group_id_prefix is not None else None
     if normalized_group_id_prefix == "":
         normalized_group_id_prefix = None
@@ -448,6 +452,10 @@ async def export_terminal_history_archive(
         if normalized_group_id_prefix is not None and not group_id.startswith(normalized_group_id_prefix):
             continue
         group_name = str(getattr(workspace, "name", group_id))
+        if normalized_group_name_prefix is not None and not group_name.casefold().startswith(
+            normalized_group_name_prefix.casefold()
+        ):
+            continue
         chat_accessible = await group_registry.user_can_access_group(
             user_id=current_user.id,
             user_role=current_user.role,
@@ -505,6 +513,7 @@ async def export_terminal_history_archive(
     return JSONResponse(
         content={
             "filters": {
+                "group_name_prefix": normalized_group_name_prefix,
                 "group_id_prefix": normalized_group_id_prefix,
                 "chat_accessible": chat_accessible_filter,
                 "status": status_filter,

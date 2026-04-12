@@ -583,6 +583,7 @@ def test_owner_can_export_filtered_terminal_history_archive_bundle(api_client: T
     assert response.status_code == 200
     payload = response.json()
     assert payload["filters"] == {
+        "group_name_prefix": None,
         "group_id_prefix": None,
         "chat_accessible": None,
         "status": "closed",
@@ -845,6 +846,136 @@ def test_owner_can_export_group_prefix_filtered_terminal_history_archive_bundle(
     payload = response.json()
     assert payload["filters"]["group_id_prefix"] == "project-"
     assert payload["filters"]["chat_accessible"] is None
+    assert [item["group_id"] for item in payload["items"]] == ["project-alpha", "project-beta"]
+
+
+def test_owner_can_export_group_name_prefix_filtered_terminal_history_archive_bundle(
+    api_client: TestClient,
+) -> None:
+    from app.main import app
+    from app.routes import terminals as terminal_routes
+    from services.terminal_sessions import TerminalSessionRecord
+
+    owner_headers, owner_id = _login_headers(api_client, username="owner", role="owner")
+    registry = FakeGroupRegistry(
+        [
+            _workspace(jid="web:project-alpha", folder="project-alpha", name="Project Alpha", created_by=owner_id),
+            _workspace(jid="web:project-beta", folder="project-beta", name="project Beta", created_by=owner_id),
+            _workspace(jid="web:support-gamma", folder="support-gamma", name="Support Gamma", created_by=owner_id),
+        ]
+    )
+
+    class FakeTerminalService:
+        def __init__(self) -> None:
+            self.calls: list[list[str]] = []
+
+        def list_sessions(self):
+            return []
+
+        def list_history_summaries(self):
+            return []
+
+        def list_latest_history_snapshots(self):
+            return []
+
+        async def list_history_snapshot_archives_by_groups(
+            self,
+            group_folders: list[str],
+            *,
+            status: str | None = None,
+            owner_user_id: str | None = None,
+            session_id_prefix: str | None = None,
+            snapshot_from: datetime | None = None,
+            snapshot_to: datetime | None = None,
+        ):
+            from datetime import datetime, timezone
+
+            assert status is None
+            assert owner_user_id is None
+            assert session_id_prefix is None
+            assert snapshot_from is None
+            assert snapshot_to is None
+            self.calls.append(group_folders)
+
+            snapshots = {
+                "project-alpha": [
+                    SimpleNamespace(
+                        record=TerminalSessionRecord(
+                            session_id="terminal-session-alpha-1",
+                            group_id="project-alpha",
+                            group_folder="project-alpha",
+                            owner_user_id=owner_id,
+                            backend="docker_container",
+                            container_name="portex-terminal-project-alpha-1",
+                            status="attached",
+                            created_at=datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc),
+                        ),
+                        snapshot_at=datetime(2026, 3, 15, 12, 5, tzinfo=timezone.utc),
+                        output="alpha-output\n",
+                        output_bytes=13,
+                        history_max_bytes=32768,
+                        truncated=False,
+                    )
+                ],
+                "project-beta": [
+                    SimpleNamespace(
+                        record=TerminalSessionRecord(
+                            session_id="terminal-session-beta-1",
+                            group_id="project-beta",
+                            group_folder="project-beta",
+                            owner_user_id=owner_id,
+                            backend="docker_container",
+                            container_name="portex-terminal-project-beta-1",
+                            status="closed",
+                            created_at=datetime(2026, 3, 15, 11, 0, tzinfo=timezone.utc),
+                        ),
+                        snapshot_at=datetime(2026, 3, 15, 11, 5, tzinfo=timezone.utc),
+                        output="beta-output\n",
+                        output_bytes=12,
+                        history_max_bytes=32768,
+                        truncated=False,
+                    )
+                ],
+                "support-gamma": [
+                    SimpleNamespace(
+                        record=TerminalSessionRecord(
+                            session_id="terminal-session-support-gamma-1",
+                            group_id="support-gamma",
+                            group_folder="support-gamma",
+                            owner_user_id=owner_id,
+                            backend="docker_container",
+                            container_name="portex-terminal-support-gamma-1",
+                            status="closed",
+                            created_at=datetime(2026, 3, 15, 10, 0, tzinfo=timezone.utc),
+                        ),
+                        snapshot_at=datetime(2026, 3, 15, 10, 5, tzinfo=timezone.utc),
+                        output="gamma-output\n",
+                        output_bytes=13,
+                        history_max_bytes=32768,
+                        truncated=False,
+                    )
+                ],
+            }
+            return {group_id: snapshots[group_id] for group_id in group_folders}
+
+    service = FakeTerminalService()
+    app.dependency_overrides[terminal_routes.get_group_registry_service] = lambda: registry
+    app.dependency_overrides[terminal_routes.get_terminal_session_service] = lambda: service
+
+    try:
+        response = api_client.get(
+            "/terminals/history/archive?group_name_prefix=proJ",
+            headers=owner_headers,
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert service.calls == [["project-alpha", "project-beta"]]
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["filters"]["group_name_prefix"] == "proJ"
+    assert payload["filters"]["group_id_prefix"] is None
     assert [item["group_id"] for item in payload["items"]] == ["project-alpha", "project-beta"]
 
 

@@ -10,15 +10,26 @@
 - [x] Write focused `M8.5.66` design doc
 - [x] Write focused `M8.5.66` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Add failing route/OpenAPI coverage for top-level archive `group_name_prefix`
-- [ ] Implement filtered top-level archive route behavior for `group_name_prefix`
-- [ ] Add `/terminals` top-level archive `group_name_prefix` UI and client wiring
-- [ ] Run focused regression plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Add failing route/OpenAPI coverage for top-level archive `group_name_prefix`
+- [x] Implement filtered top-level archive route behavior for `group_name_prefix`
+- [x] Add `/terminals` top-level archive `group_name_prefix` UI and client wiring
+- [x] Run focused regression plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Added RED coverage in `tests/app/routes/test_terminal_routes.py` and `tests/app/routes/test_api_routes.py` for grouped archive `group_name_prefix` filtering, route-level workspace selection, `filters.group_name_prefix` response metadata, and OpenAPI parameter exposure.
+- Extended `app/routes/terminals.py` so `GET /terminals/history/archive` accepts optional `group_name_prefix`, trims and normalizes it, filters canonical web workspaces by case-insensitive `group_name` prefix before grouped archive loading, and echoes `filters.group_name_prefix` without changing grouped item shape, filename, RBAC, or `404` empty-result behavior.
+- Extended `web/src/api/client.ts` and `web/src/pages/Terminals.tsx` so the archive-only filter state and top-level summary controls now include a `Workspace Name Prefix` input; only `Export History Archive JSON` uses it, while overview and latest-history exports remain unfiltered.
+- Kept `services/terminal_sessions.py` unchanged so snapshot-derived filtering remains owned by the service and `group_name_prefix` stays a route-only workspace-selection boundary.
+- Verification executed:
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `git diff --check`
+- Planning commit completed in this session: `552de11` (`docs(plans): add M8.5.66 terminal history archive group-name prefix filter plan`).
 
 # Session Plan (2026-04-12) - M8.5.65 Terminal Cross-Workspace History Archive Group-Prefix Filter
 
