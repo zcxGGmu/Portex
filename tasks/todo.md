@@ -1,3 +1,25 @@
+# Session Plan (2026-04-12) - M8.5.66 Terminal Cross-Workspace History Archive Group-Name Prefix Filter
+
+## Goal
+- Continue post-`M8.5.65` terminal operator development by adding an optional `group_name_prefix` filter to the top-level cross-workspace history archive export on `/terminals`, with a matching archive-only control in the summary area, while keeping grouped archive items, snapshot-level history filters, and workspace-scoped history routes unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current top-level archive implementation
+- [x] Confirm the next step should stay on the top-level cross-workspace archive path
+- [x] Validate the next filter choice: `backend` remains single-valued and `group_id_prefix` is already covered, so the next useful additive workspace boundary is human-facing `group_name_prefix`
+- [x] Write focused `M8.5.66` design doc
+- [x] Write focused `M8.5.66` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Add failing route/OpenAPI coverage for top-level archive `group_name_prefix`
+- [ ] Implement filtered top-level archive route behavior for `group_name_prefix`
+- [ ] Add `/terminals` top-level archive `group_name_prefix` UI and client wiring
+- [ ] Run focused regression plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-12) - M8.5.65 Terminal Cross-Workspace History Archive Group-Prefix Filter
 
 ## Goal
