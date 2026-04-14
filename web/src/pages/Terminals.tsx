@@ -197,6 +197,10 @@ function getTerminalStatusLabel(value: TerminalSessionStatus): string {
   return TERMINAL_HISTORY_STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value
 }
 
+function renderHistorySessionCell(item: TerminalWorkspaceSummary): string {
+  return item.history?.session.session_id ?? '-'
+}
+
 function findCaseInsensitiveMatches(text: string, query: string): MatchRange[] {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery || !text) {
@@ -1376,7 +1380,7 @@ export function Terminals() {
                         <td>{formatDate(item.session?.created_at ?? null)}</td>
                         <td>{formatDate(item.session?.last_attached_at ?? null)}</td>
                         <td>{formatDate(item.session?.reconnect_deadline ?? null)}</td>
-                        <td>{item.history ? item.history.session.status : '-'}</td>
+                        <td>{renderHistorySessionCell(item)}</td>
                         <td>{item.history ? item.history.output_bytes.toLocaleString() : '-'}</td>
                         <td>{item.history ? (item.history.truncated ? 'yes' : 'no') : '-'}</td>
                         <td>

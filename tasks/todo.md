@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.70` design doc
 - [x] Write focused `M8.5.70` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the overview history-session fix
-- [ ] Implement the `/terminals` overview history-session column fix
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the overview history-session fix
+- [x] Implement the `/terminals` overview history-session column fix
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by replacing the `History Session` cell with a not-yet-defined `renderHistorySessionCell(item)` helper, then verified `cd web && npm run build` failed with `TS2304: Cannot find name 'renderHistorySessionCell'`.
+- Extended `web/src/pages/Terminals.tsx` with a minimal overview-cell helper so `/terminals` now renders `item.history.session.session_id` in the `History Session` column while preserving the existing `-` fallback when no history snapshot exists.
+- Kept backend routes, API-client contracts, overview/archive export behavior, timeline/search/detail state, and the page-level action/notice model unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `02d5a06` (`docs(plans): add M8.5.70 terminal overview history-session fix plan`).
 
 # Session Plan (2026-04-14) - M8.5.69 Terminal Archive Time-Range Presets
 
