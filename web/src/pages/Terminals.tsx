@@ -338,6 +338,7 @@ export function Terminals() {
   const [searchOffset, setSearchOffset] = useState(0)
   const [searchSort, setSearchSort] = useState<TerminalHistorySearchSort>('relevance')
   const [activePresetId, setActivePresetId] = useState<TerminalTimeRangePresetId | null>(null)
+  const [archiveActivePresetId, setArchiveActivePresetId] = useState<TerminalTimeRangePresetId | null>(null)
   const [pendingSearchPageMove, setPendingSearchPageMove] = useState<'next' | 'previous' | null>(null)
   const [pendingMatchTarget, setPendingMatchTarget] = useState<PendingMatchTarget | null>(null)
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
@@ -703,15 +704,22 @@ export function Terminals() {
       snapshotFromLocal: string
       snapshotToLocal: string
     }>,
+    options?: {
+      activePresetId?: TerminalTimeRangePresetId | null
+    },
   ) {
     setArchiveFilters((current) => ({
       ...current,
       ...patch,
     }))
+    if (options && 'activePresetId' in options) {
+      setArchiveActivePresetId(options.activePresetId ?? null)
+    }
   }
 
   function resetArchiveFilters() {
     setArchiveFilters({ ...DEFAULT_ARCHIVE_FILTERS })
+    setArchiveActivePresetId(null)
   }
 
   function clearArchiveFilter(key: ArchiveFilterChipKey) {
@@ -735,16 +743,20 @@ export function Terminals() {
         updateArchiveFilters({ sessionIdPrefix: '' })
         return
       case 'snapshotFromLocal':
-        updateArchiveFilters({ snapshotFromLocal: '' })
+        updateArchiveFilters({ snapshotFromLocal: '' }, { activePresetId: null })
         return
       case 'snapshotToLocal':
-        updateArchiveFilters({ snapshotToLocal: '' })
+        updateArchiveFilters({ snapshotToLocal: '' }, { activePresetId: null })
         return
     }
   }
 
   function handlePresetTimeRange(presetId: TerminalTimeRangePresetId) {
     updateTimelineFilters(buildPresetLocalRange(presetId), { activePresetId: presetId })
+  }
+
+  function handleArchivePresetTimeRange(presetId: TerminalTimeRangePresetId) {
+    updateArchiveFilters(buildPresetLocalRange(presetId), { activePresetId: presetId })
   }
 
   function openDetailFromSearch(index: number, anchor: 'first' | 'last') {
@@ -1138,6 +1150,21 @@ export function Terminals() {
               </div>
             ) : null}
             <div className="settings-grid" style={{ marginBottom: '0.75rem' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span className="muted">Preset Ranges</span>
+                <div className="terminal-actions" style={{ marginTop: '0.35rem' }}>
+                  {TERMINAL_TIME_RANGE_PRESETS.map((preset) => (
+                    <PrimaryButton
+                      key={preset.id}
+                      className={archiveActivePresetId === preset.id ? '' : 'button--ghost'}
+                      onClick={() => handleArchivePresetTimeRange(preset.id)}
+                      type="button"
+                    >
+                      {preset.label}
+                    </PrimaryButton>
+                  ))}
+                </div>
+              </div>
               <label>
                 <span className="muted">Workspace Name Prefix</span>
                 <input
@@ -1216,7 +1243,12 @@ export function Terminals() {
               <label>
                 <span className="muted">Snapshot From</span>
                 <input
-                  onChange={(event) => updateArchiveFilters({ snapshotFromLocal: event.target.value })}
+                  onChange={(event) =>
+                    updateArchiveFilters(
+                      { snapshotFromLocal: event.target.value },
+                      { activePresetId: null },
+                    )
+                  }
                   style={{ width: '100%', marginTop: '0.35rem' }}
                   type="datetime-local"
                   value={archiveFilters.snapshotFromLocal}
@@ -1225,7 +1257,12 @@ export function Terminals() {
               <label>
                 <span className="muted">Snapshot To</span>
                 <input
-                  onChange={(event) => updateArchiveFilters({ snapshotToLocal: event.target.value })}
+                  onChange={(event) =>
+                    updateArchiveFilters(
+                      { snapshotToLocal: event.target.value },
+                      { activePresetId: null },
+                    )
+                  }
                   style={{ width: '100%', marginTop: '0.35rem' }}
                   type="datetime-local"
                   value={archiveFilters.snapshotToLocal}

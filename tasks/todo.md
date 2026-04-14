@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.69` design doc
 - [x] Write focused `M8.5.69` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the new archive preset controls
-- [ ] Implement `/terminals` archive-only preset time-range shortcuts and active-preset state
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the new archive preset controls
+- [x] Implement `/terminals` archive-only preset time-range shortcuts and active-preset state
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by rendering archive preset buttons that referenced not-yet-defined `archiveActivePresetId` and `handleArchivePresetTimeRange`, then verified `cd web && npm run build` failed with `TS2552` for both missing names.
+- Extended `web/src/pages/Terminals.tsx` so the `/terminals` summary area now exposes archive-only `1h` / `6h` / `24h` / `7d` / `30d` preset buttons, keeps archive preset state local to the top-level archive filters, and clears the active archive preset when operators manually edit archive datetime inputs, clear archive time chips, or use `Clear Archive Filters`.
+- Kept backend routes, API-client contracts, grouped archive response shape, archive query wiring, archive chip/reset behavior for non-time fields, timeline/search/detail state, and the page-level action/notice model unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `b2c8a98` (`docs(plans): add M8.5.69 terminal archive time-range presets plan`).
 
 # Session Plan (2026-04-12) - Handoff Sync For M8.5.68
 
