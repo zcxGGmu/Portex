@@ -1,3 +1,24 @@
+# Session Plan (2026-04-14) - M8.5.69 Terminal Archive Time-Range Presets
+
+## Goal
+- Continue post-`M8.5.68` terminal operator development by adding archive-only preset time-range shortcuts on `/terminals`, so operators can quickly constrain `Export History Archive JSON` by recent time windows without manually typing both datetime bounds, while keeping backend contracts and archive filter semantics unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` archive filter UI
+- [x] Confirm the next step should stay frontend-only and avoid adding another top-level archive filter parameter
+- [x] Validate the UX gap: top-level archive time filters already exist, but unlike timeline/search they still lack the existing `1h` / `6h` / `24h` / `7d` / `30d` shortcut flow
+- [x] Write focused `M8.5.69` design doc
+- [x] Write focused `M8.5.69` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the new archive preset controls
+- [ ] Implement `/terminals` archive-only preset time-range shortcuts and active-preset state
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-12) - Handoff Sync For M8.5.68
 
 ## Goal
