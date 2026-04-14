@@ -1,3 +1,24 @@
+# Session Plan (2026-04-15) - M8.5.72 Terminal Overview Empty-State Deduplication
+
+## Goal
+- Continue post-`M8.5.71` terminal operator development by removing duplicate empty-state messaging in the `/terminals` overview when no canonical workspaces exist, while keeping backend contracts and overview payloads unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` overview empty state
+- [x] Confirm the next step should stay frontend-only and fix an existing operator-surface UX issue rather than add new archive-only scope
+- [x] Validate the UX gap: when `items.length === 0`, the page currently renders both `No canonical workspaces found.` above the table and `Terminal overview is empty.` inside the table body
+- [x] Write focused `M8.5.72` design doc
+- [x] Write focused `M8.5.72` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the overview empty-state deduplication
+- [ ] Implement the `/terminals` overview empty-state deduplication
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-14) - M8.5.71 Terminal Timeline Empty-State ColSpan Fix
 
 ## Goal
