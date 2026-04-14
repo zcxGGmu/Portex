@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.71` design doc
 - [x] Write focused `M8.5.71` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the timeline empty-state colSpan fix
-- [ ] Implement the `/terminals` timeline empty-state colSpan fix
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the timeline empty-state colSpan fix
+- [x] Implement the `/terminals` timeline empty-state colSpan fix
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by changing the timeline empty-state row to reference a not-yet-defined `TIMELINE_TABLE_COLUMN_COUNT`, then verified `cd web && npm run build` failed with `TS2304: Cannot find name 'TIMELINE_TABLE_COLUMN_COUNT'`.
+- Extended `web/src/pages/Terminals.tsx` with a small local timeline column-count constant so the workspace timeline empty-state row now spans all 8 current columns, including `Actions`, while leaving the current message text unchanged.
+- Kept backend routes, API-client contracts, overview/archive/search/detail behavior, and the page-level action/notice model unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `8a72a0b` (`docs(plans): add M8.5.71 terminal timeline empty-state colspan fix plan`).
 
 # Session Plan (2026-04-14) - M8.5.70 Terminal Overview History Session Column Fix
 

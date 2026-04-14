@@ -21,6 +21,7 @@ import { useAuthStore } from '../stores/auth'
 
 const TIMELINE_PAGE_SIZE = 5
 const SEARCH_PAGE_SIZE = 5
+const TIMELINE_TABLE_COLUMN_COUNT = 8
 const TERMINAL_HISTORY_STATUS_OPTIONS: Array<{ value: TerminalSessionStatus; label: string }> = [
   { value: 'created', label: 'Created' },
   { value: 'attached', label: 'Attached' },
@@ -1751,7 +1752,7 @@ export function Terminals() {
                       <tbody>
                         {timelineData.items.length === 0 ? (
                           <tr>
-                            <td className="muted" colSpan={7}>
+                            <td className="muted" colSpan={TIMELINE_TABLE_COLUMN_COUNT}>
                               Timeline is empty.
                             </td>
                           </tr>
