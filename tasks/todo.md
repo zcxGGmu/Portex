@@ -1,3 +1,24 @@
+# Session Plan (2026-04-14) - M8.5.70 Terminal Overview History Session Column Fix
+
+## Goal
+- Continue post-`M8.5.69` terminal operator development by fixing the `/terminals` overview table so the `History Session` column renders the history snapshot `session_id` instead of mistakenly showing the history session `status`, while keeping backend contracts and overview payloads unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` overview table
+- [x] Confirm the next step should be a small correctness fix rather than another archive-only UX expansion
+- [x] Validate the bug: the `History Session` header currently renders `item.history.session.status` even though `history.session.session_id` is already available in the typed payload
+- [x] Write focused `M8.5.70` design doc
+- [x] Write focused `M8.5.70` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the overview history-session fix
+- [ ] Implement the `/terminals` overview history-session column fix
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-14) - M8.5.69 Terminal Archive Time-Range Presets
 
 ## Goal
