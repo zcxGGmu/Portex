@@ -1,3 +1,24 @@
+# Session Plan (2026-04-14) - M8.5.71 Terminal Timeline Empty-State ColSpan Fix
+
+## Goal
+- Continue post-`M8.5.70` terminal operator development by fixing the `/terminals` timeline empty-state row so its `colSpan` matches the current 8-column timeline table header, while keeping backend contracts and timeline payloads unchanged.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` timeline table
+- [x] Confirm the next step should be a small correctness fix rather than another archive-only UX expansion
+- [x] Validate the bug: the timeline table header has 8 columns (`Session`, `Status`, `Owner`, `Snapshot At`, `Created`, `Output Bytes`, `Truncated`, `Actions`), but the empty-state row still uses `colSpan={7}`
+- [x] Write focused `M8.5.71` design doc
+- [x] Write focused `M8.5.71` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the timeline empty-state colSpan fix
+- [ ] Implement the `/terminals` timeline empty-state colSpan fix
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-14) - M8.5.70 Terminal Overview History Session Column Fix
 
 ## Goal
