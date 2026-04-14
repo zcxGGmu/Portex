@@ -1338,7 +1338,6 @@ export function Terminals() {
 
           <section className="panel">
             <h2 style={{ marginTop: 0 }}>Workspace Sessions</h2>
-            {items.length === 0 ? <p className="muted">No canonical workspaces found.</p> : null}
             <div className="monitor-table-wrap">
               <table className="monitor-table">
                 <thead>

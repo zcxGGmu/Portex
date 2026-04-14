@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.72` design doc
 - [x] Write focused `M8.5.72` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the overview empty-state deduplication
-- [ ] Implement the `/terminals` overview empty-state deduplication
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the overview empty-state deduplication
+- [x] Implement the `/terminals` overview empty-state deduplication
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by replacing the standalone overview empty-state paragraph with a not-yet-defined `renderOverviewEmptyStateHint()` call, then verified `cd web && npm run build` failed with `TS2304: Cannot find name 'renderOverviewEmptyStateHint'`.
+- Extended `web/src/pages/Terminals.tsx` by removing the redundant standalone `No canonical workspaces found.` paragraph so the `/terminals` overview now keeps only the existing in-table empty-state row `Terminal overview is empty.` when no canonical workspaces exist.
+- Kept backend routes, API-client contracts, overview/archive/timeline/search/detail behavior, and the page-level action/notice model unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `072153a` (`docs(plans): add M8.5.72 terminal overview empty-state dedupe plan`).
 
 # Session Plan (2026-04-14) - M8.5.71 Terminal Timeline Empty-State ColSpan Fix
 
