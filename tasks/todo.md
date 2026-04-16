@@ -10,14 +10,24 @@
 - [x] Write focused `M8.5.73` design doc
 - [x] Write focused `M8.5.73` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the text-filter normalization
-- [ ] Implement `/terminals` effective owner/session filter whitespace normalization
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the text-filter normalization
+- [x] Implement `/terminals` effective owner/session filter whitespace normalization
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by routing archive/timeline owner-session filter derivation through a not-yet-defined `normalizeOptionalTextFilter(...)` helper, then verified `cd web && npm run build` failed with `TS2304` for the missing helper and `TS6133` for the now-unused normalized values.
+- Extended `web/src/pages/Terminals.tsx` with one small page-local text-filter normalization helper and reused its trimmed effective values across archive query options, archive chips, timeline query options, and search query/archive options.
+- Kept backend routes, service-side filter semantics, OpenAPI, export actions, page-local action notices, and all existing archive/timeline/search/detail contracts unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `d406d43` (`docs(plans): add M8.5.73 terminal filter-whitespace normalization plan`).
 
 # Session Plan (2026-04-15) - M8.5.72 Terminal Overview Empty-State Deduplication
 

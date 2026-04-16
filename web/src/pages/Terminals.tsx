@@ -129,6 +129,11 @@ function localDateTimeToUtcIso(value: string): string | undefined {
   return localDate.toISOString()
 }
 
+function normalizeOptionalTextFilter(value: string): string | undefined {
+  const normalized = value.trim()
+  return normalized === '' ? undefined : normalized
+}
+
 function padDateTimePart(value: number): string {
   return String(value).padStart(2, '0')
 }
@@ -349,15 +354,19 @@ export function Terminals() {
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
   const [activeDetailMatchIndex, setActiveDetailMatchIndex] = useState(0)
   const activeMatchRef = useRef<HTMLElement | null>(null)
+  const normalizedArchiveOwnerUserId = normalizeOptionalTextFilter(archiveFilters.ownerUserId)
+  const normalizedArchiveSessionIdPrefix = normalizeOptionalTextFilter(archiveFilters.sessionIdPrefix)
+  const normalizedTimelineOwnerUserId = normalizeOptionalTextFilter(timelineFilters.ownerUserId)
+  const normalizedTimelineSessionIdPrefix = normalizeOptionalTextFilter(timelineFilters.sessionIdPrefix)
   const timelineArchiveQueryOptions = useMemo(
     () => ({
       status: timelineFilters.status || undefined,
-      ownerUserId: timelineFilters.ownerUserId || undefined,
-      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      ownerUserId: normalizedTimelineOwnerUserId,
+      sessionIdPrefix: normalizedTimelineSessionIdPrefix,
       snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     }),
-    [timelineFilters],
+    [timelineFilters, normalizedTimelineOwnerUserId, normalizedTimelineSessionIdPrefix],
   )
   const archiveQueryOptions = useMemo(
     () => ({
@@ -368,12 +377,12 @@ export function Terminals() {
           ? undefined
           : archiveFilters.chatAccessible === 'true',
       status: archiveFilters.status || undefined,
-      ownerUserId: archiveFilters.ownerUserId || undefined,
-      sessionIdPrefix: archiveFilters.sessionIdPrefix || undefined,
+      ownerUserId: normalizedArchiveOwnerUserId,
+      sessionIdPrefix: normalizedArchiveSessionIdPrefix,
       snapshotFrom: localDateTimeToUtcIso(archiveFilters.snapshotFromLocal),
       snapshotTo: localDateTimeToUtcIso(archiveFilters.snapshotToLocal),
     }),
-    [archiveFilters],
+    [archiveFilters, normalizedArchiveOwnerUserId, normalizedArchiveSessionIdPrefix],
   )
   const archiveFilterChips = useMemo<ArchiveFilterChip[]>(() => {
     const chips: ArchiveFilterChip[] = []
@@ -408,18 +417,16 @@ export function Terminals() {
         label: `Status: ${getTerminalStatusLabel(archiveFilters.status)}`,
       })
     }
-    const ownerUserId = archiveFilters.ownerUserId.trim()
-    if (ownerUserId !== '') {
+    if (normalizedArchiveOwnerUserId) {
       chips.push({
         key: 'ownerUserId',
-        label: `Owner: ${ownerUserId}`,
+        label: `Owner: ${normalizedArchiveOwnerUserId}`,
       })
     }
-    const sessionIdPrefix = archiveFilters.sessionIdPrefix.trim()
-    if (sessionIdPrefix !== '') {
+    if (normalizedArchiveSessionIdPrefix) {
       chips.push({
         key: 'sessionIdPrefix',
-        label: `Session: ${sessionIdPrefix}`,
+        label: `Session: ${normalizedArchiveSessionIdPrefix}`,
       })
     }
     const snapshotFromLocal = archiveFilters.snapshotFromLocal.trim()
@@ -437,7 +444,7 @@ export function Terminals() {
       })
     }
     return chips
-  }, [archiveFilters])
+  }, [archiveFilters, normalizedArchiveOwnerUserId, normalizedArchiveSessionIdPrefix])
   const archiveActiveFilterCount = archiveFilterChips.length
   const hasActiveArchiveFilters = archiveActiveFilterCount > 0
   const archiveFilterSummary = hasActiveArchiveFilters
@@ -450,12 +457,12 @@ export function Terminals() {
       limit: TIMELINE_PAGE_SIZE,
       offset: timelineOffset,
       status: timelineFilters.status || undefined,
-      ownerUserId: timelineFilters.ownerUserId || undefined,
-      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      ownerUserId: normalizedTimelineOwnerUserId,
+      sessionIdPrefix: normalizedTimelineSessionIdPrefix,
       snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     }),
-    [timelineFilters, timelineOffset],
+    [timelineFilters, timelineOffset, normalizedTimelineOwnerUserId, normalizedTimelineSessionIdPrefix],
   )
 
   const {
@@ -479,24 +486,37 @@ export function Terminals() {
       offset: searchOffset,
       sort: searchSort,
       status: timelineFilters.status || undefined,
-      ownerUserId: timelineFilters.ownerUserId || undefined,
-      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      ownerUserId: normalizedTimelineOwnerUserId,
+      sessionIdPrefix: normalizedTimelineSessionIdPrefix,
       snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     }),
-    [normalizedSearchQuery, searchOffset, searchSort, timelineFilters],
+    [
+      normalizedSearchQuery,
+      searchOffset,
+      searchSort,
+      timelineFilters,
+      normalizedTimelineOwnerUserId,
+      normalizedTimelineSessionIdPrefix,
+    ],
   )
   const searchArchiveQueryOptions = useMemo(
     () => ({
       query: normalizedSearchQuery,
       sort: searchSort,
       status: timelineFilters.status || undefined,
-      ownerUserId: timelineFilters.ownerUserId || undefined,
-      sessionIdPrefix: timelineFilters.sessionIdPrefix || undefined,
+      ownerUserId: normalizedTimelineOwnerUserId,
+      sessionIdPrefix: normalizedTimelineSessionIdPrefix,
       snapshotFrom: localDateTimeToUtcIso(timelineFilters.snapshotFromLocal),
       snapshotTo: localDateTimeToUtcIso(timelineFilters.snapshotToLocal),
     }),
-    [normalizedSearchQuery, searchSort, timelineFilters],
+    [
+      normalizedSearchQuery,
+      searchSort,
+      timelineFilters,
+      normalizedTimelineOwnerUserId,
+      normalizedTimelineSessionIdPrefix,
+    ],
   )
   const {
     data: searchData,
