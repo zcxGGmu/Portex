@@ -1,3 +1,24 @@
+# Session Plan (2026-04-16) - M8.5.73 Terminal Effective Filter Whitespace Normalization
+
+## Goal
+- Continue post-`M8.5.72` terminal operator development by normalizing `/terminals` owner/session text filters so archive summary/chips and frontend query wiring reflect the same effective trimmed filter values the backend already applies.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` filter wiring
+- [x] Confirm the next step should stay frontend-only and avoid adding new archive-only scope
+- [x] Validate the consistency gap: backend service filtering already trims `owner_user_id` / `session_id_prefix`, but the frontend archive summary/chips still treat raw whitespace-only input as active filters and forward untrimmed text
+- [x] Write focused `M8.5.73` design doc
+- [x] Write focused `M8.5.73` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the text-filter normalization
+- [ ] Implement `/terminals` effective owner/session filter whitespace normalization
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-15) - M8.5.72 Terminal Overview Empty-State Deduplication
 
 ## Goal
