@@ -10,14 +10,25 @@
 - [x] Write focused `M8.5.74` design doc
 - [x] Write focused `M8.5.74` implementation plan doc
 - [x] Add this session checklist before implementation
-- [ ] Create a small RED signal for the search-input normalization
-- [ ] Implement `/terminals` effective search-query input normalization on submit
-- [ ] Run focused verification plus frontend lint/build and diff hygiene
-- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
-- [ ] Commit milestone changes with a detailed message
+- [x] Create a small RED signal for the search-input normalization
+- [x] Implement `/terminals` effective search-query input normalization on submit
+- [x] Run focused verification plus frontend lint/build and diff hygiene
+- [x] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [x] Commit milestone changes with a detailed message
 
 ## Review
-- Pending.
+- Created the RED signal in `web/src/pages/Terminals.tsx` by routing `handleSearchSubmit(...)` through a not-yet-defined `normalizeSubmittedSearchQuery(...)` helper and immediately writing the result back into `searchInput`, then verified `cd web && npm run build` failed with `TS2552` for the missing helper.
+- Extended `web/src/pages/Terminals.tsx` with one small submit-time normalization helper so the controlled search input now snaps to the same trimmed effective query already used by search requests, `Query:` copy, detail highlighting, and search export actions.
+- Tightened the submit path so whitespace-only search submits now clear pending first-match targeting instead of arming a no-op match jump against an empty effective query.
+- Kept backend routes, service-side search semantics, OpenAPI, export actions, page-local action notices, and all existing archive/timeline/search/detail contracts unchanged.
+- Verification executed:
+  - `cd web && npm run lint`
+  - `cd web && npm run build`
+  - `.venv/bin/pytest tests/app/routes/test_terminal_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/pytest tests/services/test_terminal_sessions.py tests/app/routes/test_terminal_monitor_routes.py tests/app/routes/test_terminal_routes.py tests/app/routes/test_terminal_websocket_routes.py tests/app/routes/test_api_routes.py -q`
+  - `.venv/bin/ruff check .`
+  - `git diff --check`
+- Planning commit completed in this session: `fad5e0f` (`docs(plans): add M8.5.74 terminal search-input normalization plan`).
 
 # Session Plan (2026-04-16) - M8.5.73 Terminal Effective Filter Whitespace Normalization
 

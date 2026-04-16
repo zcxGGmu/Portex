@@ -134,6 +134,10 @@ function normalizeOptionalTextFilter(value: string): string | undefined {
   return normalized === '' ? undefined : normalized
 }
 
+function normalizeSubmittedSearchQuery(value: string): string {
+  return value.trim()
+}
+
 function padDateTimePart(value: number): string {
   return String(value).padStart(2, '0')
 }
@@ -813,11 +817,12 @@ export function Terminals() {
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const normalized = searchInput.trim()
+    const normalized = normalizeSubmittedSearchQuery(searchInput)
+    setSearchInput(normalized)
     setSearchQuery(normalized)
     setSearchOffset(0)
     setPendingSearchPageMove(null)
-    setPendingMatchTarget({ kind: 'first' })
+    setPendingMatchTarget(normalized === '' ? null : { kind: 'first' })
     setDetailSessionId(null)
   }
 
