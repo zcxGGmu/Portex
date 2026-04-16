@@ -1,3 +1,24 @@
+# Session Plan (2026-04-16) - M8.5.74 Terminal Effective Search Query Input Normalization
+
+## Goal
+- Continue post-`M8.5.73` terminal operator development by normalizing the `/terminals` search input to the same trimmed effective query value that timeline/search/detail/export already use on submit.
+
+## Checklist
+- [x] Re-read `docs/progress.md`, `docs/TODO.md`, `AGENTS.md`, `tasks/lessons.md`, and the current `/terminals` search flow
+- [x] Confirm the next step should stay frontend-only and avoid adding new archive-only scope
+- [x] Validate the consistency gap: submitting a search with leading/trailing whitespace already trims the effective query for requests and `Query:` copy, but the controlled input still shows the raw whitespace-padded value
+- [x] Write focused `M8.5.74` design doc
+- [x] Write focused `M8.5.74` implementation plan doc
+- [x] Add this session checklist before implementation
+- [ ] Create a small RED signal for the search-input normalization
+- [ ] Implement `/terminals` effective search-query input normalization on submit
+- [ ] Run focused verification plus frontend lint/build and diff hygiene
+- [ ] Update `docs/progress.md`, `AGENTS.md` if needed, and complete this review section
+- [ ] Commit milestone changes with a detailed message
+
+## Review
+- Pending.
+
 # Session Plan (2026-04-16) - M8.5.73 Terminal Effective Filter Whitespace Normalization
 
 ## Goal
